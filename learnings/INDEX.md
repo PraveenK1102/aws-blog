@@ -6,7 +6,7 @@ Track what you've learned, what broke, and what you'd do differently.
 
 | Stage | Topic | Status | Started | Completed |
 |-------|-------|--------|---------|-----------|
-| 1 | EC2 + RDS (Manual Deploy) | Not started | - | - |
+| 1 | EC2 + RDS (Manual Deploy) | ✅ Complete | 2026-05-31 | 2026-06-01 |
 | 2 | S3 + CloudFront (Frontend) | Not started | - | - |
 | 3 | VPC + ALB + CloudWatch (Prod-Grade) | Not started | - | - |
 | 4 | CI/CD + ECR + ECS Fargate | Not started | - | - |
@@ -25,3 +25,9 @@ Track what you've learned, what broke, and what you'd do differently.
 ## Key Gotchas & Lessons (cross-cutting)
 
 _Add things here that apply across multiple stages — recurring mistakes, mental model shifts, etc._
+
+## Also To Learn
+
+- **ECS** (Elastic Container Service) — covered in Stage 4, running Docker containers without managing servers
+- **EKS** (Elastic Kubernetes Service) — Kubernetes on AWS, more complex than ECS, used by large companies. Learn after Stage 6 as a bonus.
+- Compare: ECS vs EKS — when to use which, interview question
