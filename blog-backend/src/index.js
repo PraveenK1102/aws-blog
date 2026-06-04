@@ -14,12 +14,12 @@ app.use(express.json());
 app.use(requestLogger);
 
 // Static uploads (local; replace with S3 URL later)
-app.use("/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
+app.use("/api/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
 
-app.get("/health", (_, res) => res.json({ ok: true, service: "blog-backend" }));
+app.get("/api/health", (_, res) => res.json({ ok: true, service: "blog-backend" }));
 
-app.use("/auth", authRouter);
-app.use("/posts", postsRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/posts", postsRouter);
 
 app.use(errorHandler);
 
