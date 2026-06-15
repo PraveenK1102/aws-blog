@@ -13,9 +13,6 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));
 app.use(express.json());
 app.use(requestLogger);
 
-// Static uploads (local; replace with S3 URL later)
-app.use("/api/uploads", express.static(process.env.UPLOAD_DIR || "uploads"));
-
 app.get("/api/health", (_, res) => res.json({ ok: true, service: "blog-backend" }));
 
 app.use("/api/auth", authRouter);
