@@ -7,9 +7,9 @@ Track what you've learned, what broke, and what you'd do differently.
 | Stage | Topic | Status | Started | Completed |
 |-------|-------|--------|---------|-----------|
 | 1 | EC2 + RDS (Manual Deploy) | ✅ Complete | 2026-05-31 | 2026-06-01 |
-| 2 | S3 + CloudFront (Frontend) | Not started | - | - |
-| 3 | VPC + ALB + CloudWatch (Prod-Grade) | Not started | - | - |
-| 4 | CI/CD + ECR + ECS Fargate | Not started | - | - |
+| 2 | S3 + CloudFront (Frontend) | ✅ Complete | 2026-06-02 | 2026-06-04 |
+| 3 | VPC + ALB + CloudWatch (Prod-Grade) | ✅ Complete | 2026-06-05 | 2026-06-08 |
+| 4 | CI/CD + ECR + ECS Fargate | ✅ Complete | 2026-06-11 | 2026-06-14 |
 | 5 | Lambda + SQS + API Gateway | Not started | - | - |
 | 6 | Terraform (IaC) | Not started | - | - |
 
