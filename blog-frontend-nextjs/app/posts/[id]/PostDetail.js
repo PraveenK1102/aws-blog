@@ -10,7 +10,7 @@ function hasToken() {
   return !!localStorage.getItem("token");
 }
 
-export default function PostDetailPage() {
+export default function PostDetail() {
   const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState(null);
@@ -61,7 +61,7 @@ export default function PostDetailPage() {
         <div style={{ whiteSpace: "pre-wrap", marginTop: "1rem" }}>{post.content}</div>
         {hasToken() && (
           <p style={{ marginTop: "1rem" }}>
-            <Link href={`/posts/${id}/edit/`} className="btn btn-secondary">Edit</Link>
+            <a href={`/posts/${id}/edit/`} className="btn btn-secondary">Edit</a>
             {" "}
             <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={deleting}>{deleting ? "..." : "Delete"}</button>
           </p>

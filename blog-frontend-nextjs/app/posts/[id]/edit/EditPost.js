@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
-export default function EditPostPage() {
+export default function EditPost() {
   const params = useParams();
   const router = useRouter();
   const id = params.id;

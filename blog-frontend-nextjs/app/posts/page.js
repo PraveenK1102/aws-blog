@@ -45,7 +45,7 @@ export default function PostsListPage() {
           ) : (
             posts.map((p) => (
               <li key={p.id}>
-                <Link href={`/posts/${p.id}/`}>{p.title}</Link>
+                <a href={`/posts/${p.id}/`}>{p.title}</a>
                 <div className="post-meta">by {p.author?.name || p.author?.email} · {new Date(p.createdAt).toLocaleDateString()}</div>
               </li>
             ))
