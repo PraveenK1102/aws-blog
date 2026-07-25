@@ -49,6 +49,9 @@ S3_CONTENT_BUCKET = os.environ.get("S3_CONTENT_BUCKET", "praveen-multitenant-con
 COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
 TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
 SCORE_THRESHOLD = 0.3
+# Absolute dense cosine floor for "is this actually on-topic?" — below this we
+# decline rather than answer from a tangential/keyword-only match.
+DENSE_RELEVANCE_FLOOR = float(os.environ.get("DENSE_RELEVANCE_FLOOR", "0.46"))
 TOP_K = 5
 
 ddb = boto3.client("dynamodb", region_name=REGION)
@@ -379,9 +382,11 @@ async def ask(req: AskRequest, request: Request):
     # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
     # are fine and don't block the event loop.
     def event_stream():
-        results = _hybrid_search(question, tenant_id)
+        results, top_dense = _hybrid_search(question, tenant_id)
+        log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
+                 floor=DENSE_RELEVANCE_FLOOR, hits=len(results))
 
-        if not results or results[0].score < SCORE_THRESHOLD:
+        if not results or top_dense < DENSE_RELEVANCE_FLOOR:
             msg = f"{tenant['display_name']} hasn't written about this topic."
             yield _ndjson({"type": "content", "text": msg})
             yield _ndjson({"type": "done", "citations": []})
@@ -451,9 +456,29 @@ def _get_tenant(tenant_id: str) -> dict | None:
 
 
 def _hybrid_search(question: str, tenant_id: str):
+    """Return (ranked_points, top_dense_cosine).
+
+    Hybrid RRF gives good *ranking* + citations, but its fused score is a rank
+    number (≈1.0 for the top hit even on a tiny blog), so it's useless as a
+    relevance gate. We separately fetch the top *dense cosine similarity* — an
+    absolute 0..1 measure of semantic closeness — and let the caller gate on it
+    so tangential/keyword-only matches ("chennai", "food"→coffee) get declined.
+    """
     dense = _embed_dense(question)
     sparse = _embed_sparse(question)
     qdrant = _get_qdrant_client()
+    tenant_filter = Filter(must=[
+        FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))
+    ])
+
+    # Absolute dense relevance (cosine) — the real "is this on-topic?" signal.
+    dense_res = qdrant.query_points(
+        collection_name=COLLECTION_NAME, query=dense, using="dense",
+        query_filter=tenant_filter, limit=1, with_payload=False,
+    )
+    top_dense = dense_res.points[0].score if dense_res.points else 0.0
+
+    # Hybrid RRF for ranking + citations.
     result = qdrant.query_points(
         collection_name=COLLECTION_NAME,
         prefetch=[
@@ -465,13 +490,11 @@ def _hybrid_search(question: str, tenant_id: str):
             ),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
-        query_filter=Filter(must=[
-            FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))
-        ]),
+        query_filter=tenant_filter,
         limit=TOP_K,
         with_payload=True,
     )
-    return result.points
+    return result.points, top_dense
 
 
 def _embed_dense(text: str) -> list[float]:
