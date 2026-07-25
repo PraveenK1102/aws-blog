@@ -1,0 +1,72 @@
+name: Build MultiTenantRAG Lambda Images
+
+# Builds the 3 Lambda container images on GitHub's native x86_64 runners
+# (no ARM->x86 emulation) and pushes them to ECR via OIDC (no stored secrets).
+#
+# Triggers:
+#   - push to main touching lambda code or this workflow
+#   - manual run (workflow_dispatch) so we can rebuild on demand
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'multitenant-rag/lambdas/**'
+      - '.github/workflows/build-lambdas.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for OIDC token exchange with AWS
+  contents: read    # required to checkout the repo
+
+env:
+  AWS_REGION: ap-south-1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest    # native x86_64 -> matches Lambda arch, no emulation
+    strategy:
+      fail-fast: false        # one image failing shouldn't cancel the others
+      matrix:
+        include:
+          - repo: multitenant-createpost
+            dockerfile: create_post/Dockerfile
+          - repo: multitenant-ingestworker
+            dockerfile: ingest_worker/Dockerfile
+          - repo: multitenant-ask
+            dockerfile: ask/Dockerfile
+
+    name: build ${{ matrix.repo }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::557690605487:role/github-actions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push ${{ matrix.repo }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPO: ${{ matrix.repo }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build context is the lambdas/ dir because each Dockerfile does
+          # `COPY common/` plus `COPY <service>/...` relative to that dir.
+          cd multitenant-rag/lambdas
+          docker build \
+            --platform linux/amd64 \
+            -f "$DOCKERFILE" \
+            -t "$ECR_REGISTRY/$REPO:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$REPO:v1" \
+            -t "$ECR_REGISTRY/$REPO:latest" \
+            .
+          docker push "$ECR_REGISTRY/$REPO" --all-tags
+          echo "Pushed $REPO with tags: $IMAGE_TAG, v1, latest"
