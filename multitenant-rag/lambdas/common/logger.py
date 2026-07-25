@@ -6,25 +6,65 @@ import os
 import sys
 
 
-def get_logger(name: str) -> logging.Logger:
+# LogRecord attributes we must not clobber via `extra=` (stdlib raises if we do)
+_RESERVED = {
+    "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
+    "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
+    "created", "msecs", "relativeCreated", "thread", "threadName",
+    "processName", "process", "taskName", "message", "asctime",
+}
+
+
+class StructuredLogger:
+    """Adapter so handlers can call `log.info("msg", key=value, ...)`.
+
+    The stdlib Logger only accepts a fixed set of kwargs (exc_info, stack_info,
+    extra, ...) — arbitrary kwargs raise TypeError. This wrapper routes extra
+    kwargs into `extra={...}`, which JsonFormatter then renders as JSON fields.
     """
-    Return a JSON-formatted logger.
+
+    def __init__(self, logger: logging.Logger):
+        self._logger = logger
+
+    def _emit(self, level: int, msg: str, **kwargs) -> None:
+        exc_info = kwargs.pop("exc_info", None)
+        extra = {}
+        for key, value in kwargs.items():
+            # Prefix any key that would collide with a reserved LogRecord attr
+            extra[f"x_{key}" if key in _RESERVED else key] = value
+        self._logger.log(level, msg, exc_info=exc_info, extra=extra)
+
+    def debug(self, msg: str, **kwargs) -> None:
+        self._emit(logging.DEBUG, msg, **kwargs)
+
+    def info(self, msg: str, **kwargs) -> None:
+        self._emit(logging.INFO, msg, **kwargs)
+
+    def warning(self, msg: str, **kwargs) -> None:
+        self._emit(logging.WARNING, msg, **kwargs)
+
+    def error(self, msg: str, **kwargs) -> None:
+        self._emit(logging.ERROR, msg, **kwargs)
+
+
+def get_logger(name: str) -> StructuredLogger:
+    """
+    Return a JSON-formatted structured logger.
 
     CloudWatch Insights parses JSON well; makes queries easy.
     Example log: {"level":"INFO","msg":"post created","post_id":"post_123"}
     """
     logger = logging.getLogger(name)
-    if logger.handlers:
-        return logger  # already configured
+    if not logger.handlers:
+        level = os.environ.get("LOG_LEVEL", "INFO").upper()
+        logger.setLevel(level)
 
-    level = os.environ.get("LOG_LEVEL", "INFO").upper()
-    logger.setLevel(level)
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(JsonFormatter())
+        logger.addHandler(handler)
+        logger.propagate = False
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonFormatter())
-    logger.addHandler(handler)
-    logger.propagate = False
-    return logger
+    return StructuredLogger(logger)
 
 
 class JsonFormatter(logging.Formatter):
