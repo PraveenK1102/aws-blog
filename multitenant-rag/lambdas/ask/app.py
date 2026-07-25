@@ -339,8 +339,11 @@ def get_post(tenant_id: str, post_id: str, request: Request):
             TableName=POSTS_TABLE,
             Key={"tenant_id": {"S": tenant_id}, "post_id": {"S": post_id}},
         ).get("Item")
-    except ClientError:
-        item = None
+    except ClientError as e:
+        # Don't silently masquerade an infra error (e.g. IAM AccessDenied) as
+        # "not found" — log it so it's diagnosable.
+        log.error("get_post ddb error", error=str(e), post_id=post_id, tenant_id=tenant_id)
+        return JSONResponse(status_code=500, content={"error": "could not load post"})
     if not item:
         return JSONResponse(status_code=404, content={"error": "post not found"})
 
