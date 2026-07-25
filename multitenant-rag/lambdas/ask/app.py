@@ -54,7 +54,7 @@ SCORE_THRESHOLD = 0.3
 # question about a city the author never mentioned), so we decline WITHOUT an
 # LLM call (saves a Groq request). Above it, we hand the retrieved context to
 # the LLM and let IT judge whether the content genuinely answers the question.
-RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.20"))
+RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.15"))
 TOP_K = 5
 
 ddb = boto3.client("dynamodb", region_name=REGION)
@@ -503,14 +503,21 @@ async def ask(req: AskRequest, request: Request):
     # are fine and don't block the event loop.
     def event_stream():
         results, top_dense = _hybrid_search(retrieval_query, tenant_id)
-        log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
-                 floor=RETRIEVAL_FLOOR, hits=len(results))
+
+        def log_relevance(result_type):
+            # One line per query carrying BOTH the score and the outcome, so the
+            # floor can be calibrated from data: the floor should sit just below
+            # the min(top_dense) of queries with result_type=answered. Tune via:
+            #   filter msg="relevance" and result_type="answered" | stats min(top_dense)
+            log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
+                     floor=RETRIEVAL_FLOOR, hits=len(results), result_type=result_type)
 
         # Clearly-unrelated → decline without spending an LLM call.
         if not results or top_dense < RETRIEVAL_FLOOR:
             msg = f"{tenant['display_name']} hasn't written about this topic."
             yield _ndjson({"type": "content", "text": msg})
             yield _ndjson({"type": "done", "citations": []})
+            log_relevance("below_floor")
             _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty", started_at)
             if chat_id:
                 chatstore.append_turn(asker_id, chat_id, question, msg, [])
@@ -540,6 +547,7 @@ async def ask(req: AskRequest, request: Request):
         refused = "hasn't written about" in answer_text.lower()
         citations = [] if refused else _dedupe_citations(results)
         result_type = "refused" if refused else "answered"
+        log_relevance(result_type)
 
         yield _ndjson({"type": "done", "citations": citations})
         _log_usage(tenant_id, asker_id, request_id, question, total_input, total_output, result_type, started_at)
