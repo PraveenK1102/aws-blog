@@ -3,6 +3,15 @@
 Last updated: 2026-06-16
 Status: Design LOCKED — implementation starts with Phase 0 cleanup
 
+> **⚠️ SHIPPED-STATE NOTE (2026-07-26).** This is the *original* locked design. The app shipped
+> to prod with several deliberate changes — read `STATUS.md` / `MASTER-CONTEXT.md` for what's
+> actually live. Key diffs from this doc: **auth is custom JWT** (not the `X-User-Id` header
+> described below); **the product model is "visit a profile, ask THEIR AI"** (a directory, not
+> per-post); **`ask` is buffered via API Gateway** (LWA buffered), not a streaming Function URL
+> (Python has no native streaming; true streaming deferred); **saved chats + conversation memory**
+> were added (`common/chats.py`, `multitenant-chats` table); **relevance is LLM-as-judge** with a
+> 0.20 dense floor. Everything below is otherwise accurate (data models, hybrid retrieval, cost).
+
 ---
 
 ## What We're Building

@@ -1,207 +1,82 @@
 # MultiTenantRAG — Master Context
 
-For pasting into a new Claude Code session or Claude chat.
-
-Self-contained. If you paste this + `PHASE-3-PLAN.md`, a new session has
-everything needed to continue.
+For pasting into a new Claude Code session or Claude chat. Self-contained.
+**Status: SHIPPED TO PRODUCTION (2026-07-26).** Live: https://d261g450savmee.cloudfront.net
 
 ---
 
-## Who I Am
+## Who I am
+Praveen, developer at Zoho, learning AWS + GenAI at production grade to move into senior
+roles needing 30–40% AWS. Learning-mode: teach the concept while/ before implementing;
+solid over fast (timelines are upper bounds, don't cut scope). Free-tier through 2027-05-31.
 
-Praveen, developer at Zoho (Zoho Books division). Learning AWS + GenAI to
-target GenAI developer roles at product companies. Zero cloud experience
-before this project. I ask "why" a lot; want to understand, not just copy
-commands. Be honest, critique my logic, push back when I'm wrong.
+## What this project is
+A **signup-gated, multi-tenant blogging platform with a per-profile RAG chatbot**, 100%
+serverless on AWS (ap-south-1). You browse a directory of people, visit a profile, read
+their blog, and chat with an AI that answers **only from that person's posts**. It's the
+cloud sibling of the on-prem `ticket-manager` RAG.
 
----
+## The product (as shipped)
+- **Auth gate** — email+password (JWT, bcrypt). Nothing works logged out. Google login = future.
+- **Discover** → profile directory; **profile page** → their posts (readable) + "Ask their AI".
+- **Ask** — tenant-isolated hybrid retrieval (dense+sparse, RRF) → Groq 70B. Relevance is
+  LLM-as-judge in ONE call: answer / clarify (push back on vague) / decline. Low retrieval
+  floor 0.20 only skips the LLM for clearly-irrelevant queries.
+- **Saved chats** — conversation memory; up to 5; delete → trash → permanent delete.
+- **My blog** — write markdown → async chunk + Bedrock Titan embed + Qdrant.
 
-## Project: MultiTenantRAG
-
-Multi-tenant RAG chatbot deployed on AWS. 5-10 mock tenants across
-different domains (doctor, chef, coder, ...). Each user has a profile
-page; visitors chat with an AI that knows only that user's content.
-
-Interview positioning: depth over scale. Complex retrieval + isolation +
-streaming, not "scales to a million users".
-
----
-
-## Locked Architecture (v1)
-
-### Compute
-- Lambda container images for 3 functions (createPost, ingestWorker, ask)
-- API Gateway HTTP API for POST /posts (synchronous)
-- Lambda Function URL with response streaming for POST /ask
-- CloudFront in front (existing distribution EOV3277U5A8CF)
-
-### Storage
-- DynamoDB: 4 tables (users, tenants, posts, usage-logs)
-- S3: praveen-multitenant-content (raw post markdown)
-- Qdrant Cloud: vectors (free tier, eu-west-2)
-- Secrets Manager: Groq + Qdrant API keys
-
-### Models
-- LLM: Groq Llama 3.3 70B (free tier, streaming)
-- Embeddings: Bedrock Titan Text V2 (1024 dims)
-- Sparse: fastembed BM25 (in-process)
-
-### Retrieval
-- Hybrid dense + sparse via Qdrant RRF fusion
-- Pre-filter by tenant_id (server-side lookup from user_id)
-- Top-K 5, score threshold 0.3
-
-### Chunking
-- Markdown-aware structural (500 tokens, 50 overlap)
-- Header hierarchy prepended to each chunk
-
-### Auth (v1)
-- No real auth. X-User-Id header from URL context.
-- users table maps user_id → tenant_id
-- Never trust tenant_id from client
-- v1.5: swap to Cognito JWT (only common/context.py changes)
-
-### Domain Handling
-- tenant.domain is a hint string in system prompt (not a filter)
-- No hardcoded DOMAIN_PROMPTS dict
-- Vector search naturally handles multi-domain users
-
-### Scope (Locked — Not in v1)
-- No global/common shared content
-- No PDF/image/table/SVG ingestion
-- No OCR
-- No query rewriting
-- No HyDE
-- No cross-encoder reranker
-- No semantic cache
-- No multi-user per tenant
-- No Cognito auth
-
----
-
-## Current AWS State (as of 2026-07-25)
-
-**Deleted (Phase 0):**
-- Old blog ECS, ALB, EC2, RDS, security groups, ECR blog-backend, IAM roles
-
-**Created (Phase 1):**
-- DynamoDB: multitenant-users, multitenant-tenants, multitenant-posts (GSI by_status), multitenant-usage-logs (TTL on expires_at)
-- S3: praveen-multitenant-content (private, versioned)
-- SQS: multitenant-ingestion.fifo (content-based dedup)
-- Secrets Manager: multitenant/groq, multitenant/qdrant (both with real credentials)
-- Qdrant Cloud cluster + `multitenant_chunks` collection (hybrid config)
-
-**Preserved:**
-- CloudFront distribution EOV3277U5A8CF
-- S3 bucket praveen-blog-frontend
-- OIDC provider + github-actions-deploy-role
-- IAM user praveen-admin
-
-**Verified working:**
-- Bedrock Titan V2 (returns 1024-dim embeddings, ~5ms per call)
-- Qdrant collection (green status, hybrid config with sparse+dense)
-
-**Estimated current cost:** ~$0.80/month (Secrets Manager only)
-
-Account: 557690605487
-Region: ap-south-1
-
----
-
-## What's Written (Phase 2 Complete)
-
-All Lambda code in `multitenant-rag/lambdas/`:
-
+## Architecture
 ```
-lambdas/
-├── common/
-│   ├── logger.py            JSON structured logs
-│   ├── secrets.py           Cached Secrets Manager
-│   ├── context.py           user_id → tenant_id resolver
-│   └── responses.py         HTTP response builders
-├── create_post/
-│   ├── handler.py           POST /posts → S3 + DDB + SQS
-│   ├── requirements.txt
-│   └── Dockerfile
-├── ingest_worker/
-│   ├── handler.py           SQS → chunk + embed + Qdrant
-│   ├── chunker.py           Markdown-aware chunker
-│   ├── requirements.txt
-│   └── Dockerfile
-└── ask/
-    ├── handler.py           POST /ask streaming → Groq
-    ├── llm.py               Groq streaming client
-    ├── requirements.txt
-    └── Dockerfile
+CloudFront (EOV3277U5A8CF)
+  /*     → S3 praveen-blog-frontend (React/Vite/Tailwind)
+  /api/* → API Gateway (multitenant-api / pdp1o70aug)
+             POST /api/posts → createpost Lambda → S3 + DynamoDB + SQS FIFO
+             $default        → ask Lambda (auth, chats, ask, users, tenants, read-post) [FastAPI + LWA, buffered]
+  SQS FIFO → ingest_worker Lambda → chunk → Titan(dense)+BM25(sparse) → Qdrant Cloud
 ```
+- **3 Lambda container images** (createpost, ingestworker, ask). ECR + GitHub Actions (OIDC, x86).
+- **DynamoDB**: users (+by_email GSI), tenants, posts (GSI by_status), usage-logs (TTL), chats.
+- **Secrets Manager**: multitenant/groq, /qdrant, /jwt. **Bedrock** Titan v2. **Groq** 70B(prod)/8B(dev).
+- **Qdrant Cloud** collection `multitenant_chunks` (prod) / `multitenant_chunks_dev` (dev).
+- Account 557690605487, region ap-south-1. Repo github.com/PraveenK1102/aws-blog (subdir multitenant-rag/, frontend blog-frontend/). Branch: main (feat/auth-dev-env merged).
 
-All 11 files pass Python syntax check.
+## Dev environment (for iterating without touching prod)
+LocalStack `3.8.1` on colima (SQS+DynamoDB+S3, isolated; pin 3.8.1 — newer needs a paid token).
+Bedrock/Secrets/Qdrant are still real AWS/cloud (LocalStack can't emulate Bedrock).
+```
+colima start                       # runtime
+docker run -d --name localstack -p 4566:4566 -e SERVICES=sqs,dynamodb,s3 localstack/localstack:3.8.1
+multitenant-rag/local/bootstrap_dev.sh   # create dev tables/bucket/queue (no mock)
+multitenant-rag/local/run_local.sh       # ask app on :8080 (uvicorn --reload)
+python multitenant-rag/local/dev_worker.py   # SQS->ingest poller (stands in for the Lambda mapping)
+python multitenant-rag/local/dev_seed.py     # 5 Tamil-named users + ~20 blogs (DEV ONLY)
+cd blog-frontend && npm run dev              # Vite :5173 (proxies /api -> :8080)
+```
+Dev seeded users: karthikraja / anitharani / senthilkumar / divyabharathi / balamurugan
+(email <name>@gmail.com, password <name>@password@123). Prod has NO mock data.
 
-See `CODE-GUIDE.md` for detailed explanation of each file.
+## Key code files (multitenant-rag/lambdas/)
+- `common/auth.py` — bcrypt + JWT (create/verify/bearer). `common/context.py` — identity from JWT.
+- `common/posts.py` — shared create-post logic (used by createpost handler + ask dev route).
+- `common/chats.py` — saved chats (create/list/get/append/soft+permanent delete, max 5).
+- `common/secrets.py` — cached secrets, env-var overrides for dev. `common/logger.py` — JSON logger.
+- `ask/app.py` — FastAPI app: auth, /api/ask (LLM-judge, memory), chats, users, tenants, read-post.
+- `ask/llm.py` — Groq streaming client (429 retry, history for follow-ups).
+- `create_post/handler.py` — thin adapter over common.posts. `ingest_worker/handler.py` + `chunker.py`.
+Frontend: `blog-frontend/src/App.jsx` (React Router, Tailwind), `src/api.js`.
 
----
+## How to promote dev → prod
+Merge to main → CI builds 3 images → `aws lambda update-function-code ...:v1` for each. Prod-only infra
+already exists (by_email GSI, chats table, multitenant/jwt secret, widened IAM, API GW $default,
+CloudFront /api/*). Model stays 70B via `GROQ_MODEL` env. **Audit IAM per handler** (get vs query vs scan)
+— LocalStack doesn't enforce it (this bit us once: ask role needed GetItem on posts).
 
-## What's Next (Phase 3 Deployment)
+## Gotchas learned (see learnings/stage-5-serverless.md for the full list)
+Python Lambda has no native streaming → LWA. Function URL public blocked by account BPA → IAM+OAC, but
+OAC+POST needs a client body-hash → we route ask via API Gateway (buffered). Lambda memory = CPU dial.
+CloudFront SPA 403/404→index.html masks API errors. LocalStack ignores IAM.
 
-**Detailed plan:** `PHASE-3-PLAN.md`
-
-**High-level:**
-1. Create ECR repos + IAM roles (~30 min)
-2. Docker build for x86 (may hit ARM/buildx issues) + push to ECR
-3. Create Lambda functions (env vars + IAM)
-4. Set up SQS trigger for ingestWorker
-5. API Gateway HTTP API for POST /posts
-6. Lambda Function URL for POST /ask (streaming)
-7. Update CloudFront routing (/api/posts, /api/ask, /*)
-8. Seed 5-10 mock tenants + users
-9. End-to-end test (create post, wait for ingestion, ask questions)
-10. Verify tenant isolation
-
-**Estimated time:** 4-8 hours split across 2-3 sessions.
-
----
-
-## Interview Talking Points (for later)
-
-Lead with these when asked about the project:
-
-1. **Tenant isolation:** server-side user_id → tenant_id lookup, pre-filtered ANN in Qdrant, never trust client.
-2. **Hybrid search:** dense (Titan V2) + sparse (BM25 via fastembed) with RRF fusion, single Qdrant query.
-3. **Multi-domain users:** vector search handles it naturally, no per-domain prompt library needed.
-4. **Streaming:** Lambda Function URL RESPONSE_STREAM, NDJSON events, progressive rendering in browser.
-5. **Chunking:** markdown-aware structural, not fixed-length, respects author's intent.
-6. **Cost:** designed for <$3/mo running, Groq free tier + Qdrant free tier + AWS free tier eligibility.
-7. **What I excluded from v1:** reranker, semantic cache, PDF, OCR, Cognito — all v1.5+ features. Minimum viable slice first.
-
----
-
-## Files in This Folder (Reference)
-
-| File | Purpose |
-|------|---------|
-| `ARCHITECTURE.md` | Locked v1 architecture — decisions + data models |
-| `STATUS.md` | Current progress + immediate next steps |
-| `PHASE-3-PLAN.md` | Detailed deployment plan for Phase 3 |
-| `CODE-GUIDE.md` | Explanation of every code file |
-| `MASTER-CONTEXT.md` | This file — full context for new sessions |
-| `CLEANUP-STEPS.md` | Phase 0 runbook (already executed) |
-| `scripts/init_qdrant.py` | Qdrant collection initializer (already run) |
-| `lambdas/**` | All backend Lambda code (Phase 2 complete) |
-
----
-
-## How to Resume in a New Session
-
-**In Claude Code:**
-1. `cd multitenant-rag`
-2. Say: "Continue MultiTenantRAG project — read MASTER-CONTEXT.md and STATUS.md"
-3. Then say: "Start Phase 3A" — follow PHASE-3-PLAN.md
-
-**In Claude chat (mobile/other):**
-1. Paste this MASTER-CONTEXT.md
-2. Ask questions or plan next steps
-
-**Session model:**
-- Do Phase 3 in 3 mini-sessions (A, B, C) — don't try in one go
-- Each session bounded by clear stop criteria in PHASE-3-PLAN.md
-- Fresh session = fresh debugging capacity when bugs appear
+## References
+- Obsidian task: `/genai multitenant-rag` (context/progress/changelog/SESSIONS/resume-and-interview).
+- AWS learnings: `learnings/stage-5-serverless.md`, `learnings/INDEX.md`.
+- Sibling: on-prem [[ticket-manager]] RAG.

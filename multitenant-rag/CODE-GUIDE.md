@@ -4,6 +4,15 @@ Every file in `lambdas/`, what it does, and design choices.
 
 Use this as reference while reading the code. Written to explain WHY, not just WHAT.
 
+> **⚠️ 2026-07-26 update.** Files ADDED since this guide was first written (see the actual code
+> for details): `common/auth.py` (bcrypt + JWT), `common/posts.py` (shared create-post logic used
+> by both createpost and the ask app), `common/chats.py` (saved chats CRUD, ≤5, soft+permanent
+> delete). `ask/handler.py` was replaced by **`ask/app.py`** (a FastAPI app served by uvicorn via
+> the **Lambda Web Adapter**) — it now hosts auth, /api/ask (LLM-as-judge + conversation memory),
+> chats, users, tenants, and read-post. `common/context.py` resolves identity from the **JWT**
+> (Authorization: Bearer), not `X-User-Id`. `ask/llm.py` gained 429-retry + a `history` arg for
+> follow-ups. Frontend: `blog-frontend/src/App.jsx` (React Router + Tailwind) + `src/api.js`.
+
 ---
 
 ## Directory Structure

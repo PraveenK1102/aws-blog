@@ -1,166 +1,74 @@
 # MultiTenantRAG — Project Status
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 ---
 
 ## Where We Are
 
-**Phase 2 complete. Ready for Phase 3 (Deployment).**
+**🚀 SHIPPED TO PRODUCTION.** Live at **https://d261g450savmee.cloudfront.net**
 
-All code written. All AWS foundational resources created. All credentials in place.
-Next session picks up with Docker builds + Lambda deployment.
+A signup-gated, multi-tenant blogging platform with a per-profile RAG chatbot,
+running 100% serverless on AWS (ap-south-1). Real users only — no mock data.
 
 ---
 
-## Progress by Phase
+## What the product does
 
-### ✅ Phase 0 — Cleanup (Complete)
+1. **Sign up / log in** (email + password, JWT). The app is unusable when logged out.
+2. **Discover** — browse a directory of everyone's profiles.
+3. **Visit a profile** — read their blog posts, and **chat with their AI**, which answers
+   *only* from that person's posts (tenant-isolated retrieval). Off-topic → declines;
+   vague → asks a clarifying question.
+4. **Saved chats** — conversations have memory; keep up to 5, delete → trash → permanent delete.
+5. **My blog** — write markdown posts (async chunk + embed + index).
 
-Deleted old blog infrastructure to reduce cost.
-
-Deleted:
-- ECS cluster `blog-cluster` + service
-- ALB + listener + 2 target groups (saved ~$7/mo public IPv4)
-- EC2 instance (terminated)
-- RDS `blog-db` + subnet group
-- 3 security groups (blog-alb-sg, blog-ecs-sg, blog-backend-sg, blog-rds-sg)
-- ECR repo `blog-backend`
-- CloudWatch log groups
-- 3 IAM roles + instance profile
-
-Preserved:
-- CloudFront distribution `EOV3277U5A8CF`
-- S3 bucket `praveen-blog-frontend`
-- OIDC provider + `github-actions-deploy-role`
-
-### ✅ Phase 1 — Foundation Setup (Complete)
-
-AWS resources created:
-- 4 DynamoDB tables: `multitenant-users`, `multitenant-tenants`, `multitenant-posts` (with GSI `by_status`), `multitenant-usage-logs` (with TTL)
-- S3 bucket: `praveen-multitenant-content` (private, versioned)
-- SQS FIFO queue: `multitenant-ingestion.fifo`
-- Secrets Manager: `multitenant/groq`, `multitenant/qdrant` (both with real credentials)
-
-External services:
-- Qdrant Cloud cluster (eu-west-2, free tier, 1GB)
-- Qdrant collection `multitenant_chunks` initialized with hybrid config:
-  - Dense vectors: 1024 dims, cosine
-  - Sparse vectors: BM25 with IDF modifier
-  - Payload indexes: tenant_id, user_id, post_id
-- Groq account with API key
-- AWS Bedrock Titan Text Embeddings V2 (verified working — returns 1024-dim vectors)
-
-### ✅ Phase 2 — Backend Code (Complete)
-
-All Lambda code written in `multitenant-rag/lambdas/`:
+## Live architecture
 
 ```
-lambdas/
-├── common/
-│   ├── logger.py            JSON structured logger
-│   ├── secrets.py           Cached Secrets Manager access
-│   ├── context.py           user_id → tenant_id resolver
-│   └── responses.py         HTTP response builders
-├── create_post/
-│   ├── handler.py           POST /posts → save + queue ingestion
-│   ├── requirements.txt
-│   └── Dockerfile
-├── ingest_worker/
-│   ├── handler.py           SQS → chunk + embed + upsert Qdrant
-│   ├── chunker.py           Markdown-aware chunker
-│   ├── requirements.txt
-│   └── Dockerfile
-└── ask/
-    ├── handler.py           POST /ask (streaming) → hybrid search → Groq stream
-    ├── llm.py               Groq streaming client
-    ├── requirements.txt
-    └── Dockerfile
+Browser → CloudFront (EOV3277U5A8CF)
+  ├─ /*        → S3 praveen-blog-frontend (React/Vite + Tailwind SPA)
+  └─ /api/*    → API Gateway (multitenant-api)
+                   ├─ POST /api/posts → createpost Lambda → S3 + DynamoDB + SQS
+                   └─ $default        → ask Lambda (auth, chats, ask, users, tenants, read-post)
+       SQS FIFO (multitenant-ingestion.fifo) → ingest_worker Lambda
+                   → chunk → Bedrock Titan (dense) + fastembed BM25 (sparse) → Qdrant Cloud
 ```
 
-All 11 Python files parse cleanly (syntax verified).
+- **LLM:** Groq Llama 3.3 70B (prod) / 8B (dev) — `GROQ_MODEL` env var.
+- **Auth:** custom JWT (bcrypt), `multitenant/jwt` secret. Identity from the token, not a header.
+- **Relevance:** low retrieval floor (0.20) short-circuits clearly-irrelevant; else the LLM
+  judges in one call (answer / clarify / decline). RRF hybrid used for ranking + citations.
+- **`ask` is buffered** (LWA `buffered` mode via API Gateway) + a client-side typewriter.
+  True edge streaming (LWA `response_stream` + Function URL + OAC) is a future item.
 
-### ⏳ Phase 3 — Deployment (Next Session)
+## Environments
 
-**See `PHASE-3-PLAN.md` for detailed steps.**
+| | Prod | Dev |
+|---|---|---|
+| Where | Real AWS (ap-south-1) | LocalStack `3.8.1` on colima |
+| Data | real users only (wiped clean) | seeded mock (5 Tamil-named users, ~20 blogs) |
+| LLM | Groq 70B | Groq 8B |
+| Run dev | — | `multitenant-rag/local/run_local.sh` (:8080) + `dev_worker.py` + Vite (:5173); `local/bootstrap_dev.sh` seeds |
 
-At a high level:
-- Build 3 Docker images (must use `--platform linux/amd64` for Lambda x86)
-- Push to ECR
-- Create Lambda functions with correct env vars + IAM roles
-- API Gateway HTTP API for POST /posts
-- Lambda Function URL (streaming) for POST /ask
-- Update CloudFront to route `/api/posts` and `/api/ask`
-- Seed 5-10 mock tenants + users
-- End-to-end test
+## Cost
+~$1.20/mo idle (3 Secrets Manager secrets); everything else free-tier / pay-per-use.
+$5/mo budget alarm (`multitenant-monthly`) → praveen.kr@zohocorp.com.
 
-### ⏳ Phase 4 — Frontend (After Phase 3)
+## Remaining / future
+- Google login (OAuth) — auth structured as an add-on.
+- True edge streaming for `ask` (LWA response_stream + Function URL OAC + client body-hash).
+- Terraform/CDK (AWS learning Stage 6) to codify all this infra.
 
-- Strip blog CRUD from existing React app
-- Add profile pages (`/u/{user_id}/`)
-- Add chat UI with streaming (`ReadableStream` API)
-- Deploy to existing `praveen-blog-frontend` S3 bucket
-
-### ⏳ Phase 5 — Testing + Polish (After Phase 4)
-
-- Load test
-- Cost verification
-- Tenant isolation tests
-- Streaming latency measurement
-- Update AWS Budget alerts
-
----
-
-## Current AWS State
-
-**Resources active:**
-- CloudFront distribution (Deployed)
-- 2 S3 buckets: `praveen-blog-frontend`, `praveen-blog-uploads` (old), `praveen-multitenant-content`
-- 4 DynamoDB tables (all ACTIVE)
-- SQS FIFO queue
-- 2 Secrets Manager secrets
-- Qdrant Cloud cluster (external)
-
-**Estimated monthly cost:** ~$0.80/month (mostly Secrets Manager)
-
-**No compute running yet** (no Lambdas deployed).
-
----
-
-## Locked Decisions (See ARCHITECTURE.md)
-
-- Groq Llama 3.3 70B for LLM (free tier, streaming)
-- Bedrock Titan V2 for embeddings (1024 dims)
-- fastembed BM25 for sparse vectors
-- Qdrant native hybrid retrieval with RRF fusion
-- Structural markdown-aware chunking (500 tokens, 50 overlap)
-- Tenant isolation via `user_id` → DynamoDB lookup → `tenant_id` filter
-- No global/common content in v1 (private only)
-- Streaming via Lambda Function URL (not API Gateway)
-- Container image Lambdas (for fastembed dependencies)
-
----
-
-## Files in This Folder
-
+## Files in this folder
 | File | Purpose |
 |------|---------|
-| `ARCHITECTURE.md` | Locked v1 architecture — decisions + data models |
-| `STATUS.md` | This file — where we are, what's next |
-| `PHASE-3-PLAN.md` | Detailed deployment plan for next session |
-| `CODE-GUIDE.md` | Explanation of each code file we wrote |
-| `CLEANUP-STEPS.md` | Phase 0 runbook (already executed) |
-| `scripts/init_qdrant.py` | Qdrant collection initializer (already run) |
-| `lambdas/**` | All backend Lambda code |
-| `.venv/` | Python dev environment (git-ignored) |
-
----
-
-## To Resume in Next Session
-
-1. `cd multitenant-rag` in Claude Code
-2. Paste this file's content (or reference it) to bring session up to speed
-3. Say "Start Phase 3A" 
-4. Follow `PHASE-3-PLAN.md`
-
-If in another chat (mobile), paste `MASTER-CONTEXT.md` for full background.
+| `ARCHITECTURE.md` | Design + data models (see the "Shipped state" note at top) |
+| `STATUS.md` | This file |
+| `CODE-GUIDE.md` | Walkthrough of the code (`lambdas/**`) |
+| `MASTER-CONTEXT.md` | Self-contained context to paste into a new session |
+| `PHASE-3-PLAN.md` | Original deployment runbook (historical) |
+| `CLEANUP-STEPS.md` | Phase 0 old-infra teardown (historical) |
+| `lambdas/**` | createpost, ingest_worker, ask (FastAPI+LWA), common/ (auth, chats, posts, context, secrets, logger) |
+| `local/**` | LocalStack dev harness (bootstrap, run, worker, seed, test) |
+| `scripts/init_qdrant.py` | Qdrant collection initializer |
