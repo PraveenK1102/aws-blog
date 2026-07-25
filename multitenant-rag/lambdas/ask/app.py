@@ -101,11 +101,13 @@ async def ask(req: AskRequest, request: Request):
 
         system_prompt = _build_system_prompt(tenant, results)
 
+        answer_parts: list[str] = []
         total_input = 0
         total_output = 0
         try:
             for ev in stream_answer(system_prompt, question):
                 if ev["type"] == "content":
+                    answer_parts.append(ev["text"])
                     yield _ndjson(ev)
                 elif ev["type"] == "usage":
                     total_input = ev["input_tokens"]
@@ -114,20 +116,34 @@ async def ask(req: AskRequest, request: Request):
             log.error("llm stream failed", error=str(e), request_id=request_id)
             yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
 
-        citations = [
-            {
-                "post_id": r.payload["post_id"],
-                "title": r.payload["title"],
-                "chunk_index": r.payload["chunk_index"],
-                "header_path": r.payload.get("header_path", ""),
-                "score": round(r.score, 4),
-            }
-            for r in results
-        ]
+        # Citation refinement: if the model refused (context didn't answer the
+        # question), don't cite unrelated sources. Otherwise cite distinct posts
+        # (deduped, best score each) rather than repeated chunks.
+        answer = "".join(answer_parts).lower()
+        refused = "hasn't written about" in answer
+        citations = [] if refused else _dedupe_citations(results)
+        result_type = "refused" if refused else "answered"
+
         yield _ndjson({"type": "done", "citations": citations})
-        _log_usage(tenant_id, user_id, request_id, question, total_input, total_output, "answered", started_at)
+        _log_usage(tenant_id, user_id, request_id, question, total_input, total_output, result_type, started_at)
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+
+
+def _dedupe_citations(results) -> list[dict]:
+    """Collapse chunk-level hits into distinct source posts, best score each."""
+    best: dict[str, dict] = {}
+    for r in results:
+        pid = r.payload["post_id"]
+        score = round(r.score, 4)
+        if pid not in best or score > best[pid]["score"]:
+            best[pid] = {
+                "post_id": pid,
+                "title": r.payload["title"],
+                "header_path": r.payload.get("header_path", ""),
+                "score": score,
+            }
+    return sorted(best.values(), key=lambda c: c["score"], reverse=True)
 
 
 def _get_tenant(tenant_id: str) -> dict | None:
