@@ -36,6 +36,8 @@ log = get_logger("ask")
 
 REGION = os.environ.get("AWS_REGION", "ap-south-1")
 TENANTS_TABLE = os.environ["TENANTS_TABLE"]
+USERS_TABLE = os.environ.get("USERS_TABLE", "multitenant-users")
+POSTS_TABLE = os.environ.get("POSTS_TABLE", "multitenant-posts")
 USAGE_TABLE = os.environ["USAGE_TABLE"]
 COLLECTION_NAME = "multitenant_chunks"
 TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
@@ -62,6 +64,46 @@ def _ndjson(event: dict) -> bytes:
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/api/users")
+def list_users():
+    """List personas (users) with their tenant display info — powers the UI picker."""
+    resp = ddb.scan(TableName=USERS_TABLE)
+    users = []
+    for it in resp.get("Items", []):
+        uid = it["user_id"]["S"]
+        tid = it.get("tenant_id", {}).get("S", "")
+        tenant = _get_tenant(tid) if tid else None
+        users.append({
+            "user_id": uid,
+            "tenant_id": tid,
+            "display_name": (tenant or {}).get("display_name", uid),
+            "domain": (tenant or {}).get("domain", ""),
+        })
+    users.sort(key=lambda u: u["display_name"])
+    return {"users": users}
+
+
+@app.get("/api/tenants/{tenant_id}/posts")
+def list_posts(tenant_id: str):
+    """List a tenant's posts (newest first)."""
+    resp = ddb.query(
+        TableName=POSTS_TABLE,
+        KeyConditionExpression="tenant_id = :t",
+        ExpressionAttributeValues={":t": {"S": tenant_id}},
+    )
+    posts = [
+        {
+            "post_id": i["post_id"]["S"],
+            "title": i.get("title", {}).get("S", ""),
+            "status": i.get("ingestion_status", {}).get("S", ""),
+            "created_at": int(i.get("created_at", {}).get("N", "0")),
+        }
+        for i in resp.get("Items", [])
+    ]
+    posts.sort(key=lambda p: p["created_at"], reverse=True)
+    return {"posts": posts}
 
 
 @app.post("/ask")
