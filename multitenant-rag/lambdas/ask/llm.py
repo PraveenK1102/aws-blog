@@ -4,6 +4,8 @@ Provider abstraction — Groq is v1's implementation. Swap by env var later.
 """
 
 import os
+import re
+import time
 from typing import Iterator
 
 import requests
@@ -16,6 +18,29 @@ log = get_logger("llm")
 
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+MAX_RETRIES = 4  # on 429 rate-limit, honoring Groq's suggested wait
+
+
+def _post_with_retry(payload: dict, api_key: str) -> requests.Response:
+    """POST to Groq, retrying on 429 using the 'try again in Xs' hint."""
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    for attempt in range(MAX_RETRIES):
+        resp = requests.post(GROQ_API_URL, headers=headers, json=payload, stream=True, timeout=60)
+        if resp.status_code == 200:
+            return resp
+        if resp.status_code == 429 and attempt < MAX_RETRIES - 1:
+            body = resp.text
+            resp.close()
+            m = re.search(r"try again in ([\d.]+)s", body)
+            wait = min((float(m.group(1)) + 0.5) if m else 5.0, 30.0)
+            log.info("groq rate limited; retrying", wait_seconds=round(wait, 1), attempt=attempt + 1)
+            time.sleep(wait)
+            continue
+        body = resp.text[:500]
+        resp.close()
+        log.error("groq error", status=resp.status_code, body=body)
+        raise RuntimeError(f"Groq error {resp.status_code}: {body}")
+    raise RuntimeError("Groq error: exhausted retries")
 
 
 def stream_answer(system_prompt: str, user_prompt: str) -> Iterator[dict]:
@@ -39,21 +64,7 @@ def stream_answer(system_prompt: str, user_prompt: str) -> Iterator[dict]:
         "max_tokens": 1024,
     }
 
-    with requests.post(
-        GROQ_API_URL,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        stream=True,
-        timeout=30,
-    ) as resp:
-        if resp.status_code != 200:
-            body = resp.text[:500]
-            log.error("groq error", status=resp.status_code, body=body)
-            raise RuntimeError(f"Groq error {resp.status_code}: {body}")
-
+    with _post_with_retry(payload, api_key) as resp:
         input_tokens = 0
         output_tokens = 0
 

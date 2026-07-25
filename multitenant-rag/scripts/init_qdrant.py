@@ -19,6 +19,7 @@ Usage:
 """
 
 import json
+import os
 import sys
 
 try:
@@ -38,7 +39,7 @@ except ImportError as e:
     sys.exit(1)
 
 
-COLLECTION_NAME = "multitenant_chunks"
+COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
 DENSE_DIMS = 1024  # Titan Text Embeddings V2 default
 
 
