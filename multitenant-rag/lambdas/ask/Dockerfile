@@ -3,10 +3,13 @@
 # ships inside the LWA binary.
 FROM public.ecr.aws/docker/library/python:3.12-slim
 
-# Lambda Web Adapter as an extension; response_stream so a RESPONSE_STREAM
-# Function URL streams FastAPI's StreamingResponse through to the client.
+# Lambda Web Adapter as an extension. Buffered mode so the function works behind
+# API Gateway (CloudFront -> API Gateway -> here). LWA collects the FastAPI
+# StreamingResponse into one response; the frontend parses the NDJSON events and
+# typewriter-animates them. Flip to response_stream + a RESPONSE_STREAM Function
+# URL to get true edge streaming (proven working; see Phase 3D notes).
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt/extensions/lambda-adapter
-ENV AWS_LWA_INVOKE_MODE=response_stream
+ENV AWS_LWA_INVOKE_MODE=buffered
 ENV AWS_LWA_PORT=8080
 
 WORKDIR /var/task
