@@ -112,3 +112,37 @@ body {
 .status.ok { color: var(--ok); }
 .status.err { color: var(--err); }
 .status.busy { color: var(--muted); }
+
+/* ---------- Discover / profiles ---------- */
+.discover-head { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.profile-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 14px; padding: 18px 12px;
+  cursor: pointer; color: var(--text); transition: border-color .15s, transform .1s;
+}
+.profile-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+  color: #0b1020; background: linear-gradient(135deg, var(--accent), var(--accent-2)); font-size: 15px;
+}
+.avatar.lg { width: 60px; height: 60px; font-size: 20px; }
+.pc-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.pc-domain { color: var(--muted); font-size: 12px; }
+.you-tag { font-size: 10px; background: rgba(110,168,254,.15); color: var(--accent); border: 1px solid rgba(110,168,254,.35); padding: 1px 6px; border-radius: 999px; text-transform: uppercase; letter-spacing: .5px; }
+
+/* ---------- Profile page ---------- */
+.back { align-self: flex-start; background: transparent; border: 0; color: var(--accent); cursor: pointer; font-size: 13px; padding: 0 0 12px; }
+.profile-hero { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.ph-name { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.ph-domain { color: var(--muted); font-size: 13px; }
+.profile-cols { display: grid; grid-template-columns: 240px 1fr; gap: 18px; }
+.col-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.col-posts .posts { gap: 6px; }
+.col-posts .post { flex-direction: column; align-items: flex-start; gap: 6px; }
+.col-chat .chat { height: 56vh; }
+.empty.small { height: auto; padding: 16px; justify-content: flex-start; font-size: 13px; }
+@media (max-width: 680px) { .profile-cols { grid-template-columns: 1fr; } }
+
+/* ---------- My blog ---------- */
+.myblog { display: flex; flex-direction: column; }

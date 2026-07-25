@@ -74,6 +74,7 @@ app.add_middleware(
 
 class AskRequest(BaseModel):
     question: str
+    tenant_id: str  # the profile whose AI to ask (may be anyone's; asker just needs to be logged in)
 
 
 class SignupRequest(BaseModel):
@@ -232,27 +233,87 @@ def list_posts(request: Request):
     return {"posts": posts}
 
 
+def _require_login(request: Request):
+    """Any valid JWT — used to gate the profile directory / profile pages."""
+    return get_context_from_headers(dict(request.headers))
+
+
+@app.get("/api/users")
+def list_profiles(request: Request):
+    """Directory of all profiles (you browse these and ask their AIs)."""
+    try:
+        me_id, my_tenant, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    resp = ddb.scan(TableName=USERS_TABLE)
+    profiles = []
+    for it in resp.get("Items", []):
+        tid = it.get("tenant_id", {}).get("S", "")
+        tenant = _get_tenant(tid) if tid else None
+        if not tenant:
+            continue
+        profiles.append({
+            "user_id": it["user_id"]["S"],
+            "tenant_id": tid,
+            "display_name": tenant.get("display_name", ""),
+            "domain": tenant.get("domain", ""),
+            "is_me": tid == my_tenant,
+        })
+    profiles.sort(key=lambda p: p["display_name"].lower())
+    return {"users": profiles}
+
+
+@app.get("/api/tenants/{tenant_id}/posts")
+def list_profile_posts(tenant_id: str, request: Request):
+    """A profile's posts (any logged-in user can view)."""
+    try:
+        _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    resp = ddb.query(
+        TableName=POSTS_TABLE,
+        KeyConditionExpression="tenant_id = :t",
+        ExpressionAttributeValues={":t": {"S": tenant_id}},
+    )
+    posts = [
+        {
+            "post_id": i["post_id"]["S"],
+            "title": i.get("title", {}).get("S", ""),
+            "status": i.get("ingestion_status", {}).get("S", ""),
+            "created_at": int(i.get("created_at", {}).get("N", "0")),
+        }
+        for i in resp.get("Items", [])
+    ]
+    posts.sort(key=lambda p: p["created_at"], reverse=True)
+    return {"posts": posts}
+
+
 @app.post("/ask")
 @app.post("/api/ask")
 async def ask(req: AskRequest, request: Request):
     request_id = str(uuid.uuid4())
     started_at = time.time()
 
-    # Resolve identity/tenant server-side (never trust tenant from client)
+    # Must be logged in to ask at all (identity of the *visitor*)...
     try:
-        user_id, tenant_id, _ = get_context_from_headers(dict(request.headers))
+        asker_id, _asker_tenant, _ = get_context_from_headers(dict(request.headers))
     except ContextError as e:
         return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
 
+    # ...but the AI you ask is the *profile you're visiting* (any tenant).
+    tenant_id = (req.tenant_id or "").strip()
+    if not tenant_id:
+        return JSONResponse(status_code=400, content={"error": "tenant_id (profile) is required"})
+
     tenant = _get_tenant(tenant_id)
     if not tenant:
-        return JSONResponse(status_code=404, content={"error": f"tenant {tenant_id} not found"})
+        return JSONResponse(status_code=404, content={"error": "profile not found"})
 
     question = (req.question or "").strip()
     if not question:
         return JSONResponse(status_code=400, content={"error": "question is required"})
 
-    log.info("query start", user_id=user_id, tenant_id=tenant_id, request_id=request_id)
+    log.info("query start", asker_id=asker_id, tenant_id=tenant_id, request_id=request_id)
 
     # Everything below runs inside the streamed generator. Starlette iterates a
     # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
@@ -264,7 +325,7 @@ async def ask(req: AskRequest, request: Request):
             msg = f"{tenant['display_name']} hasn't written about this topic."
             yield _ndjson({"type": "content", "text": msg})
             yield _ndjson({"type": "done", "citations": []})
-            _log_usage(tenant_id, user_id, request_id, question, 0, 0, "empty", started_at)
+            _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty", started_at)
             return
 
         system_prompt = _build_system_prompt(tenant, results)
@@ -293,7 +354,7 @@ async def ask(req: AskRequest, request: Request):
         result_type = "refused" if refused else "answered"
 
         yield _ndjson({"type": "done", "citations": citations})
-        _log_usage(tenant_id, user_id, request_id, question, total_input, total_output, result_type, started_at)
+        _log_usage(tenant_id, asker_id, request_id, question, total_input, total_output, result_type, started_at)
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 

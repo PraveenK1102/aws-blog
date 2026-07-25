@@ -36,17 +36,24 @@ export const login = (email, password) =>
   req("/api/auth/login", { method: "POST", auth: false, body: { email, password } });
 
 export const me = () => req("/api/auth/me");
-export const listPosts = () => req("/api/posts").then((d) => d.posts || []);
+
+// Directory of all profiles (you browse these and ask their AIs).
+export const listProfiles = () => req("/api/users").then((d) => d.users || []);
+// A profile's posts (any logged-in user can view).
+export const listProfilePosts = (tenantId) =>
+  req(`/api/tenants/${encodeURIComponent(tenantId)}/posts`).then((d) => d.posts || []);
+// My own posts (for the Write/manage view).
+export const listMyPosts = () => req("/api/posts").then((d) => d.posts || []);
 export const createPost = (title, content) =>
   req("/api/posts", { method: "POST", body: { title, content } });
 
-// Ask the user's own AI. Streams NDJSON events; onToken(text) per content chunk.
-// Same parser works whether the response streams (dev) or arrives buffered (prod).
-export async function ask(question, onToken) {
+// Ask a PROFILE's AI (tenantId = the profile you're visiting). Streams NDJSON
+// events; onToken(text) per content chunk. Same parser for dev-stream or prod-buffer.
+export async function ask(tenantId, question, onToken) {
   const res = await fetch("/api/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, tenant_id: tenantId }),
   });
   if (!res.ok) {
     const t = await res.text();
