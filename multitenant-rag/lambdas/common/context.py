@@ -27,7 +27,7 @@ class ContextError(Exception):
 
 def get_context(event: dict) -> tuple[str, str, dict]:
     """
-    Resolve user identity and tenant for this request.
+    Resolve user identity and tenant from a Lambda proxy event.
 
     Returns:
         (user_id, tenant_id, user_record)
@@ -35,7 +35,23 @@ def get_context(event: dict) -> tuple[str, str, dict]:
     Raises:
         ContextError: if the request has no user_id, or the user is unknown.
     """
-    user_id = _extract_user_id(event)
+    return get_context_from_headers(event.get("headers") or {})
+
+
+def get_context_from_headers(headers: dict) -> tuple[str, str, dict]:
+    """
+    Resolve user identity and tenant from a plain headers dict.
+
+    Used by the FastAPI/LWA streaming app (which has request.headers, not a
+    Lambda event). Same server-side tenant derivation — tenant_id is never
+    trusted from the client.
+    """
+    user_id = None
+    for key, value in headers.items():
+        if key.lower() == "x-user-id":
+            user_id = value.strip() if value else None
+            break
+
     if not user_id:
         raise ContextError("Missing X-User-Id header")
 

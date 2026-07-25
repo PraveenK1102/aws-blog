@@ -1,20 +1,26 @@
-# Lambda container image for askLambda (streaming)
-# Includes fastembed for query-time BM25 sparse embedding
-FROM public.ecr.aws/lambda/python:3.12
+# askLambda (streaming) — FastAPI served by uvicorn, bridged to Lambda by the
+# Lambda Web Adapter. Plain Python base works: the Runtime Interface Client
+# ships inside the LWA binary.
+FROM public.ecr.aws/docker/library/python:3.12-slim
 
-COPY ask/requirements.txt ${LAMBDA_TASK_ROOT}/
-RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+# Lambda Web Adapter as an extension; response_stream so a RESPONSE_STREAM
+# Function URL streams FastAPI's StreamingResponse through to the client.
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt/extensions/lambda-adapter
+ENV AWS_LWA_INVOKE_MODE=response_stream
+ENV AWS_LWA_PORT=8080
 
-# Pre-download BM25 model
+WORKDIR /var/task
+
+COPY ask/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Pre-download the BM25 model into the image so cold starts don't fetch it.
 ENV FASTEMBED_CACHE_DIR=/opt/fastembed_cache
 RUN mkdir -p /opt/fastembed_cache && \
     python -c "from fastembed import SparseTextEmbedding; SparseTextEmbedding('Qdrant/bm25', cache_dir='/opt/fastembed_cache')"
 
-# Copy shared common utilities
-COPY common/ ${LAMBDA_TASK_ROOT}/common/
+COPY common/ ./common/
+COPY ask/app.py ask/llm.py ./
 
-# Copy Lambda code
-COPY ask/handler.py ${LAMBDA_TASK_ROOT}/
-COPY ask/llm.py ${LAMBDA_TASK_ROOT}/
-
-CMD [ "handler.handler" ]
+# uvicorn serves the FastAPI app on the port LWA proxies to.
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -1,22 +1,12 @@
-"""askLambda — handles POST /ask (buffered response).
+"""askLambda — streaming via Lambda Web Adapter (FastAPI + LWA).
 
-v1 is buffered: the full answer is collected server-side and returned as one
-JSON payload. True token-by-token streaming is a planned enhancement via the
-Lambda Web Adapter (managed Python runtime has no native response streaming).
+Python's managed Lambda runtime has no native response streaming, so we run a
+FastAPI app and let the Lambda Web Adapter bridge a RESPONSE_STREAM Function URL
+to it. FastAPI's StreamingResponse maps to the streamed Lambda response.
 
-Flow:
-  1. Resolve user_id -> tenant_id
-  2. Load tenant metadata (display_name, domain)
-  3. Embed question (dense via Titan + sparse via BM25)
-  4. Hybrid Qdrant search with tenant_id filter (RRF fusion)
-  5. If empty/weak results -> polite "hasn't written" answer
-  6. Assemble prompt (universal template + retrieved chunks)
-  7. Collect the full answer from Groq
-  8. Return {answer, citations} as JSON
-  9. Log usage (best-effort, doesn't block the response)
-
-Response body:
-  {"answer": "...", "citations": [{"post_id","title","chunk_index","header_path","score"}, ...]}
+Streams NDJSON, one event per line:
+  {"type":"content","text":"..."}   per token
+  {"type":"done","citations":[...]} final event
 """
 
 import json
@@ -26,16 +16,18 @@ import uuid
 
 import boto3
 from botocore.exceptions import ClientError
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastembed import SparseTextEmbedding
+from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     FieldCondition, Filter, Fusion, FusionQuery, MatchValue,
     Prefetch, SparseVector,
 )
 
-from common.context import ContextError, get_context
+from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
-from common.responses import error_response, json_response
 from common.secrets import get_qdrant
 from llm import stream_answer
 
@@ -56,95 +48,91 @@ bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 _qdrant: QdrantClient | None = None
 _bm25: SparseTextEmbedding | None = None
 
+app = FastAPI()
 
-def handler(event, _context):
-    """Buffered Lambda handler (API Gateway v2 / Function URL BUFFERED)."""
+
+class AskRequest(BaseModel):
+    question: str
+
+
+def _ndjson(event: dict) -> bytes:
+    return (json.dumps(event) + "\n").encode("utf-8")
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
+@app.post("/ask")
+@app.post("/api/ask")
+async def ask(req: AskRequest, request: Request):
     request_id = str(uuid.uuid4())
     started_at = time.time()
 
+    # Resolve identity/tenant server-side (never trust tenant from client)
     try:
-        user_id, tenant_id, _ = get_context(event)
+        user_id, tenant_id, _ = get_context_from_headers(dict(request.headers))
     except ContextError as e:
-        return error_response(401, "Unauthorized", str(e))
-
-    body = _parse_body(event)
-    if body is None:
-        return error_response(400, "Bad request", "invalid JSON body")
-
-    question = (body.get("question") or "").strip()
-    if not question:
-        return error_response(400, "Bad request", "question is required")
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
 
     tenant = _get_tenant(tenant_id)
     if not tenant:
-        return error_response(404, "Not found", f"tenant {tenant_id} not found")
+        return JSONResponse(status_code=404, content={"error": f"tenant {tenant_id} not found"})
+
+    question = (req.question or "").strip()
+    if not question:
+        return JSONResponse(status_code=400, content={"error": "question is required"})
 
     log.info("query start", user_id=user_id, tenant_id=tenant_id, request_id=request_id)
 
-    # Retrieve
-    results = _hybrid_search(question, tenant_id)
+    # Everything below runs inside the streamed generator. Starlette iterates a
+    # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
+    # are fine and don't block the event loop.
+    def event_stream():
+        results = _hybrid_search(question, tenant_id)
 
-    # No content or too weak -> polite refusal (skip the LLM call)
-    if not results or results[0].score < SCORE_THRESHOLD:
-        msg = f"{tenant['display_name']} hasn't written about this topic."
-        _log_usage(tenant_id, user_id, request_id, question, 0, 0, "empty", started_at)
-        return json_response(200, {"answer": msg, "citations": []})
+        if not results or results[0].score < SCORE_THRESHOLD:
+            msg = f"{tenant['display_name']} hasn't written about this topic."
+            yield _ndjson({"type": "content", "text": msg})
+            yield _ndjson({"type": "done", "citations": []})
+            _log_usage(tenant_id, user_id, request_id, question, 0, 0, "empty", started_at)
+            return
 
-    # Build prompt + collect the full answer from Groq
-    system_prompt = _build_system_prompt(tenant, results)
+        system_prompt = _build_system_prompt(tenant, results)
 
-    answer_parts: list[str] = []
-    total_input = 0
-    total_output = 0
-    try:
-        for ev in stream_answer(system_prompt, question):
-            if ev["type"] == "content":
-                answer_parts.append(ev["text"])
-            elif ev["type"] == "usage":
-                total_input = ev["input_tokens"]
-                total_output = ev["output_tokens"]
-    except Exception as e:
-        log.error("llm call failed", error=str(e), request_id=request_id)
-        _log_usage(tenant_id, user_id, request_id, question, 0, 0, "llm_error", started_at)
-        return error_response(502, "Upstream error", "failed to generate an answer")
+        total_input = 0
+        total_output = 0
+        try:
+            for ev in stream_answer(system_prompt, question):
+                if ev["type"] == "content":
+                    yield _ndjson(ev)
+                elif ev["type"] == "usage":
+                    total_input = ev["input_tokens"]
+                    total_output = ev["output_tokens"]
+        except Exception as e:
+            log.error("llm stream failed", error=str(e), request_id=request_id)
+            yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
 
-    answer = "".join(answer_parts).strip()
+        citations = [
+            {
+                "post_id": r.payload["post_id"],
+                "title": r.payload["title"],
+                "chunk_index": r.payload["chunk_index"],
+                "header_path": r.payload.get("header_path", ""),
+                "score": round(r.score, 4),
+            }
+            for r in results
+        ]
+        yield _ndjson({"type": "done", "citations": citations})
+        _log_usage(tenant_id, user_id, request_id, question, total_input, total_output, "answered", started_at)
 
-    citations = [
-        {
-            "post_id": r.payload["post_id"],
-            "title": r.payload["title"],
-            "chunk_index": r.payload["chunk_index"],
-            "header_path": r.payload.get("header_path", ""),
-            "score": round(r.score, 4),
-        }
-        for r in results
-    ]
-
-    _log_usage(tenant_id, user_id, request_id, question, total_input, total_output, "answered", started_at)
-
-    return json_response(200, {"answer": answer, "citations": citations})
-
-
-def _parse_body(event: dict) -> dict | None:
-    raw = event.get("body")
-    if not raw:
-        return None
-    if event.get("isBase64Encoded"):
-        import base64
-        raw = base64.b64decode(raw).decode("utf-8")
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return None
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 
 def _get_tenant(tenant_id: str) -> dict | None:
     try:
-        resp = ddb.get_item(
-            TableName=TENANTS_TABLE,
-            Key={"tenant_id": {"S": tenant_id}},
-        )
+        resp = ddb.get_item(TableName=TENANTS_TABLE, Key={"tenant_id": {"S": tenant_id}})
     except ClientError:
         return None
     item = resp.get("Item")
@@ -158,12 +146,9 @@ def _get_tenant(tenant_id: str) -> dict | None:
 
 
 def _hybrid_search(question: str, tenant_id: str):
-    """Dense + sparse hybrid retrieval with tenant filter."""
     dense = _embed_dense(question)
     sparse = _embed_sparse(question)
-
     qdrant = _get_qdrant_client()
-
     result = qdrant.query_points(
         collection_name=COLLECTION_NAME,
         prefetch=[
@@ -186,11 +171,7 @@ def _hybrid_search(question: str, tenant_id: str):
 
 def _embed_dense(text: str) -> list[float]:
     body = json.dumps({"inputText": text[:8000]})
-    resp = bedrock.invoke_model(
-        modelId=TITAN_MODEL_ID,
-        body=body,
-        contentType="application/json",
-    )
+    resp = bedrock.invoke_model(modelId=TITAN_MODEL_ID, body=body, contentType="application/json")
     return json.loads(resp["body"].read())["embedding"]
 
 
@@ -207,7 +188,6 @@ def _build_system_prompt(tenant: dict, results) -> str:
         f"[Source: {r.payload['title']}]\n{r.payload['chunk_text']}"
         for r in results
     ])
-
     return f"""You are a helpful AI assistant answering questions about {tenant['display_name']}, whose primary domain is: {tenant['domain']}.
 
 Below are excerpts from {tenant['display_name']}'s own documents:
@@ -234,12 +214,10 @@ def _get_qdrant_client() -> QdrantClient:
 def _log_usage(tenant_id: str, user_id: str, request_id: str, query: str,
                input_tokens: int, output_tokens: int, result_type: str,
                started_at: float) -> None:
-    """Best-effort usage log. Failures don't block the response."""
     now = int(time.time())
     latency_ms = int((time.time() - started_at) * 1000)
     date_key = time.strftime("%Y-%m-%d", time.gmtime(now))
-    expires_at = now + 30 * 86400  # 30-day TTL
-
+    expires_at = now + 30 * 86400
     try:
         ddb.put_item(
             TableName=USAGE_TABLE,
