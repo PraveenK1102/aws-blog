@@ -29,10 +29,23 @@ def get_secret(secret_id: str) -> dict:
 
 
 def get_groq_key() -> str:
+    # Local dev override: a GROQ_API_KEY env var wins over Secrets Manager, so a
+    # local .env (e.g. an alternate account's key) needs no code or cloud change.
+    env = os.environ.get("GROQ_API_KEY")
+    if env:
+        return env
     return get_secret("multitenant/groq")["api_key"]
 
 
 def get_qdrant() -> tuple[str, str]:
-    """Return (url, api_key) for Qdrant Cloud."""
+    """Return (url, api_key) for Qdrant Cloud.
+
+    Local dev override: QDRANT_URL + QDRANT_API_KEY env vars win over Secrets
+    Manager (so local runs need no AWS Secrets call).
+    """
+    url = os.environ.get("QDRANT_URL")
+    key = os.environ.get("QDRANT_API_KEY")
+    if url and key:
+        return url, key
     creds = get_secret("multitenant/qdrant")
     return creds["url"], creds["api_key"]
