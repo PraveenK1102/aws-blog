@@ -124,6 +124,11 @@ aws cloudfront create-origin-access-control --origin-access-control-config \
 - **LocalStack** gives a faithful, free, isolated dev mirror of SQS/DynamoDB/S3 (pin `3.8.1` — newer images
   demand a paid token even for core services). But it **does not enforce IAM** and can't emulate Bedrock/Cognito
   — so keep an eye on those in the promotion.
+- **Tune thresholds from data, not guesses.** The relevance floor (`RETRIEVAL_FLOOR`, 0.15) is
+  a cheap pre-filter; the LLM is the real judge, so bias the floor LOW (a false-negative there
+  hard-declines a real question with no recourse). Every query logs `top_dense` + `result_type`,
+  so calibrate empirically once there's traffic — set the floor just below the lowest score of an
+  answered query:  `filter msg="relevance" and result_type="answered" | stats min(top_dense)`.
 - **Idle cost of pure serverless ≈ $0** (only Secrets Manager ~$1.20/mo for 3 secrets). vs the old
   ALB+RDS+EC2 stack that was ~$10/mo even idle. That cost floor is why we deleted the whole VPC/ECS stack.
 

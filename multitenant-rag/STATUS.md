@@ -37,7 +37,7 @@ Browser → CloudFront (EOV3277U5A8CF)
 
 - **LLM:** Groq Llama 3.3 70B (prod) / 8B (dev) — `GROQ_MODEL` env var.
 - **Auth:** custom JWT (bcrypt), `multitenant/jwt` secret. Identity from the token, not a header.
-- **Relevance:** low retrieval floor (0.20) short-circuits clearly-irrelevant; else the LLM
+- **Relevance:** low retrieval floor (0.15, env-tunable) short-circuits clearly-irrelevant; else the LLM
   judges in one call (answer / clarify / decline). RRF hybrid used for ranking + citations.
 - **`ask` is buffered** (LWA `buffered` mode via API Gateway) + a client-side typewriter.
   True edge streaming (LWA `response_stream` + Function URL + OAC) is a future item.
