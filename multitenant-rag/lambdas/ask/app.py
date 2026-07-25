@@ -49,9 +49,11 @@ S3_CONTENT_BUCKET = os.environ.get("S3_CONTENT_BUCKET", "praveen-multitenant-con
 COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
 TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
 SCORE_THRESHOLD = 0.3
-# Absolute dense cosine floor for "is this actually on-topic?" — below this we
-# decline rather than answer from a tangential/keyword-only match.
-DENSE_RELEVANCE_FLOOR = float(os.environ.get("DENSE_RELEVANCE_FLOOR", "0.46"))
+# Low retrieval floor: below this the top chunk is clearly unrelated (e.g. a
+# question about a city the author never mentioned), so we decline WITHOUT an
+# LLM call (saves a Groq request). Above it, we hand the retrieved context to
+# the LLM and let IT judge whether the content genuinely answers the question.
+RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.30"))
 TOP_K = 5
 
 ddb = boto3.client("dynamodb", region_name=REGION)
@@ -384,9 +386,10 @@ async def ask(req: AskRequest, request: Request):
     def event_stream():
         results, top_dense = _hybrid_search(question, tenant_id)
         log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
-                 floor=DENSE_RELEVANCE_FLOOR, hits=len(results))
+                 floor=RETRIEVAL_FLOOR, hits=len(results))
 
-        if not results or top_dense < DENSE_RELEVANCE_FLOOR:
+        # Clearly-unrelated → decline without spending an LLM call.
+        if not results or top_dense < RETRIEVAL_FLOOR:
             msg = f"{tenant['display_name']} hasn't written about this topic."
             yield _ndjson({"type": "content", "text": msg})
             yield _ndjson({"type": "done", "citations": []})
@@ -523,10 +526,15 @@ Below are excerpts from {tenant['display_name']}'s own documents:
 {context_blocks}
 
 Rules:
-1. Answer using ONLY the context above. Cite sources by title in your answer.
-2. If the context doesn't contain the answer, say: "{tenant['display_name']} hasn't written about this."
-3. Match {tenant['display_name']}'s tone from their writing.
-4. If the topic is medical, legal, or financial, add appropriate disclaimers (consult a professional; not personalized advice).
+1. First decide if the excerpts genuinely address the question. They count as relevant
+   even from a closely related angle (e.g. a question about food/drink in a city is
+   answered by a post about that city's iconic coffee). They do NOT count if they are
+   about a plainly different subject, or if the question is too vague to answer.
+2. If relevant: answer using ONLY the excerpts, and cite sources by title.
+3. If NOT relevant (or the question is a bare keyword with no clear intent), reply with
+   EXACTLY this and nothing else: "{tenant['display_name']} hasn't written about this."
+4. Match {tenant['display_name']}'s tone. If the topic is medical, legal, or financial,
+   add a brief disclaimer (consult a professional; not personalized advice).
 5. Be concise. Prefer direct answers over long preambles.
 """
 
