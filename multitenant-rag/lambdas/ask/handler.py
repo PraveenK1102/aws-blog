@@ -1,21 +1,22 @@
-"""askLambda — handles POST /ask with streaming.
+"""askLambda — handles POST /ask (buffered response).
 
-Runs behind a Lambda Function URL with RESPONSE_STREAM invoke mode.
+v1 is buffered: the full answer is collected server-side and returned as one
+JSON payload. True token-by-token streaming is a planned enhancement via the
+Lambda Web Adapter (managed Python runtime has no native response streaming).
 
 Flow:
-  1. Resolve user_id → tenant_id
+  1. Resolve user_id -> tenant_id
   2. Load tenant metadata (display_name, domain)
   3. Embed question (dense via Titan + sparse via BM25)
   4. Hybrid Qdrant search with tenant_id filter (RRF fusion)
-  5. If empty/weak results → emit polite "hasn't written" message
+  5. If empty/weak results -> polite "hasn't written" answer
   6. Assemble prompt (universal template + retrieved chunks)
-  7. Stream from Groq → write tokens progressively to response
-  8. Emit citations at end
-  9. Log usage (best-effort, doesn't block user)
+  7. Collect the full answer from Groq
+  8. Return {answer, citations} as JSON
+  9. Log usage (best-effort, doesn't block the response)
 
-Response format: NDJSON — each event on its own line, JSON-encoded.
-  {"type":"content","text":"tokens..."}
-  {"type":"done","citations":[...]}
+Response body:
+  {"answer": "...", "citations": [{"post_id","title","chunk_index","header_path","score"}, ...]}
 """
 
 import json
@@ -34,6 +35,7 @@ from qdrant_client.models import (
 
 from common.context import ContextError, get_context
 from common.logger import get_logger
+from common.responses import error_response, json_response
 from common.secrets import get_qdrant
 from llm import stream_answer
 
@@ -55,66 +57,59 @@ _qdrant: QdrantClient | None = None
 _bm25: SparseTextEmbedding | None = None
 
 
-def handler(event, response_stream):
-    """
-    Lambda Function URL with RESPONSE_STREAM mode.
-    response_stream is a StreamingResponse object with .write() and .end() methods.
-    """
+def handler(event, _context):
+    """Buffered Lambda handler (API Gateway v2 / Function URL BUFFERED)."""
     request_id = str(uuid.uuid4())
     started_at = time.time()
 
     try:
         user_id, tenant_id, _ = get_context(event)
     except ContextError as e:
-        _write_error(response_stream, 401, str(e))
-        return
+        return error_response(401, "Unauthorized", str(e))
 
     body = _parse_body(event)
     if body is None:
-        _write_error(response_stream, 400, "invalid body")
-        return
+        return error_response(400, "Bad request", "invalid JSON body")
 
     question = (body.get("question") or "").strip()
     if not question:
-        _write_error(response_stream, 400, "question is required")
-        return
+        return error_response(400, "Bad request", "question is required")
 
     tenant = _get_tenant(tenant_id)
     if not tenant:
-        _write_error(response_stream, 404, f"tenant {tenant_id} not found")
-        return
+        return error_response(404, "Not found", f"tenant {tenant_id} not found")
 
     log.info("query start", user_id=user_id, tenant_id=tenant_id, request_id=request_id)
 
     # Retrieve
     results = _hybrid_search(question, tenant_id)
 
+    # No content or too weak -> polite refusal (skip the LLM call)
     if not results or results[0].score < SCORE_THRESHOLD:
         msg = f"{tenant['display_name']} hasn't written about this topic."
-        _write_event(response_stream, {"type": "content", "text": msg})
-        _write_event(response_stream, {"type": "done", "citations": []})
-        response_stream.end()
         _log_usage(tenant_id, user_id, request_id, question, 0, 0, "empty", started_at)
-        return
+        return json_response(200, {"answer": msg, "citations": []})
 
-    # Build prompt
+    # Build prompt + collect the full answer from Groq
     system_prompt = _build_system_prompt(tenant, results)
 
-    # Stream from Groq
+    answer_parts: list[str] = []
     total_input = 0
     total_output = 0
     try:
-        for event_out in stream_answer(system_prompt, question):
-            if event_out["type"] == "content":
-                _write_event(response_stream, event_out)
-            elif event_out["type"] == "usage":
-                total_input = event_out["input_tokens"]
-                total_output = event_out["output_tokens"]
+        for ev in stream_answer(system_prompt, question):
+            if ev["type"] == "content":
+                answer_parts.append(ev["text"])
+            elif ev["type"] == "usage":
+                total_input = ev["input_tokens"]
+                total_output = ev["output_tokens"]
     except Exception as e:
-        log.error("llm stream failed", error=str(e), request_id=request_id)
-        _write_event(response_stream, {"type": "content", "text": "\n\n[Error while generating response]"})
+        log.error("llm call failed", error=str(e), request_id=request_id)
+        _log_usage(tenant_id, user_id, request_id, question, 0, 0, "llm_error", started_at)
+        return error_response(502, "Upstream error", "failed to generate an answer")
 
-    # Emit citations
+    answer = "".join(answer_parts).strip()
+
     citations = [
         {
             "post_id": r.payload["post_id"],
@@ -125,10 +120,10 @@ def handler(event, response_stream):
         }
         for r in results
     ]
-    _write_event(response_stream, {"type": "done", "citations": citations})
-    response_stream.end()
 
     _log_usage(tenant_id, user_id, request_id, question, total_input, total_output, "answered", started_at)
+
+    return json_response(200, {"answer": answer, "citations": citations})
 
 
 def _parse_body(event: dict) -> dict | None:
@@ -234,16 +229,6 @@ def _get_qdrant_client() -> QdrantClient:
         url, api_key = get_qdrant()
         _qdrant = QdrantClient(url=url, api_key=api_key)
     return _qdrant
-
-
-def _write_event(stream, event: dict) -> None:
-    """Write a single NDJSON event to the response stream."""
-    stream.write((json.dumps(event) + "\n").encode("utf-8"))
-
-
-def _write_error(stream, status: int, message: str) -> None:
-    _write_event(stream, {"type": "error", "status": status, "message": message})
-    stream.end()
 
 
 def _log_usage(tenant_id: str, user_id: str, request_id: str, query: str,
