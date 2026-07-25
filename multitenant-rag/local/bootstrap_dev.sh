@@ -51,3 +51,9 @@ aws $LS s3 ls 2>&1
 aws $LS sqs list-queues --query 'QueueUrls' --output text 2>&1
 echo ""
 echo "✅ dev bootstrap complete (NO mock data — users sign up)"
+
+# (appended) chats table — saved conversations
+aws --endpoint-url=http://localhost:4566 dynamodb create-table --table-name multitenant-chats \
+  --attribute-definitions AttributeName=user_id,AttributeType=S AttributeName=chat_id,AttributeType=S \
+  --key-schema AttributeName=user_id,KeyType=HASH AttributeName=chat_id,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST --query 'TableDescription.TableStatus' --output text 2>/dev/null || true

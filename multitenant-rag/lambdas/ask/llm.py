@@ -43,22 +43,31 @@ def _post_with_retry(payload: dict, api_key: str) -> requests.Response:
     raise RuntimeError("Groq error: exhausted retries")
 
 
-def stream_answer(system_prompt: str, user_prompt: str) -> Iterator[dict]:
+def stream_answer(system_prompt: str, user_prompt: str, history: list | None = None) -> Iterator[dict]:
     """
     Stream tokens from Groq. Yields events:
       {"type": "content", "text": "..."}  — a token or word
       {"type": "usage", "input_tokens": N, "output_tokens": N}  — final metadata
 
+    `history` is prior conversation turns [{"role":"user"|"assistant","content":...}]
+    inserted between the system prompt and the current question, so follow-ups
+    ("yes", "tell me more") have context.
+
     Uses OpenAI-compatible streaming API. Groq returns SSE (server-sent events).
     """
     api_key = get_groq_key()
 
+    messages = [{"role": "system", "content": system_prompt}]
+    for turn in (history or []):
+        role = turn.get("role")
+        content = turn.get("content") or turn.get("text") or ""
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_prompt})
+
     payload = {
         "model": GROQ_MODEL,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        "messages": messages,
         "stream": True,
         "temperature": 0.3,   # low for factual RAG answers
         "max_tokens": 1024,

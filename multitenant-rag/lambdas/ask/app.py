@@ -31,6 +31,7 @@ from common.auth import (
     AuthError, create_token, hash_password, verify_password, verify_token,
     bearer_from_headers,
 )
+from common import chats as chatstore
 from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
 from common.posts import PostError, create_post as create_post_shared
@@ -82,6 +83,12 @@ app.add_middleware(
 class AskRequest(BaseModel):
     question: str
     tenant_id: str  # the profile whose AI to ask (may be anyone's; asker just needs to be logged in)
+    chat_id: str | None = None  # optional saved-chat session for conversation memory
+
+
+class NewChatRequest(BaseModel):
+    tenant_id: str
+    profile_user_id: str | None = None
 
 
 class SignupRequest(BaseModel):
@@ -353,6 +360,98 @@ def get_post(tenant_id: str, post_id: str, request: Request):
     }
 
 
+# ---------------------------------------------------------------------------
+# Saved chats — conversation memory, up to MAX_ACTIVE per user
+# ---------------------------------------------------------------------------
+
+def _chat_summary(c: dict) -> dict:
+    return {
+        "chat_id": c["chat_id"], "tenant_id": c["tenant_id"],
+        "profile_user_id": c.get("profile_user_id", ""), "profile_name": c["profile_name"],
+        "title": c["title"], "status": c["status"], "updated_at": c["updated_at"],
+        "message_count": len(c["messages"]),
+    }
+
+
+@app.post("/api/chats")
+def new_chat(req: NewChatRequest, request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    tenant = _get_tenant(req.tenant_id)
+    if not tenant:
+        return JSONResponse(status_code=404, content={"error": "profile not found"})
+    try:
+        chat = chatstore.create_chat(user_id, req.tenant_id, tenant["display_name"], req.profile_user_id or "")
+    except chatstore.ChatLimitError as e:
+        return JSONResponse(status_code=409, content={"error": str(e)})
+    return chat
+
+
+@app.get("/api/chats")
+def get_chats(request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    return {"chats": [_chat_summary(c) for c in chatstore.list_chats(user_id, "active")]}
+
+
+@app.get("/api/chats/trash")
+def get_trash(request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    return {"chats": [_chat_summary(c) for c in chatstore.list_chats(user_id, "trashed")]}
+
+
+@app.get("/api/chats/{chat_id}")
+def get_chat_detail(chat_id: str, request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    chat = chatstore.get_chat(user_id, chat_id)
+    if not chat:
+        return JSONResponse(status_code=404, content={"error": "chat not found"})
+    return chat
+
+
+@app.delete("/api/chats/{chat_id}")
+def trash_chat(chat_id: str, request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    chatstore.set_status(user_id, chat_id, "trashed")
+    return {"ok": True}
+
+
+@app.post("/api/chats/{chat_id}/restore")
+def restore_chat(chat_id: str, request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        chatstore.set_status(user_id, chat_id, "active")
+    except chatstore.ChatLimitError as e:
+        return JSONResponse(status_code=409, content={"error": str(e)})
+    return {"ok": True}
+
+
+@app.delete("/api/chats/{chat_id}/permanent")
+def delete_chat_permanent(chat_id: str, request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    chatstore.delete_permanent(user_id, chat_id)
+    return {"ok": True}
+
+
 @app.post("/ask")
 @app.post("/api/ask")
 async def ask(req: AskRequest, request: Request):
@@ -380,11 +479,27 @@ async def ask(req: AskRequest, request: Request):
 
     log.info("query start", asker_id=asker_id, tenant_id=tenant_id, request_id=request_id)
 
+    # Conversation memory: load prior turns from the saved chat (if any).
+    chat_id = (req.chat_id or "").strip() or None
+    history = []  # for the LLM: [{"role","content"}]
+    if chat_id:
+        chat = chatstore.get_chat(asker_id, chat_id)
+        if chat and chat["status"] == "active" and chat["tenant_id"] == tenant_id:
+            for m in chat["messages"][-8:]:  # last few turns keeps token cost bounded
+                history.append({"role": m["role"], "content": m.get("text", "")})
+
+    # Multi-turn retrieval: for short follow-ups ("yes", "tell me more"), fold in
+    # the previous user question so retrieval still finds the right content.
+    retrieval_query = question
+    prev_user = next((m["content"] for m in reversed(history) if m["role"] == "user"), None)
+    if prev_user and len(question.split()) <= 4:
+        retrieval_query = f"{prev_user} {question}"
+
     # Everything below runs inside the streamed generator. Starlette iterates a
     # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
     # are fine and don't block the event loop.
     def event_stream():
-        results, top_dense = _hybrid_search(question, tenant_id)
+        results, top_dense = _hybrid_search(retrieval_query, tenant_id)
         log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
                  floor=RETRIEVAL_FLOOR, hits=len(results))
 
@@ -394,6 +509,8 @@ async def ask(req: AskRequest, request: Request):
             yield _ndjson({"type": "content", "text": msg})
             yield _ndjson({"type": "done", "citations": []})
             _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty", started_at)
+            if chat_id:
+                chatstore.append_turn(asker_id, chat_id, question, msg, [])
             return
 
         system_prompt = _build_system_prompt(tenant, results)
@@ -402,7 +519,7 @@ async def ask(req: AskRequest, request: Request):
         total_input = 0
         total_output = 0
         try:
-            for ev in stream_answer(system_prompt, question):
+            for ev in stream_answer(system_prompt, question, history=history):
                 if ev["type"] == "content":
                     answer_parts.append(ev["text"])
                     yield _ndjson(ev)
@@ -416,13 +533,15 @@ async def ask(req: AskRequest, request: Request):
         # Citation refinement: if the model refused (context didn't answer the
         # question), don't cite unrelated sources. Otherwise cite distinct posts
         # (deduped, best score each) rather than repeated chunks.
-        answer = "".join(answer_parts).lower()
-        refused = "hasn't written about" in answer
+        answer_text = "".join(answer_parts)
+        refused = "hasn't written about" in answer_text.lower()
         citations = [] if refused else _dedupe_citations(results)
         result_type = "refused" if refused else "answered"
 
         yield _ndjson({"type": "done", "citations": citations})
         _log_usage(tenant_id, asker_id, request_id, question, total_input, total_output, result_type, started_at)
+        if chat_id:
+            chatstore.append_turn(asker_id, chat_id, question, answer_text, citations)
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
@@ -525,8 +644,12 @@ Below are excerpts from {tenant['display_name']}'s own documents:
 
 {context_blocks}
 
-These excerpts are {tenant['display_name']}'s entire knowledge. Decide which case the
-question falls into and respond accordingly:
+These excerpts are {tenant['display_name']}'s entire knowledge. Use the conversation so
+far for context. If your previous message offered a topic and the user now affirms it
+(e.g. "yes", "yeah", "sure", "ok", "go on", "please"), treat that as case A for that
+topic — ANSWER it from the excerpts, do NOT ask again.
+
+Otherwise decide which case the question falls into and respond accordingly:
 
 A. DIRECTLY RELEVANT — the excerpts clearly answer it (directly, or a clearly-related
    angle). → Answer using ONLY the excerpts, cite sources by title, be concise. Do not

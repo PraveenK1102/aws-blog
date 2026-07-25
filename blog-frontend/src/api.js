@@ -52,13 +52,23 @@ export const listMyPosts = () => req("/api/posts").then((d) => d.posts || []);
 export const createPost = (title, content) =>
   req("/api/posts", { method: "POST", body: { title, content } });
 
-// Ask a PROFILE's AI (tenantId = the profile you're visiting). Streams NDJSON
-// events; onToken(text) per content chunk. Same parser for dev-stream or prod-buffer.
-export async function ask(tenantId, question, onToken) {
+// Saved chats (conversation memory, up to 5)
+export const listChats = () => req("/api/chats").then((d) => d.chats || []);
+export const listTrash = () => req("/api/chats/trash").then((d) => d.chats || []);
+export const getChat = (id) => req(`/api/chats/${id}`);
+export const createChat = (tenantId, profileUserId) =>
+  req("/api/chats", { method: "POST", body: { tenant_id: tenantId, profile_user_id: profileUserId } });
+export const deleteChat = (id) => req(`/api/chats/${id}`, { method: "DELETE" });
+export const restoreChat = (id) => req(`/api/chats/${id}/restore`, { method: "POST" });
+export const permanentDeleteChat = (id) => req(`/api/chats/${id}/permanent`, { method: "DELETE" });
+
+// Ask a PROFILE's AI (tenantId = the profile you're visiting). chatId ties it to a
+// saved conversation for memory. Streams NDJSON; onToken(text) per content chunk.
+export async function ask(tenantId, question, onToken, chatId) {
   const res = await fetch("/api/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-    body: JSON.stringify({ question, tenant_id: tenantId }),
+    body: JSON.stringify({ question, tenant_id: tenantId, chat_id: chatId || undefined }),
   });
   if (!res.ok) {
     const t = await res.text();
