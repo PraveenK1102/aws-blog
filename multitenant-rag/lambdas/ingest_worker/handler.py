@@ -146,7 +146,11 @@ def _process_message(msg: dict) -> None:
     qdrant.upsert(collection_name=COLLECTION_NAME, points=points)
     log.info("qdrant upsert complete", post_id=post_id, points=len(points))
 
-    # 8. Update DynamoDB status
+    # 8. Content changed → bust this tenant's semantic answer cache (best-effort).
+    from common import semcache
+    semcache.invalidate_tenant(tenant_id)
+
+    # 9. Update DynamoDB status
     _mark_indexed(tenant_id, post_id, len(chunks))
     log.info("ingest complete", post_id=post_id)
 

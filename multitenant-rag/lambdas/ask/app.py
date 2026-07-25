@@ -32,6 +32,7 @@ from common.auth import (
     bearer_from_headers,
 )
 from common import chats as chatstore
+from common import semcache
 from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
 from common.posts import PostError, create_post as create_post_shared
@@ -502,7 +503,24 @@ async def ask(req: AskRequest, request: Request):
     # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
     # are fine and don't block the event loop.
     def event_stream():
-        results, top_dense = _hybrid_search(retrieval_query, tenant_id)
+        # --- Semantic cache (single-turn only; conversation context would make a
+        # cached answer wrong for follow-ups). Embed the question once and reuse
+        # the vector for retrieval on a miss. ---
+        q_dense = None
+        if not history:
+            q_dense = _embed_dense(question)
+            hit = semcache.lookup(tenant_id, q_dense)
+            if hit is not None:
+                log.info("relevance", request_id=request_id, top_dense=hit["score"],
+                         floor=RETRIEVAL_FLOOR, hits=len(hit["citations"]), result_type="cache_hit")
+                yield _ndjson({"type": "content", "text": hit["answer"]})
+                yield _ndjson({"type": "done", "citations": hit["citations"], "cache_hit": True})
+                _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "cache_hit", started_at)
+                if chat_id:
+                    chatstore.append_turn(asker_id, chat_id, question, hit["answer"], hit["citations"])
+                return
+
+        results, top_dense = _hybrid_search(retrieval_query, tenant_id, dense_vec=q_dense)
 
         def log_relevance(result_type):
             # One line per query carrying BOTH the score and the outcome, so the
@@ -516,7 +534,7 @@ async def ask(req: AskRequest, request: Request):
         if not results or top_dense < RETRIEVAL_FLOOR:
             msg = f"{tenant['display_name']} hasn't written about this topic."
             yield _ndjson({"type": "content", "text": msg})
-            yield _ndjson({"type": "done", "citations": []})
+            yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
             log_relevance("below_floor")
             _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty", started_at)
             if chat_id:
@@ -549,7 +567,12 @@ async def ask(req: AskRequest, request: Request):
         result_type = "refused" if refused else "answered"
         log_relevance(result_type)
 
-        yield _ndjson({"type": "done", "citations": citations})
+        # Cache only clean single-turn answers (not refusals/clarifications, not
+        # follow-ups). Invalidated when the tenant writes (see ingest_worker).
+        if result_type == "answered" and not history and q_dense is not None:
+            semcache.store(tenant_id, question, q_dense, answer_text, citations)
+
+        yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
         _log_usage(tenant_id, asker_id, request_id, question, total_input, total_output, result_type, started_at)
         if chat_id:
             chatstore.append_turn(asker_id, chat_id, question, answer_text, citations)
@@ -588,7 +611,7 @@ def _get_tenant(tenant_id: str) -> dict | None:
     }
 
 
-def _hybrid_search(question: str, tenant_id: str):
+def _hybrid_search(question: str, tenant_id: str, dense_vec: list | None = None):
     """Return (ranked_points, top_dense_cosine).
 
     Hybrid RRF gives good *ranking* + citations, but its fused score is a rank
@@ -597,7 +620,7 @@ def _hybrid_search(question: str, tenant_id: str):
     absolute 0..1 measure of semantic closeness — and let the caller gate on it
     so tangential/keyword-only matches ("chennai", "food"→coffee) get declined.
     """
-    dense = _embed_dense(question)
+    dense = dense_vec if dense_vec is not None else _embed_dense(question)
     sparse = _embed_sparse(question)
     qdrant = _get_qdrant_client()
     tenant_filter = Filter(must=[
