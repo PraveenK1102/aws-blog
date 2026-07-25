@@ -7,6 +7,12 @@ import {
   login, signup, me, getToken, setToken, clearToken,
 } from "./api";
 
+// Reusable utility-class strings
+const INPUT = "bg-surface2 border border-line text-ink px-3.5 py-3 rounded-lg text-sm outline-none focus:border-accent";
+const PRIMARY = "bg-accent text-onaccent font-bold rounded-lg cursor-pointer disabled:opacity-50";
+const AVATAR = "rounded-full grid place-items-center font-bold text-onaccent bg-gradient-to-br from-accent to-accent2";
+const YOU_TAG = "text-[10px] bg-accent/15 text-accent border border-accent/35 px-1.5 py-px rounded-full uppercase tracking-wide";
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
@@ -16,7 +22,7 @@ export default function App() {
     me().then((d) => setUser(d.user)).catch(() => clearToken()).finally(() => setBooting(false));
   }, []);
 
-  if (booting) return <div className="empty">Loading…</div>;
+  if (booting) return <div className="grid place-items-center h-screen text-muted">Loading…</div>;
   if (!user) return <Auth onAuthed={(r) => { setToken(r.token); setUser(r.user); }} />;
 
   return (
@@ -31,6 +37,14 @@ export default function App() {
       </Shell>
     </BrowserRouter>
   );
+}
+
+function Brand() {
+  return <span className="font-bold flex items-center gap-2 text-ink"><span className="text-accent">◆</span> MultiTenantRAG</span>;
+}
+
+function Empty({ small, children }) {
+  return <div className={small ? "text-[13px] text-muted p-4" : "grid place-items-center h-[40vh] text-muted"}>{children}</div>;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,26 +69,32 @@ function Auth({ onAuthed }) {
     finally { setBusy(false); }
   }
 
+  const toggle = (m, label) => (
+    <button type="button" onClick={() => setMode(m)}
+      className={`flex-1 rounded-lg py-2.5 font-semibold ${mode === m ? "bg-accent text-onaccent" : "text-muted"}`}>
+      {label}
+    </button>
+  );
+
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <div className="brand"><span className="logo">◆</span> MultiTenantRAG</div>
-        <p className="auth-sub">Browse people’s blogs and chat with an AI that answers only from what they wrote.</p>
-        <div className="auth-toggle">
-          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Log in</button>
-          <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Sign up</button>
-        </div>
-        <form onSubmit={submit} className="auth-form">
+    <div className="grid place-items-center min-h-screen p-6">
+      <div className="w-full max-w-sm bg-surface border border-line rounded-2xl p-7 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+        <div className="text-xl"><Brand /></div>
+        <p className="text-muted text-sm mt-2 mb-5">Browse people’s blogs and chat with an AI that answers only from what they wrote.</p>
+        <div className="flex bg-surface2 rounded-xl p-1 mb-4">{toggle("login", "Log in")}{toggle("signup", "Sign up")}</div>
+        <form onSubmit={submit} className="flex flex-col gap-2.5">
           {mode === "signup" && (
-            <input placeholder="Display name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className={INPUT} placeholder="Display name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
           )}
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <input type="password" placeholder="Password (min 8 chars)" value={password}
+          <input className={INPUT} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input className={INPUT} type="password" placeholder="Password (min 8 chars)" value={password}
                  onChange={(e) => setPassword(e.target.value)} required minLength={8} />
-          {err && <div className="auth-err">{err}</div>}
-          <button type="submit" disabled={busy}>{busy ? "…" : mode === "login" ? "Log in" : "Create account"}</button>
+          {err && <div className="text-err text-sm">{err}</div>}
+          <button type="submit" disabled={busy} className={`${PRIMARY} mt-1.5 py-3`}>
+            {busy ? "…" : mode === "login" ? "Log in" : "Create account"}
+          </button>
         </form>
-        <div className="auth-hint">No email verification in this build — sign up freely to test.</div>
+        <div className="text-muted text-xs mt-3.5 text-center">No email verification in this build — sign up freely to test.</div>
       </div>
     </div>
   );
@@ -84,44 +104,50 @@ function Auth({ onAuthed }) {
 // Signed-in shell
 // ---------------------------------------------------------------------------
 function Shell({ user, onLogout, children }) {
-  const navClass = ({ isActive }) => `tab ${isActive ? "active" : ""}`;
+  const tabCls = ({ isActive }) =>
+    `px-3.5 py-2.5 rounded-t-xl font-semibold cursor-pointer border ${
+      isActive ? "text-ink bg-surface border-line border-b-surface" : "text-muted border-transparent"
+    }`;
   return (
-    <div className="app">
-      <header className="topbar">
-        <Link to="/" className="brand"><span className="logo">◆</span> MultiTenantRAG</Link>
-        <div className="userbox">
-          <span className="uemail">{user.email}</span>
-          <button className="logout" onClick={onLogout}>Log out</button>
+    <div className="w-full min-h-screen flex flex-col">
+      <header className="flex items-center justify-between px-5 py-4 border-b border-line">
+        <Link to="/"><Brand /></Link>
+        <div className="flex items-center gap-3">
+          <span className="text-muted text-[13px]">{user.email}</span>
+          <button onClick={onLogout} className="bg-surface2 border border-line text-ink px-3 py-1.5 rounded-lg cursor-pointer text-[13px]">Log out</button>
         </div>
       </header>
-      <div className="tabs">
-        <NavLink to="/" end className={navClass}>Discover</NavLink>
-        <NavLink to="/me" className={navClass}>My blog</NavLink>
+      <div className="flex gap-1.5 px-5 pt-3">
+        <NavLink to="/" end className={tabCls}>Discover</NavLink>
+        <NavLink to="/me" className={tabCls}>My blog</NavLink>
       </div>
-      <main className="main">{children}</main>
+      <main className="flex-1 bg-surface border border-line rounded-b-xl rounded-tr-xl mx-5 mb-5 p-[18px] flex flex-col">
+        {children}
+      </main>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Discover — directory of profiles → /u/:userId
+// Discover
 // ---------------------------------------------------------------------------
 function Discover() {
   const [profiles, setProfiles] = useState(null);
   useEffect(() => { listProfiles().then(setProfiles).catch(() => setProfiles([])); }, []);
 
-  if (profiles === null) return <div className="empty small">Loading people…</div>;
-  if (profiles.length === 0) return <div className="empty small">No profiles yet.</div>;
+  if (profiles === null) return <Empty small>Loading people…</Empty>;
+  if (profiles.length === 0) return <Empty small>No profiles yet.</Empty>;
 
   return (
-    <div className="discover">
-      <div className="discover-head">Pick someone and ask their AI</div>
-      <div className="profile-grid">
+    <div>
+      <div className="text-muted text-sm mb-3.5">Pick someone and ask their AI</div>
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
         {profiles.map((p) => (
-          <Link key={p.tenant_id} to={`/u/${p.user_id}`} className="profile-card">
-            <div className="avatar">{initials(p.display_name)}</div>
-            <div className="pc-name">{p.display_name}{p.is_me && <span className="you-tag">you</span>}</div>
-            <div className="pc-domain">{p.domain}</div>
+          <Link key={p.tenant_id} to={`/u/${p.user_id}`}
+            className="flex flex-col items-center gap-2 text-center bg-surface2 border border-line rounded-2xl px-3 py-5 cursor-pointer text-ink transition hover:border-accent hover:-translate-y-0.5">
+            <div className={`${AVATAR} w-[46px] h-[46px] text-[15px]`}>{initials(p.display_name)}</div>
+            <div className="font-semibold text-sm flex items-center gap-1.5">{p.display_name}{p.is_me && <span className={YOU_TAG}>you</span>}</div>
+            <div className="text-muted text-xs">{p.domain}</div>
           </Link>
         ))}
       </div>
@@ -132,7 +158,7 @@ function Discover() {
 function ProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);   // null=loading, false=not found
+  const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState(null);
   const [reading, setReading] = useState(null);
 
@@ -141,51 +167,61 @@ function ProfilePage() {
     if (profile) { setPosts(null); listProfilePosts(profile.tenant_id).then(setPosts).catch(() => setPosts([])); }
   }, [profile]);
 
-  if (profile === null) return <div className="empty small">Loading…</div>;
-  if (!profile) return <div className="empty small">Profile not found. <Link to="/">Back</Link></div>;
+  if (profile === null) return <Empty small>Loading…</Empty>;
+  if (!profile) return <Empty small>Profile not found. <Link to="/" className="text-accent">Back</Link></Empty>;
 
   return (
-    <div className="profile-page">
-      <button className="back" onClick={() => navigate("/")}>← All people</button>
-      <div className="profile-hero">
-        <div className="avatar lg">{initials(profile.display_name)}</div>
+    <div className="flex flex-col">
+      <button onClick={() => navigate("/")} className="self-start bg-transparent border-0 text-accent cursor-pointer text-sm pb-3">← All people</button>
+      <div className="flex items-center gap-3.5 pb-4 border-b border-line mb-4">
+        <div className={`${AVATAR} w-[60px] h-[60px] text-xl`}>{initials(profile.display_name)}</div>
         <div>
-          <div className="ph-name">{profile.display_name}{profile.is_me && <span className="you-tag">you</span>}</div>
-          <div className="ph-domain">{posts ? `${posts.length} post${posts.length === 1 ? "" : "s"}` : ""} · mainly {profile.domain}</div>
+          <div className="text-lg font-bold flex items-center gap-2">{profile.display_name}{profile.is_me && <span className={YOU_TAG}>you</span>}</div>
+          <div className="text-muted text-[13px]">{posts ? `${posts.length} post${posts.length === 1 ? "" : "s"}` : ""} · mainly {profile.domain}</div>
         </div>
       </div>
 
-      <div className="profile-cols">
-        <div className="col-posts">
-          <div className="col-label">Posts</div>
-          {posts === null ? <div className="empty small">Loading…</div>
-            : posts.length === 0 ? <div className="empty small">No posts yet.</div>
+      <div className="grid gap-[18px] [grid-template-columns:240px_1fr] max-[680px]:grid-cols-1">
+        <div>
+          <Label>Posts</Label>
+          {posts === null ? <Empty small>Loading…</Empty>
+            : posts.length === 0 ? <Empty small>No posts yet.</Empty>
             : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
         </div>
-        <div className="col-chat">
-          <div className="col-label">Ask {profile.display_name}’s AI</div>
+        <div>
+          <Label>Ask {profile.display_name}’s AI</Label>
           <Chat profile={profile} />
         </div>
       </div>
 
-      {reading && (
-        <PostReader tenantId={profile.tenant_id} postId={reading} onClose={() => setReading(null)} />
-      )}
+      {reading && <PostReader tenantId={profile.tenant_id} postId={reading} onClose={() => setReading(null)} />}
     </div>
   );
 }
 
+function Label({ children }) {
+  return <div className="text-muted text-xs uppercase tracking-wide mb-2.5 flex items-center gap-2">{children}</div>;
+}
+
 function PostList({ posts, onOpen }) {
   return (
-    <ul className="posts">
+    <ul className="list-none p-0 m-0 flex flex-col gap-2">
       {posts.map((p) => (
-        <li key={p.post_id} className="post clickable" onClick={() => onOpen(p)}>
-          <span className="post-title">{p.title}</span>
-          <span className={`badge ${p.status}`}>{p.status}</span>
+        <li key={p.post_id} onClick={() => onOpen(p)}
+          className="flex items-center justify-between gap-2 bg-surface2 border border-line rounded-lg px-3.5 py-3 cursor-pointer transition hover:border-accent">
+          <span className="text-sm">{p.title}</span>
+          <Badge status={p.status} />
         </li>
       ))}
     </ul>
   );
+}
+
+function Badge({ status }) {
+  const tone = status === "indexed"
+    ? "text-ok bg-ok/10 border-ok/30"
+    : "text-warn bg-warn/10 border-warn/30";
+  return <span className={`shrink-0 text-[11px] px-2.5 py-[3px] rounded-full uppercase tracking-wide font-bold border ${tone}`}>{status}</span>;
 }
 
 function PostReader({ tenantId, postId, onClose }) {
@@ -193,12 +229,13 @@ function PostReader({ tenantId, postId, onClose }) {
   const [err, setErr] = useState(null);
   useEffect(() => { getPost(tenantId, postId).then(setPost).catch((e) => setErr(e.message)); }, [tenantId, postId]);
   return (
-    <div className="reader-overlay" onClick={onClose}>
-      <div className="reader" onClick={(e) => e.stopPropagation()}>
-        <button className="reader-close" onClick={onClose}>✕</button>
-        {err ? <div className="empty small">{err}</div>
-          : post === null ? <div className="empty small">Loading…</div>
-          : <article className="markdown">{renderMarkdown(post.content)}</article>}
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm grid place-items-center p-6 z-50" onClick={onClose}>
+      <div className="relative w-full max-w-[620px] max-h-[82vh] overflow-y-auto bg-surface border border-line rounded-2xl px-8 py-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-3.5 right-3.5 bg-surface2 border border-line text-muted w-[30px] h-[30px] rounded-lg cursor-pointer">✕</button>
+        {err ? <Empty small>{err}</Empty>
+          : post === null ? <Empty small>Loading…</Empty>
+          : <article className="markdown leading-relaxed text-[15px] text-ink">{renderMarkdown(post.content)}</article>}
       </div>
     </div>
   );
@@ -236,31 +273,36 @@ function Chat({ profile }) {
   }
 
   return (
-    <div className="chat">
-      <div className="messages" ref={scrollRef}>
+    <div className="flex flex-col h-[56vh]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col gap-3 p-1.5">
         {messages.length === 0 && (
-          <div className="hint">
+          <div className="text-muted text-sm leading-relaxed bg-surface2 border border-line rounded-xl p-4">
             Ask about anything <b>{profile.display_name}</b> has written about. The AI answers
             <b> only</b> from {profile.display_name}’s posts — ask about something they haven’t covered and it politely declines.
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`msg ${m.role}`}>
-            <div className="bubble">
-              {m.text || (m.pending ? <span className="dots">•••</span> : "")}
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : ""}`}>
+            <div className={`max-w-[min(80%,640px)] px-3.5 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap text-[14.5px] ${
+              m.role === "user" ? "bg-gradient-to-b from-accent to-[#4f8ff0] text-onaccent rounded-br-sm" : "bg-surface2 border border-line rounded-bl-sm"
+            }`}>
+              {m.text || (m.pending ? <span className="text-muted tracking-widest">•••</span> : "")}
               {m.citations && m.citations.length > 0 && (
-                <div className="citations">
-                  {m.citations.map((c, j) => <span key={j} className="cite" title={`score ${c.score}`}>{c.title}</span>)}
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {m.citations.map((c, j) => (
+                    <span key={j} title={`score ${c.score}`}
+                      className="text-[11.5px] text-accent bg-accent/10 border border-accent/30 px-2 py-[3px] rounded-full">{c.title}</span>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         ))}
       </div>
-      <form className="composer" onSubmit={send}>
-        <input value={input} onChange={(e) => setInput(e.target.value)}
+      <form onSubmit={send} className="flex gap-2 mt-3">
+        <input className={`${INPUT} flex-1`} value={input} onChange={(e) => setInput(e.target.value)}
                placeholder={`Ask ${profile.display_name}’s AI…`} disabled={busy} />
-        <button type="submit" disabled={busy || !input.trim()}>{busy ? "…" : "Send"}</button>
+        <button type="submit" disabled={busy || !input.trim()} className={`${PRIMARY} px-5`}>{busy ? "…" : "Send"}</button>
       </form>
     </div>
   );
@@ -289,27 +331,29 @@ function MyBlog({ user }) {
     } catch (err) { setStatus({ kind: "err", msg: err.message }); }
   }
 
+  const statusTone = { ok: "text-ok", err: "text-err", busy: "text-muted" };
+
   return (
-    <div className="myblog">
-      <form className="write" onSubmit={submit}>
-        <div className="col-label">Write a post</div>
-        <input placeholder="Post title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <textarea placeholder="Markdown content — use # headings; the chunker is markdown-aware."
+    <div className="flex flex-col">
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <Label>Write a post</Label>
+        <input className={INPUT} placeholder="Post title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <textarea className={`${INPUT} resize-y leading-relaxed`} placeholder="Markdown content — use # headings; the chunker is markdown-aware."
                   value={content} onChange={(e) => setContent(e.target.value)} rows={8} required />
-        <div className="write-actions">
-          <button type="submit" disabled={status?.kind === "busy"}>Publish</button>
-          {status && <span className={`status ${status.kind}`}>{status.msg}</span>}
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={status?.kind === "busy"} className={`${PRIMARY} px-5 py-2.5`}>Publish</button>
+          {status && <span className={`text-[13px] ${statusTone[status.kind]}`}>{status.msg}</span>}
         </div>
       </form>
 
-      <div className="col-label" style={{ marginTop: 18 }}>My posts <button className="refresh" onClick={reload}>↻</button></div>
-      {posts === null ? <div className="empty small">Loading…</div>
-        : posts.length === 0 ? <div className="empty small">No posts yet — write your first above.</div>
-        : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
+      <div className="mt-[18px]">
+        <Label>My posts <button onClick={reload} className="bg-surface2 border border-line text-muted px-3 py-1.5 rounded-lg cursor-pointer text-[13px]">↻</button></Label>
+        {posts === null ? <Empty small>Loading…</Empty>
+          : posts.length === 0 ? <Empty small>No posts yet — write your first above.</Empty>
+          : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
+      </div>
 
-      {reading && (
-        <PostReader tenantId={user.tenant_id} postId={reading} onClose={() => setReading(null)} />
-      )}
+      {reading && <PostReader tenantId={user.tenant_id} postId={reading} onClose={() => setReading(null)} />}
     </div>
   );
 }
