@@ -526,10 +526,11 @@ Below are excerpts from {tenant['display_name']}'s own documents:
 {context_blocks}
 
 Rules:
-1. First decide if the excerpts genuinely address the question. They count as relevant
-   even from a closely related angle (e.g. a question about food/drink in a city is
-   answered by a post about that city's iconic coffee). They do NOT count if they are
-   about a plainly different subject, or if the question is too vague to answer.
+1. First decide if the excerpts genuinely address the question. Count them as relevant
+   even when the link is indirect but real — a broad or differently-worded question can
+   be answered by a specific post on the same subject. Do NOT count them if they are
+   about a plainly different subject, or if the question is too vague to have a clear
+   intent. (Judge by meaning, for whatever topic this author writes about.)
 2. If relevant: answer using ONLY the excerpts, and cite sources by title.
 3. If NOT relevant (or the question is a bare keyword with no clear intent), reply with
    EXACTLY this and nothing else: "{tenant['display_name']} hasn't written about this."
