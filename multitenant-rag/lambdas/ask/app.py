@@ -45,6 +45,7 @@ TENANTS_TABLE = os.environ["TENANTS_TABLE"]
 USERS_TABLE = os.environ.get("USERS_TABLE", "multitenant-users")
 POSTS_TABLE = os.environ.get("POSTS_TABLE", "multitenant-posts")
 USAGE_TABLE = os.environ["USAGE_TABLE"]
+S3_CONTENT_BUCKET = os.environ.get("S3_CONTENT_BUCKET", "praveen-multitenant-content")
 COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
 TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
 SCORE_THRESHOLD = 0.3
@@ -52,6 +53,7 @@ TOP_K = 5
 
 ddb = boto3.client("dynamodb", region_name=REGION)
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
+s3 = boto3.client("s3", region_name=REGION)
 
 _qdrant: QdrantClient | None = None
 _bm25: SparseTextEmbedding | None = None
@@ -263,6 +265,31 @@ def list_profiles(request: Request):
     return {"users": profiles}
 
 
+@app.get("/api/users/{user_id}")
+def get_profile(user_id: str, request: Request):
+    """One profile by user_id (for loading a /u/:userId page directly)."""
+    try:
+        _me_id, my_tenant, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        item = ddb.get_item(TableName=USERS_TABLE, Key={"user_id": {"S": user_id}}).get("Item")
+    except ClientError:
+        item = None
+    if not item:
+        return JSONResponse(status_code=404, content={"error": "profile not found"})
+    tid = item.get("tenant_id", {}).get("S", "")
+    tenant = _get_tenant(tid) if tid else None
+    if not tenant:
+        return JSONResponse(status_code=404, content={"error": "profile not found"})
+    return {
+        "user_id": user_id, "tenant_id": tid,
+        "display_name": tenant.get("display_name", ""),
+        "domain": tenant.get("domain", ""),
+        "is_me": tid == my_tenant,
+    }
+
+
 @app.get("/api/tenants/{tenant_id}/posts")
 def list_profile_posts(tenant_id: str, request: Request):
     """A profile's posts (any logged-in user can view)."""
@@ -286,6 +313,39 @@ def list_profile_posts(tenant_id: str, request: Request):
     ]
     posts.sort(key=lambda p: p["created_at"], reverse=True)
     return {"posts": posts}
+
+
+@app.get("/api/tenants/{tenant_id}/posts/{post_id}")
+def get_post(tenant_id: str, post_id: str, request: Request):
+    """Read one post's full content (metadata from DynamoDB, body from S3)."""
+    try:
+        _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        item = ddb.get_item(
+            TableName=POSTS_TABLE,
+            Key={"tenant_id": {"S": tenant_id}, "post_id": {"S": post_id}},
+        ).get("Item")
+    except ClientError:
+        item = None
+    if not item:
+        return JSONResponse(status_code=404, content={"error": "post not found"})
+
+    content = ""
+    s3_key = item.get("s3_key", {}).get("S")
+    if s3_key:
+        try:
+            content = s3.get_object(Bucket=S3_CONTENT_BUCKET, Key=s3_key)["Body"].read().decode("utf-8")
+        except ClientError:
+            content = ""
+    return {
+        "post_id": post_id,
+        "title": item.get("title", {}).get("S", ""),
+        "content": content,
+        "status": item.get("ingestion_status", {}).get("S", ""),
+        "created_at": int(item.get("created_at", {}).get("N", "0")),
+    }
 
 
 @app.post("/ask")

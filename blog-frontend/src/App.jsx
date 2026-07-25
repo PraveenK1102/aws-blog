@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ask, createPost, listProfiles, listProfilePosts, listMyPosts,
+  BrowserRouter, Routes, Route, NavLink, Link, useParams, useNavigate, Navigate,
+} from "react-router-dom";
+import {
+  ask, createPost, listProfiles, getProfile, listProfilePosts, listMyPosts, getPost,
   login, signup, me, getToken, setToken, clearToken,
 } from "./api";
 
@@ -15,7 +18,19 @@ export default function App() {
 
   if (booting) return <div className="empty">Loading…</div>;
   if (!user) return <Auth onAuthed={(r) => { setToken(r.token); setUser(r.user); }} />;
-  return <Shell user={user} onLogout={() => { clearToken(); setUser(null); }} />;
+
+  return (
+    <BrowserRouter>
+      <Shell user={user} onLogout={() => { clearToken(); setUser(null); }}>
+        <Routes>
+          <Route path="/" element={<Discover />} />
+          <Route path="/u/:userId" element={<ProfilePage />} />
+          <Route path="/me" element={<MyBlog user={user} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Shell>
+    </BrowserRouter>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -66,71 +81,77 @@ function Auth({ onAuthed }) {
 }
 
 // ---------------------------------------------------------------------------
-// Signed-in shell: Discover (profiles) | Write (my blog)
+// Signed-in shell
 // ---------------------------------------------------------------------------
-function Shell({ user, onLogout }) {
-  const [tab, setTab] = useState("discover");
+function Shell({ user, onLogout, children }) {
+  const navClass = ({ isActive }) => `tab ${isActive ? "active" : ""}`;
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand"><span className="logo">◆</span> MultiTenantRAG</div>
+        <Link to="/" className="brand"><span className="logo">◆</span> MultiTenantRAG</Link>
         <div className="userbox">
           <span className="uemail">{user.email}</span>
           <button className="logout" onClick={onLogout}>Log out</button>
         </div>
       </header>
       <div className="tabs">
-        <button className={`tab ${tab === "discover" ? "active" : ""}`} onClick={() => setTab("discover")}>Discover</button>
-        <button className={`tab ${tab === "write" ? "active" : ""}`} onClick={() => setTab("write")}>My blog</button>
+        <NavLink to="/" end className={navClass}>Discover</NavLink>
+        <NavLink to="/me" className={navClass}>My blog</NavLink>
       </div>
-      <main className="main">
-        {tab === "discover" ? <Discover /> : <MyBlog />}
-      </main>
+      <main className="main">{children}</main>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Discover: a directory of profiles → click one → their page + Ask their AI
+// Discover — directory of profiles → /u/:userId
 // ---------------------------------------------------------------------------
 function Discover() {
   const [profiles, setProfiles] = useState(null);
-  const [selected, setSelected] = useState(null);
-
   useEffect(() => { listProfiles().then(setProfiles).catch(() => setProfiles([])); }, []);
 
-  if (selected) return <ProfilePage profile={selected} onBack={() => setSelected(null)} />;
-  if (profiles === null) return <div className="empty">Loading people…</div>;
-  if (profiles.length === 0) return <div className="empty">No profiles yet.</div>;
+  if (profiles === null) return <div className="empty small">Loading people…</div>;
+  if (profiles.length === 0) return <div className="empty small">No profiles yet.</div>;
 
   return (
     <div className="discover">
       <div className="discover-head">Pick someone and ask their AI</div>
       <div className="profile-grid">
         {profiles.map((p) => (
-          <button key={p.tenant_id} className="profile-card" onClick={() => setSelected(p)}>
+          <Link key={p.tenant_id} to={`/u/${p.user_id}`} className="profile-card">
             <div className="avatar">{initials(p.display_name)}</div>
             <div className="pc-name">{p.display_name}{p.is_me && <span className="you-tag">you</span>}</div>
             <div className="pc-domain">{p.domain}</div>
-          </button>
+          </Link>
         ))}
       </div>
     </div>
   );
 }
 
-function ProfilePage({ profile, onBack }) {
+function ProfilePage() {
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);   // null=loading, false=not found
   const [posts, setPosts] = useState(null);
-  useEffect(() => { listProfilePosts(profile.tenant_id).then(setPosts).catch(() => setPosts([])); }, [profile.tenant_id]);
+  const [reading, setReading] = useState(null);
+
+  useEffect(() => { setProfile(null); getProfile(userId).then(setProfile).catch(() => setProfile(false)); }, [userId]);
+  useEffect(() => {
+    if (profile) { setPosts(null); listProfilePosts(profile.tenant_id).then(setPosts).catch(() => setPosts([])); }
+  }, [profile]);
+
+  if (profile === null) return <div className="empty small">Loading…</div>;
+  if (!profile) return <div className="empty small">Profile not found. <Link to="/">Back</Link></div>;
 
   return (
     <div className="profile-page">
-      <button className="back" onClick={onBack}>← All people</button>
+      <button className="back" onClick={() => navigate("/")}>← All people</button>
       <div className="profile-hero">
         <div className="avatar lg">{initials(profile.display_name)}</div>
         <div>
           <div className="ph-name">{profile.display_name}{profile.is_me && <span className="you-tag">you</span>}</div>
-          <div className="ph-domain">writes about {profile.domain}</div>
+          <div className="ph-domain">{posts ? `${posts.length} post${posts.length === 1 ? "" : "s"}` : ""} · mainly {profile.domain}</div>
         </div>
       </div>
 
@@ -139,19 +160,45 @@ function ProfilePage({ profile, onBack }) {
           <div className="col-label">Posts</div>
           {posts === null ? <div className="empty small">Loading…</div>
             : posts.length === 0 ? <div className="empty small">No posts yet.</div>
-            : <ul className="posts">
-                {posts.map((p) => (
-                  <li key={p.post_id} className="post">
-                    <span className="post-title">{p.title}</span>
-                    <span className={`badge ${p.status}`}>{p.status}</span>
-                  </li>
-                ))}
-              </ul>}
+            : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
         </div>
         <div className="col-chat">
           <div className="col-label">Ask {profile.display_name}’s AI</div>
           <Chat profile={profile} />
         </div>
+      </div>
+
+      {reading && (
+        <PostReader tenantId={profile.tenant_id} postId={reading} onClose={() => setReading(null)} />
+      )}
+    </div>
+  );
+}
+
+function PostList({ posts, onOpen }) {
+  return (
+    <ul className="posts">
+      {posts.map((p) => (
+        <li key={p.post_id} className="post clickable" onClick={() => onOpen(p)}>
+          <span className="post-title">{p.title}</span>
+          <span className={`badge ${p.status}`}>{p.status}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PostReader({ tenantId, postId, onClose }) {
+  const [post, setPost] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => { getPost(tenantId, postId).then(setPost).catch((e) => setErr(e.message)); }, [tenantId, postId]);
+  return (
+    <div className="reader-overlay" onClick={onClose}>
+      <div className="reader" onClick={(e) => e.stopPropagation()}>
+        <button className="reader-close" onClick={onClose}>✕</button>
+        {err ? <div className="empty small">{err}</div>
+          : post === null ? <div className="empty small">Loading…</div>
+          : <article className="markdown">{renderMarkdown(post.content)}</article>}
       </div>
     </div>
   );
@@ -193,8 +240,8 @@ function Chat({ profile }) {
       <div className="messages" ref={scrollRef}>
         {messages.length === 0 && (
           <div className="hint">
-            Ask about anything <b>{profile.display_name}</b> has written ({profile.domain}). The AI answers
-            <b> only</b> from {profile.display_name}’s posts — ask about something else and it politely declines.
+            Ask about anything <b>{profile.display_name}</b> has written about. The AI answers
+            <b> only</b> from {profile.display_name}’s posts — ask about something they haven’t covered and it politely declines.
           </div>
         )}
         {messages.map((m, i) => (
@@ -220,13 +267,14 @@ function Chat({ profile }) {
 }
 
 // ---------------------------------------------------------------------------
-// My blog: write posts + see my own posts
+// My blog
 // ---------------------------------------------------------------------------
-function MyBlog() {
+function MyBlog({ user }) {
   const [posts, setPosts] = useState(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState(null);
+  const [reading, setReading] = useState(null);
   const reload = () => listMyPosts().then(setPosts).catch(() => setPosts([]));
   useEffect(() => { reload(); }, []);
 
@@ -257,16 +305,32 @@ function MyBlog() {
       <div className="col-label" style={{ marginTop: 18 }}>My posts <button className="refresh" onClick={reload}>↻</button></div>
       {posts === null ? <div className="empty small">Loading…</div>
         : posts.length === 0 ? <div className="empty small">No posts yet — write your first above.</div>
-        : <ul className="posts">
-            {posts.map((p) => (
-              <li key={p.post_id} className="post">
-                <span className="post-title">{p.title}</span>
-                <span className={`badge ${p.status}`}>{p.status}</span>
-              </li>
-            ))}
-          </ul>}
+        : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
+
+      {reading && (
+        <PostReader tenantId={user.tenant_id} postId={reading} onClose={() => setReading(null)} />
+      )}
     </div>
   );
+}
+
+function renderMarkdown(md) {
+  const lines = (md || "").split("\n");
+  const out = [];
+  let para = [], list = [];
+  const flushPara = () => { if (para.length) { out.push(<p key={out.length}>{para.join(" ")}</p>); para = []; } };
+  const flushList = () => { if (list.length) { out.push(<ul key={out.length}>{list.map((li, i) => <li key={i}>{li}</li>)}</ul>); list = []; } };
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^#\s+/.test(line)) { flushPara(); flushList(); out.push(<h1 key={out.length}>{line.replace(/^#\s+/, "")}</h1>); }
+    else if (/^##\s+/.test(line)) { flushPara(); flushList(); out.push(<h2 key={out.length}>{line.replace(/^##\s+/, "")}</h2>); }
+    else if (/^###\s+/.test(line)) { flushPara(); flushList(); out.push(<h3 key={out.length}>{line.replace(/^###\s+/, "")}</h3>); }
+    else if (/^[-*]\s+/.test(line)) { flushPara(); list.push(line.replace(/^[-*]\s+/, "")); }
+    else if (line.trim() === "") { flushPara(); flushList(); }
+    else { flushList(); para.push(line); }
+  }
+  flushPara(); flushList();
+  return out;
 }
 
 function initials(name) {

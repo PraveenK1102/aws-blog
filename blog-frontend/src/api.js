@@ -39,9 +39,14 @@ export const me = () => req("/api/auth/me");
 
 // Directory of all profiles (you browse these and ask their AIs).
 export const listProfiles = () => req("/api/users").then((d) => d.users || []);
+// One profile by user_id (for loading a /u/:userId page directly).
+export const getProfile = (userId) => req(`/api/users/${encodeURIComponent(userId)}`);
 // A profile's posts (any logged-in user can view).
 export const listProfilePosts = (tenantId) =>
   req(`/api/tenants/${encodeURIComponent(tenantId)}/posts`).then((d) => d.posts || []);
+// One post's full content (to read it).
+export const getPost = (tenantId, postId) =>
+  req(`/api/tenants/${encodeURIComponent(tenantId)}/posts/${encodeURIComponent(postId)}`);
 // My own posts (for the Write/manage view).
 export const listMyPosts = () => req("/api/posts").then((d) => d.posts || []);
 export const createPost = (title, content) =>
