@@ -54,7 +54,7 @@ SCORE_THRESHOLD = 0.3
 # question about a city the author never mentioned), so we decline WITHOUT an
 # LLM call (saves a Groq request). Above it, we hand the retrieved context to
 # the LLM and let IT judge whether the content genuinely answers the question.
-RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.30"))
+RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.20"))
 TOP_K = 5
 
 ddb = boto3.client("dynamodb", region_name=REGION)
