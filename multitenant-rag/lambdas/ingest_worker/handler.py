@@ -37,7 +37,7 @@ log = get_logger("ingest_worker")
 REGION = os.environ.get("AWS_REGION", "ap-south-1")
 S3_BUCKET = os.environ["S3_CONTENT_BUCKET"]
 POSTS_TABLE = os.environ["POSTS_TABLE"]
-COLLECTION_NAME = "multitenant_chunks"
+COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
 TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
 DENSE_DIMS = 1024
 

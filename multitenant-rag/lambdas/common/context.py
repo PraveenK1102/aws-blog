@@ -42,28 +42,29 @@ def get_context_from_headers(headers: dict) -> tuple[str, str, dict]:
     """
     Resolve user identity and tenant from a plain headers dict.
 
-    Used by the FastAPI/LWA streaming app (which has request.headers, not a
-    Lambda event). Same server-side tenant derivation — tenant_id is never
-    trusted from the client.
+    Identity comes from a signed JWT ('Authorization: Bearer <token>'). The
+    token carries user_id + tenant_id (set at login), so no per-request DB
+    lookup is needed and tenant_id is never trusted from the client body.
     """
-    user_id = None
-    for key, value in headers.items():
-        if key.lower() == "x-user-id":
-            user_id = value.strip() if value else None
-            break
+    # Lazy import so modules that only need _fetch_user (not auth) don't pull
+    # jwt/bcrypt into their deployment package.
+    from common.auth import AuthError, bearer_from_headers, verify_token
 
-    if not user_id:
-        raise ContextError("Missing X-User-Id header")
+    token = bearer_from_headers(headers)
+    if not token:
+        raise ContextError("Missing bearer token")
 
-    user = _fetch_user(user_id)
-    if not user:
-        raise ContextError(f"Unknown user: {user_id}")
+    try:
+        claims = verify_token(token)
+    except AuthError as e:
+        raise ContextError(str(e))
 
-    if not user.get("active", True):
-        raise ContextError(f"User {user_id} is inactive")
+    user_id = claims.get("sub")
+    tenant_id = claims.get("tenant_id")
+    if not user_id or not tenant_id:
+        raise ContextError("Malformed token")
 
-    tenant_id = user["tenant_id"]
-    return user_id, tenant_id, user
+    return user_id, tenant_id, claims
 
 
 def _extract_user_id(event: dict) -> str | None:

@@ -27,6 +27,10 @@ from qdrant_client.models import (
     Prefetch, SparseVector,
 )
 
+from common.auth import (
+    AuthError, create_token, hash_password, verify_password, verify_token,
+    bearer_from_headers,
+)
 from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
 from common.secrets import get_qdrant
@@ -40,7 +44,7 @@ TENANTS_TABLE = os.environ["TENANTS_TABLE"]
 USERS_TABLE = os.environ.get("USERS_TABLE", "multitenant-users")
 POSTS_TABLE = os.environ.get("POSTS_TABLE", "multitenant-posts")
 USAGE_TABLE = os.environ["USAGE_TABLE"]
-COLLECTION_NAME = "multitenant_chunks"
+COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
 TITAN_MODEL_ID = "amazon.titan-embed-text-v2:0"
 SCORE_THRESHOLD = 0.3
 TOP_K = 5
@@ -71,6 +75,18 @@ class AskRequest(BaseModel):
     question: str
 
 
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    display_name: str | None = None
+    domain: str | None = None
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 def _ndjson(event: dict) -> bytes:
     return (json.dumps(event) + "\n").encode("utf-8")
 
@@ -80,28 +96,103 @@ def health():
     return {"ok": True}
 
 
-@app.get("/api/users")
-def list_users():
-    """List personas (users) with their tenant display info — powers the UI picker."""
-    resp = ddb.scan(TableName=USERS_TABLE)
-    users = []
-    for it in resp.get("Items", []):
-        uid = it["user_id"]["S"]
-        tid = it.get("tenant_id", {}).get("S", "")
-        tenant = _get_tenant(tid) if tid else None
-        users.append({
-            "user_id": uid,
-            "tenant_id": tid,
-            "display_name": (tenant or {}).get("display_name", uid),
-            "domain": (tenant or {}).get("domain", ""),
-        })
-    users.sort(key=lambda u: u["display_name"])
-    return {"users": users}
+# ---------------------------------------------------------------------------
+# Auth — signup / login / me. Identity everywhere else comes from the JWT.
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/signup")
+def signup(req: SignupRequest):
+    email = (req.email or "").strip().lower()
+    if not email or "@" not in email:
+        return JSONResponse(status_code=400, content={"error": "valid email required"})
+    if not req.password or len(req.password) < 8:
+        return JSONResponse(status_code=400, content={"error": "password must be at least 8 characters"})
+
+    # Email must be unique (no verification, but no duplicates)
+    existing = ddb.query(
+        TableName=USERS_TABLE, IndexName="by_email",
+        KeyConditionExpression="email = :e",
+        ExpressionAttributeValues={":e": {"S": email}},
+    )
+    if existing.get("Items"):
+        return JSONResponse(status_code=409, content={"error": "email already registered"})
+
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    tenant_id = f"tenant_{uuid.uuid4().hex[:12]}"
+    display = (req.display_name or email.split("@")[0]).strip()
+    now = int(time.time())
+
+    # Signup creates the user AND their tenant/workspace
+    ddb.put_item(TableName=TENANTS_TABLE, Item={
+        "tenant_id": {"S": tenant_id},
+        "display_name": {"S": display},
+        "domain": {"S": (req.domain or "general")},
+        "active": {"BOOL": True},
+        "created_at": {"N": str(now)},
+    })
+    ddb.put_item(TableName=USERS_TABLE, Item={
+        "user_id": {"S": user_id},
+        "email": {"S": email},
+        "password_hash": {"S": hash_password(req.password)},
+        "tenant_id": {"S": tenant_id},
+        "display_name": {"S": display},
+        "active": {"BOOL": True},
+        "created_at": {"N": str(now)},
+    }, ConditionExpression="attribute_not_exists(user_id)")
+
+    token = create_token(user_id, tenant_id, email)
+    log.info("signup", user_id=user_id, tenant_id=tenant_id)
+    return {"token": token, "user": {
+        "user_id": user_id, "tenant_id": tenant_id, "email": email, "display_name": display,
+    }}
 
 
-@app.get("/api/tenants/{tenant_id}/posts")
-def list_posts(tenant_id: str):
-    """List a tenant's posts (newest first)."""
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    email = (req.email or "").strip().lower()
+    resp = ddb.query(
+        TableName=USERS_TABLE, IndexName="by_email",
+        KeyConditionExpression="email = :e",
+        ExpressionAttributeValues={":e": {"S": email}},
+    )
+    items = resp.get("Items", [])
+    # Same generic message whether email or password is wrong (no user enumeration)
+    if not items or not verify_password(req.password, items[0].get("password_hash", {}).get("S", "")):
+        return JSONResponse(status_code=401, content={"error": "invalid email or password"})
+
+    u = items[0]
+    user_id = u["user_id"]["S"]
+    tenant_id = u["tenant_id"]["S"]
+    token = create_token(user_id, tenant_id, email)
+    log.info("login", user_id=user_id, tenant_id=tenant_id)
+    return {"token": token, "user": {
+        "user_id": user_id, "tenant_id": tenant_id, "email": email,
+        "display_name": u.get("display_name", {}).get("S", ""),
+    }}
+
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    token = bearer_from_headers(dict(request.headers))
+    if not token:
+        return JSONResponse(status_code=401, content={"error": "not authenticated"})
+    try:
+        claims = verify_token(token)
+    except AuthError as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    return {"user": {
+        "user_id": claims.get("sub"), "tenant_id": claims.get("tenant_id"),
+        "email": claims.get("email"),
+    }}
+
+
+@app.get("/api/posts")
+def list_posts(request: Request):
+    """List the authenticated user's own posts (tenant from the JWT), newest first."""
+    try:
+        _user_id, tenant_id, _ = get_context_from_headers(dict(request.headers))
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
     resp = ddb.query(
         TableName=POSTS_TABLE,
         KeyConditionExpression="tenant_id = :t",

@@ -49,3 +49,11 @@ def get_qdrant() -> tuple[str, str]:
         return url, key
     creds = get_secret("multitenant/qdrant")
     return creds["url"], creds["api_key"]
+
+
+def get_jwt_secret() -> str:
+    """HMAC secret for signing JWTs. Local dev override via JWT_SECRET env."""
+    env = os.environ.get("JWT_SECRET")
+    if env:
+        return env
+    return get_secret("multitenant/jwt")["secret"]
