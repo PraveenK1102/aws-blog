@@ -33,6 +33,7 @@ from common.auth import (
 )
 from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
+from common.posts import PostError, create_post as create_post_shared
 from common.secrets import get_qdrant
 from llm import stream_answer
 
@@ -85,6 +86,11 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class CreatePostRequest(BaseModel):
+    title: str
+    content: str
 
 
 def _ndjson(event: dict) -> bytes:
@@ -184,6 +190,21 @@ def me(request: Request):
         "user_id": claims.get("sub"), "tenant_id": claims.get("tenant_id"),
         "email": claims.get("email"),
     }}
+
+
+@app.post("/api/posts")
+def create_post(req: CreatePostRequest, request: Request):
+    """Create a post (dev route; prod routes POST /api/posts to the createpost
+    Lambda — both call the same common.posts.create_post)."""
+    try:
+        user_id, tenant_id, _ = get_context_from_headers(dict(request.headers))
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        result = create_post_shared(user_id, tenant_id, req.title, req.content, log=log)
+    except PostError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    return JSONResponse(status_code=200 if result.get("message") else 201, content=result)
 
 
 @app.get("/api/posts")

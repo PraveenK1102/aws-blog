@@ -1,66 +1,114 @@
 import { useEffect, useRef, useState } from "react";
-import { listUsers, listPosts, createPost, ask } from "./api";
+import {
+  ask, createPost, listPosts, login, signup, me,
+  getToken, setToken, clearToken,
+} from "./api";
 
 export default function App() {
-  const [users, setUsers] = useState([]);
-  const [current, setCurrent] = useState(null);
-  const [tab, setTab] = useState("chat");
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [booting, setBooting] = useState(true);
 
+  // On load, if a token exists, validate it.
   useEffect(() => {
-    listUsers()
-      .then((u) => {
-        setUsers(u);
-        setCurrent(u[0] || null);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    if (!getToken()) { setBooting(false); return; }
+    me().then((d) => setUser(d.user)).catch(() => clearToken()).finally(() => setBooting(false));
   }, []);
 
+  function onAuthed(resp) {
+    setToken(resp.token);
+    setUser(resp.user);
+  }
+  function logout() {
+    clearToken();
+    setUser(null);
+  }
+
+  if (booting) return <div className="empty">Loading…</div>;
+  if (!user) return <Auth onAuthed={onAuthed} />;
+  return <Shell user={user} onLogout={logout} />;
+}
+
+// ---------------------------------------------------------------------------
+// Auth gate — nothing else is reachable until signed in.
+// ---------------------------------------------------------------------------
+function Auth({ onAuthed }) {
+  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setErr(null); setBusy(true);
+    try {
+      const resp = mode === "login"
+        ? await login(email.trim(), password)
+        : await signup(email.trim(), password, name.trim() || undefined);
+      onAuthed(resp);
+    } catch (ex) {
+      setErr(ex.message || "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="brand"><span className="logo">◆</span> MultiTenantRAG</div>
+        <p className="auth-sub">Your personal blog with an AI that answers only from what you write.</p>
+
+        <div className="auth-toggle">
+          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Log in</button>
+          <button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Sign up</button>
+        </div>
+
+        <form onSubmit={submit} className="auth-form">
+          {mode === "signup" && (
+            <input placeholder="Display name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+          )}
+          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Password (min 8 chars)" value={password}
+                 onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+          {err && <div className="auth-err">{err}</div>}
+          <button type="submit" disabled={busy}>
+            {busy ? "…" : mode === "login" ? "Log in" : "Create account"}
+          </button>
+        </form>
+        <div className="auth-hint">No email verification in this build — sign up freely to test.</div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Signed-in shell
+// ---------------------------------------------------------------------------
+function Shell({ user, onLogout }) {
+  const [tab, setTab] = useState("chat");
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          <span className="logo">◆</span> MultiTenantRAG
+        <div className="brand"><span className="logo">◆</span> MultiTenantRAG</div>
+        <div className="userbox">
+          <span className="uemail">{user.email}</span>
+          <button className="logout" onClick={onLogout}>Log out</button>
         </div>
-        <div className="tagline">Serverless multi-tenant RAG · each persona’s AI answers only from their own posts</div>
       </header>
-
-      {loading ? (
-        <div className="empty">Loading personas…</div>
-      ) : !current ? (
-        <div className="empty">No personas found. Seed some users first.</div>
-      ) : (
-        <div className="layout">
-          <aside className="sidebar">
-            <div className="side-label">Persona</div>
-            {users.map((u) => (
-              <button
-                key={u.user_id}
-                className={`persona ${current.user_id === u.user_id ? "active" : ""}`}
-                onClick={() => setCurrent(u)}
-              >
-                <span className="persona-name">{u.display_name}</span>
-                <span className="persona-domain">{u.domain}</span>
-              </button>
-            ))}
-          </aside>
-
-          <main className="main">
-            <div className="tabs">
-              {["chat", "posts", "write"].map((t) => (
-                <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-                  {t === "chat" ? "Chat" : t === "posts" ? "Posts" : "Write"}
-                </button>
-              ))}
-            </div>
-
-            {tab === "chat" && <Chat user={current} />}
-            {tab === "posts" && <Posts user={current} />}
-            {tab === "write" && <Write user={current} onDone={() => setTab("posts")} />}
-          </main>
-        </div>
-      )}
+      <div className="tabs">
+        {["chat", "posts", "write"].map((t) => (
+          <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
+            {t === "chat" ? "Ask my AI" : t === "posts" ? "My posts" : "Write"}
+          </button>
+        ))}
+      </div>
+      <main className="main">
+        {tab === "chat" && <Chat user={user} />}
+        {tab === "posts" && <Posts />}
+        {tab === "write" && <Write onDone={() => setTab("posts")} />}
+      </main>
     </div>
   );
 }
@@ -71,40 +119,31 @@ function Chat({ user }) {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
 
-  useEffect(() => setMessages([]), [user.user_id]);
-  useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
-  }, [messages]);
+  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
 
   async function send(e) {
     e.preventDefault();
     const q = input.trim();
     if (!q || busy) return;
-    setInput("");
-    setBusy(true);
+    setInput(""); setBusy(true);
     setMessages((m) => [...m, { role: "user", text: q }, { role: "ai", text: "", citations: null, pending: true }]);
 
     const queue = [];
     let reading = true;
-    // Typewriter: drain tokens at a steady cadence even though the buffered
-    // response arrives in one burst. (Same code path works if we flip the
-    // backend to true streaming later.)
+    // Typewriter cadence — works whether tokens stream in (dev) or arrive together (prod).
     const timer = setInterval(() => {
       if (queue.length) {
         const tok = queue.shift();
         setMessages((m) => {
-          const c = [...m];
-          const last = c[c.length - 1];
+          const c = [...m]; const last = c[c.length - 1];
           c[c.length - 1] = { ...last, text: last.text + tok };
           return c;
         });
-      } else if (!reading) {
-        clearInterval(timer);
-      }
-    }, 18);
+      } else if (!reading) clearInterval(timer);
+    }, 16);
 
     try {
-      const citations = await ask(user.user_id, q, (t) => queue.push(t));
+      const citations = await ask(q, (t) => queue.push(t));
       reading = false;
       setMessages((m) => {
         const c = [...m];
@@ -128,8 +167,8 @@ function Chat({ user }) {
       <div className="messages" ref={scrollRef}>
         {messages.length === 0 && (
           <div className="hint">
-            Ask <b>{user.display_name}</b>’s AI something about {user.domain}. It only knows {user.display_name}’s own
-            posts — ask about another persona’s topic and it will politely decline.
+            Ask your AI anything about what you’ve written. It answers <b>only</b> from your own posts —
+            ask about something you haven’t written and it will politely decline.
           </div>
         )}
         {messages.map((m, i) => (
@@ -139,9 +178,7 @@ function Chat({ user }) {
               {m.citations && m.citations.length > 0 && (
                 <div className="citations">
                   {m.citations.map((c, j) => (
-                    <span key={j} className="cite" title={`score ${c.score}`}>
-                      {c.title}
-                    </span>
+                    <span key={j} className="cite" title={`score ${c.score}`}>{c.title}</span>
                   ))}
                 </div>
               )}
@@ -150,42 +187,37 @@ function Chat({ user }) {
         ))}
       </div>
       <form className="composer" onSubmit={send}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={`Ask ${user.display_name}’s AI…`}
-          disabled={busy}
-        />
-        <button type="submit" disabled={busy || !input.trim()}>
-          {busy ? "…" : "Send"}
-        </button>
+        <input value={input} onChange={(e) => setInput(e.target.value)}
+               placeholder="Ask your AI…" disabled={busy} />
+        <button type="submit" disabled={busy || !input.trim()}>{busy ? "…" : "Send"}</button>
       </form>
     </div>
   );
 }
 
-function Posts({ user }) {
+function Posts() {
   const [posts, setPosts] = useState(null);
-  useEffect(() => {
-    setPosts(null);
-    listPosts(user.tenant_id).then(setPosts).catch(() => setPosts([]));
-  }, [user.tenant_id]);
+  const reload = () => { setPosts(null); listPosts().then(setPosts).catch(() => setPosts([])); };
+  useEffect(reload, []);
 
   if (posts === null) return <div className="empty">Loading posts…</div>;
   if (posts.length === 0) return <div className="empty">No posts yet. Use the Write tab to add one.</div>;
   return (
-    <ul className="posts">
-      {posts.map((p) => (
-        <li key={p.post_id} className="post">
-          <span className="post-title">{p.title}</span>
-          <span className={`badge ${p.status}`}>{p.status}</span>
-        </li>
-      ))}
-    </ul>
+    <div className="posts-wrap">
+      <button className="refresh" onClick={reload}>↻ Refresh</button>
+      <ul className="posts">
+        {posts.map((p) => (
+          <li key={p.post_id} className="post">
+            <span className="post-title">{p.title}</span>
+            <span className={`badge ${p.status}`}>{p.status}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-function Write({ user, onDone }) {
+function Write({ onDone }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState(null);
@@ -194,10 +226,9 @@ function Write({ user, onDone }) {
     e.preventDefault();
     setStatus({ kind: "busy", msg: "Publishing…" });
     try {
-      const r = await createPost(user.user_id, title, content);
-      setStatus({ kind: "ok", msg: `Published (${r.post_id}). Indexing runs async — check Posts in a few seconds.` });
-      setTitle("");
-      setContent("");
+      const r = await createPost(title, content);
+      setStatus({ kind: "ok", msg: `Published (${r.post_id}). Indexing runs async — check My posts in a few seconds.` });
+      setTitle(""); setContent("");
       setTimeout(onDone, 1500);
     } catch (err) {
       setStatus({ kind: "err", msg: err.message });
@@ -207,17 +238,10 @@ function Write({ user, onDone }) {
   return (
     <form className="write" onSubmit={submit}>
       <input placeholder="Post title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-      <textarea
-        placeholder="Markdown content — use # headings; the chunker is markdown-aware."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        rows={12}
-        required
-      />
+      <textarea placeholder="Markdown content — use # headings; the chunker is markdown-aware."
+                value={content} onChange={(e) => setContent(e.target.value)} rows={12} required />
       <div className="write-actions">
-        <button type="submit" disabled={status?.kind === "busy"}>
-          Publish as {user.display_name}
-        </button>
+        <button type="submit" disabled={status?.kind === "busy"}>Publish</button>
         {status && <span className={`status ${status.kind}`}>{status.msg}</span>}
       </div>
     </form>
