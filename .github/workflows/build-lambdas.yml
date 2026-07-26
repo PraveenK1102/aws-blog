@@ -39,10 +39,10 @@ jobs:
     name: build ${{ matrix.repo }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::557690605487:role/github-actions-deploy-role
           aws-region: ${{ env.AWS_REGION }}
