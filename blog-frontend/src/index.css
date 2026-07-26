@@ -5,18 +5,24 @@
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: radial-gradient(1200px 800px at 20% -10%, #1a1f2b, #0f1115);
-  color: #e6e9ef;
+  background: #ffffff;
+  color: #242424;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Reader prose — renderMarkdown emits raw h1/h2/h3/p/ul/li */
+/* Article reading typography — serif, Medium-like */
 @layer components {
-  .markdown h1 { @apply text-2xl font-bold mb-3; }
-  .markdown h2 { @apply text-lg font-semibold mt-5 mb-2; }
-  .markdown h3 { @apply text-sm font-semibold uppercase tracking-wide text-muted mt-4 mb-1.5; }
-  .markdown p  { @apply mb-3 leading-relaxed; }
-  .markdown ul { @apply list-disc pl-5 mb-3; }
-  .markdown li { @apply my-1; }
+  .prose { font-family: Georgia, Cambria, "Times New Roman", serif; }
+  .prose h1 { @apply text-[2rem] leading-tight font-bold mb-4 tracking-tight; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .prose h2 { @apply text-[1.35rem] font-bold mt-8 mb-2 text-ink; }
+  .prose h3 { @apply text-[1.05rem] font-semibold uppercase tracking-wide text-faint mt-6 mb-2; }
+  .prose p  { @apply mb-5 text-[1.15rem] leading-8 text-[#333]; }
+  .prose ul { @apply list-disc pl-6 mb-5 text-[1.15rem] leading-8 text-[#333]; }
+  .prose li { @apply mb-2; }
 }
+
+/* Smooth entrance for the floating chat panel */
+@keyframes popup { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+.animate-popup { animation: popup .16s ease-out; }

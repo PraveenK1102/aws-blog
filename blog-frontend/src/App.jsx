@@ -8,10 +8,9 @@ import {
   login, signup, me, getToken, setToken, clearToken,
 } from "./api";
 
-const INPUT = "bg-surface2 border border-line text-ink px-3.5 py-3 rounded-lg text-sm outline-none focus:border-accent";
-const PRIMARY = "bg-accent text-onaccent font-bold rounded-lg cursor-pointer disabled:opacity-50";
-const AVATAR = "rounded-full grid place-items-center font-bold text-onaccent bg-gradient-to-br from-accent to-accent2";
-const YOU_TAG = "text-[10px] bg-accent/15 text-accent border border-accent/35 px-1.5 py-px rounded-full uppercase tracking-wide";
+const INPUT = "w-full bg-white border border-line rounded-lg px-3.5 py-2.5 text-[15px] outline-none focus:border-accent";
+const DARK = "bg-ink text-white font-medium rounded-full hover:bg-black disabled:opacity-40 transition";
+const AVATAR = "rounded-full grid place-items-center font-semibold text-white bg-gradient-to-br from-accent to-accent2 shrink-0";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -20,7 +19,7 @@ export default function App() {
     if (!getToken()) { setBooting(false); return; }
     me().then((d) => setUser(d.user)).catch(() => clearToken()).finally(() => setBooting(false));
   }, []);
-  if (booting) return <div className="grid place-items-center h-screen text-muted">Loading…</div>;
+  if (booting) return <div className="grid place-items-center h-screen text-faint">Loading…</div>;
   if (!user) return <Auth onAuthed={(r) => { setToken(r.token); setUser(r.user); }} />;
   return (
     <BrowserRouter>
@@ -37,16 +36,8 @@ export default function App() {
   );
 }
 
-function Brand() {
-  return <span className="font-bold flex items-center gap-2 text-ink"><span className="text-accent">◆</span> MultiTenantRAG</span>;
-}
-function Empty({ small, children }) {
-  return <div className={small ? "text-[13px] text-muted p-4" : "grid place-items-center h-[40vh] text-muted"}>{children}</div>;
-}
-function Label({ children }) {
-  return <div className="text-muted text-xs uppercase tracking-wide mb-2.5 flex items-center gap-2">{children}</div>;
-}
-function initials(name) { return (name || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase(); }
+const fmtDate = (ts) => ts ? new Date(ts * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+const initials = (n) => (n || "?").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
 // ---------------------------------------------------------------------------
 function Auth({ onAuthed }) {
@@ -56,49 +47,58 @@ function Auth({ onAuthed }) {
   async function submit(e) {
     e.preventDefault(); setErr(null); setBusy(true);
     try {
-      const resp = mode === "login" ? await login(email.trim(), password) : await signup(email.trim(), password, name.trim() || undefined);
-      onAuthed(resp);
+      const r = mode === "login" ? await login(email.trim(), password) : await signup(email.trim(), password, name.trim() || undefined);
+      onAuthed(r);
     } catch (ex) { setErr(ex.message || "Something went wrong"); } finally { setBusy(false); }
   }
-  const toggle = (m, label) => (
-    <button type="button" onClick={() => setMode(m)} className={`flex-1 rounded-lg py-2.5 font-semibold ${mode === m ? "bg-accent text-onaccent" : "text-muted"}`}>{label}</button>
-  );
   return (
-    <div className="grid place-items-center min-h-screen p-6">
-      <div className="w-full max-w-sm bg-surface border border-line rounded-2xl p-7 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-        <div className="text-xl"><Brand /></div>
-        <p className="text-muted text-sm mt-2 mb-5">Browse people’s blogs and chat with an AI that answers only from what they wrote.</p>
-        <div className="flex bg-surface2 rounded-xl p-1 mb-4">{toggle("login", "Log in")}{toggle("signup", "Sign up")}</div>
-        <form onSubmit={submit} className="flex flex-col gap-2.5">
-          {mode === "signup" && <input className={INPUT} placeholder="Display name (optional)" value={name} onChange={(e) => setName(e.target.value)} />}
-          <input className={INPUT} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <input className={INPUT} type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
-          {err && <div className="text-err text-sm">{err}</div>}
-          <button type="submit" disabled={busy} className={`${PRIMARY} mt-1.5 py-3`}>{busy ? "…" : mode === "login" ? "Log in" : "Create account"}</button>
-        </form>
-        <div className="text-muted text-xs mt-3.5 text-center">No email verification in this build — sign up freely to test.</div>
+    <div className="min-h-screen grid place-items-center px-6 bg-cream">
+      <div className="w-full max-w-[380px]">
+        <div className="text-center mb-8">
+          <div className="text-2xl font-bold tracking-tight">Inkwell</div>
+          <p className="text-soft mt-2">Read people’s writing. Ask their AI anything they’ve written about.</p>
+        </div>
+        <div className="bg-white border border-line rounded-2xl p-7 shadow-sm">
+          <div className="flex gap-6 mb-5 text-[15px] font-medium border-b border-line">
+            {["login", "signup"].map((m) => (
+              <button key={m} onClick={() => setMode(m)}
+                className={`pb-3 -mb-px border-b-2 ${mode === m ? "border-ink text-ink" : "border-transparent text-faint"}`}>
+                {m === "login" ? "Sign in" : "Create account"}
+              </button>
+            ))}
+          </div>
+          <form onSubmit={submit} className="flex flex-col gap-3">
+            {mode === "signup" && <input className={INPUT} placeholder="Display name" value={name} onChange={(e) => setName(e.target.value)} />}
+            <input className={INPUT} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input className={INPUT} type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+            {err && <div className="text-err text-sm">{err}</div>}
+            <button type="submit" disabled={busy} className={`${DARK} py-2.5 mt-1`}>{busy ? "…" : mode === "login" ? "Sign in" : "Create account"}</button>
+          </form>
+          <p className="text-faint text-xs text-center mt-4">No email verification — sign up freely to explore.</p>
+        </div>
       </div>
     </div>
   );
 }
 
 function Shell({ user, onLogout, children }) {
-  const tabCls = ({ isActive }) => `px-3.5 py-2.5 rounded-t-xl font-semibold cursor-pointer border ${isActive ? "text-ink bg-surface border-line border-b-surface" : "text-muted border-transparent"}`;
+  const link = ({ isActive }) => `text-[15px] ${isActive ? "text-ink font-medium" : "text-soft hover:text-ink"}`;
   return (
-    <div className="w-full min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-5 py-4 border-b border-line">
-        <Link to="/"><Brand /></Link>
-        <div className="flex items-center gap-3">
-          <span className="text-muted text-[13px]">{user.email}</span>
-          <button onClick={onLogout} className="bg-surface2 border border-line text-ink px-3 py-1.5 rounded-lg cursor-pointer text-[13px]">Log out</button>
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-line">
+        <div className="max-w-feed mx-auto px-5 h-14 flex items-center justify-between">
+          <Link to="/" className="text-lg font-bold tracking-tight">Inkwell</Link>
+          <nav className="flex items-center gap-6">
+            <NavLink to="/" end className={link}>Discover</NavLink>
+            <NavLink to="/chats" className={link}>Chats</NavLink>
+            <NavLink to="/me" className={link}>Write</NavLink>
+            <span className="w-px h-5 bg-line" />
+            <span className="text-faint text-sm hidden sm:block">{user.email}</span>
+            <button onClick={onLogout} className="text-soft hover:text-ink text-sm">Sign out</button>
+          </nav>
         </div>
       </header>
-      <div className="flex gap-1.5 px-5 pt-3">
-        <NavLink to="/" end className={tabCls}>Discover</NavLink>
-        <NavLink to="/chats" className={tabCls}>Chats</NavLink>
-        <NavLink to="/me" className={tabCls}>My blog</NavLink>
-      </div>
-      <main className="flex-1 bg-surface border border-line rounded-b-xl rounded-tr-xl mx-5 mb-5 p-[18px] flex flex-col">{children}</main>
+      <main className="flex-1 max-w-feed w-full mx-auto px-5 py-10">{children}</main>
     </div>
   );
 }
@@ -107,17 +107,24 @@ function Shell({ user, onLogout, children }) {
 function Discover() {
   const [profiles, setProfiles] = useState(null);
   useEffect(() => { listProfiles().then(setProfiles).catch(() => setProfiles([])); }, []);
-  if (profiles === null) return <Empty small>Loading people…</Empty>;
-  if (profiles.length === 0) return <Empty small>No profiles yet.</Empty>;
+  if (profiles === null) return <p className="text-faint">Loading writers…</p>;
   return (
     <div>
-      <div className="text-muted text-sm mb-3.5">Pick someone and ask their AI</div>
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
+      <h1 className="text-3xl font-bold tracking-tight mb-1">Discover writers</h1>
+      <p className="text-soft mb-8">Open a profile to read their posts — or ask their AI, which answers only from what they wrote.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
         {profiles.map((p) => (
-          <Link key={p.tenant_id} to={`/u/${p.user_id}`} className="flex flex-col items-center gap-2 text-center bg-surface2 border border-line rounded-2xl px-3 py-5 cursor-pointer text-ink transition hover:border-accent hover:-translate-y-0.5">
-            <div className={`${AVATAR} w-[46px] h-[46px] text-[15px]`}>{initials(p.display_name)}</div>
-            <div className="font-semibold text-sm flex items-center gap-1.5">{p.display_name}{p.is_me && <span className={YOU_TAG}>you</span>}</div>
-            <div className="text-muted text-xs">{p.domain}</div>
+          <Link key={p.tenant_id} to={`/u/${p.user_id}`}
+            className="group flex items-center gap-4 bg-white border border-line rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition">
+            <div className={`${AVATAR} w-12 h-12 text-lg`}>{initials(p.display_name)}</div>
+            <div className="min-w-0">
+              <div className="font-semibold flex items-center gap-2 truncate">
+                {p.display_name}
+                {p.is_me && <span className="text-[10px] uppercase tracking-wide text-accent bg-accent/10 px-1.5 py-px rounded-full">you</span>}
+              </div>
+              <div className="text-soft text-sm">writes about {p.domain}</div>
+            </div>
+            <span className="ml-auto text-faint group-hover:text-accent transition">→</span>
           </Link>
         ))}
       </div>
@@ -129,122 +136,137 @@ function ProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const [sp] = useSearchParams();
-  const initialChatId = sp.get("chat");
+  const openChatId = sp.get("chat");
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState(null);
   const [reading, setReading] = useState(null);
+  const [chatOpen, setChatOpen] = useState(!!openChatId);
+
   useEffect(() => { setProfile(null); getProfile(userId).then(setProfile).catch(() => setProfile(false)); }, [userId]);
   useEffect(() => { if (profile) { setPosts(null); listProfilePosts(profile.tenant_id).then(setPosts).catch(() => setPosts([])); } }, [profile]);
-  if (profile === null) return <Empty small>Loading…</Empty>;
-  if (!profile) return <Empty small>Profile not found. <Link to="/" className="text-accent">Back</Link></Empty>;
+  useEffect(() => { setChatOpen(!!openChatId); }, [openChatId]);
+
+  if (profile === null) return <p className="text-faint">Loading…</p>;
+  if (!profile) return <p className="text-faint">Profile not found. <Link to="/" className="text-accent">Back</Link></p>;
+
   return (
-    <div className="flex flex-col">
-      <button onClick={() => navigate("/")} className="self-start bg-transparent border-0 text-accent cursor-pointer text-sm pb-3">← All people</button>
-      <div className="flex items-center gap-3.5 pb-4 border-b border-line mb-4">
-        <div className={`${AVATAR} w-[60px] h-[60px] text-xl`}>{initials(profile.display_name)}</div>
+    <div className="max-w-article mx-auto">
+      <button onClick={() => navigate("/")} className="text-soft hover:text-ink text-sm mb-8">← Discover</button>
+      <div className="flex items-center gap-4 pb-8 border-b border-line">
+        <div className={`${AVATAR} w-16 h-16 text-2xl`}>{initials(profile.display_name)}</div>
         <div>
-          <div className="text-lg font-bold flex items-center gap-2">{profile.display_name}{profile.is_me && <span className={YOU_TAG}>you</span>}</div>
-          <div className="text-muted text-[13px]">{posts ? `${posts.length} post${posts.length === 1 ? "" : "s"}` : ""} · mainly {profile.domain}</div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            {profile.display_name}
+            {profile.is_me && <span className="text-[10px] uppercase tracking-wide text-accent bg-accent/10 px-1.5 py-px rounded-full">you</span>}
+          </h1>
+          <p className="text-soft">{posts ? `${posts.length} post${posts.length === 1 ? "" : "s"}` : ""} · mainly {profile.domain}</p>
         </div>
       </div>
-      <div className="grid gap-[18px] [grid-template-columns:240px_1fr] max-[680px]:grid-cols-1">
-        <div>
-          <Label>Posts</Label>
-          {posts === null ? <Empty small>Loading…</Empty> : posts.length === 0 ? <Empty small>No posts yet.</Empty>
-            : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
-        </div>
-        <div>
-          <Label>Ask {profile.display_name}’s AI</Label>
-          <Chat profile={profile} initialChatId={initialChatId} />
-        </div>
-      </div>
-      {reading && <PostReader tenantId={profile.tenant_id} postId={reading} onClose={() => setReading(null)} />}
+
+      {posts === null ? <p className="text-faint py-10">Loading posts…</p>
+        : posts.length === 0 ? <p className="text-faint py-10">No posts yet.</p>
+        : <div className="divide-y divide-line">
+            {posts.map((p) => (
+              <button key={p.post_id} onClick={() => setReading(p.post_id)} className="group w-full text-left py-6 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight group-hover:text-accent transition">{p.title}</h2>
+                  <div className="text-faint text-sm mt-1">{fmtDate(p.created_at)} · {p.status === "indexed" ? "AI-searchable" : "indexing…"}</div>
+                </div>
+                <span className="text-faint group-hover:text-accent mt-1.5">→</span>
+              </button>
+            ))}
+          </div>}
+
+      {reading && <Reader tenantId={profile.tenant_id} postId={reading} onClose={() => setReading(null)} />}
+      <AskWidget profile={profile} open={chatOpen} setOpen={setChatOpen} initialChatId={openChatId} />
     </div>
   );
 }
 
-function PostList({ posts, onOpen }) {
-  return (
-    <ul className="list-none p-0 m-0 flex flex-col gap-2">
-      {posts.map((p) => (
-        <li key={p.post_id} onClick={() => onOpen(p)} className="flex items-center justify-between gap-2 bg-surface2 border border-line rounded-lg px-3.5 py-3 cursor-pointer transition hover:border-accent">
-          <span className="text-sm">{p.title}</span><Badge status={p.status} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-function Badge({ status }) {
-  const tone = status === "indexed" ? "text-ok bg-ok/10 border-ok/30" : "text-warn bg-warn/10 border-warn/30";
-  return <span className={`shrink-0 text-[11px] px-2.5 py-[3px] rounded-full uppercase tracking-wide font-bold border ${tone}`}>{status}</span>;
-}
-function PostReader({ tenantId, postId, onClose }) {
+function Reader({ tenantId, postId, onClose }) {
   const [post, setPost] = useState(null); const [err, setErr] = useState(null);
   useEffect(() => { getPost(tenantId, postId).then(setPost).catch((e) => setErr(e.message)); }, [tenantId, postId]);
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm grid place-items-center p-6 z-50" onClick={onClose}>
-      <div className="relative w-full max-w-[620px] max-h-[82vh] overflow-y-auto bg-surface border border-line rounded-2xl px-8 py-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-3.5 right-3.5 bg-surface2 border border-line text-muted w-[30px] h-[30px] rounded-lg cursor-pointer">✕</button>
-        {err ? <Empty small>{err}</Empty> : post === null ? <Empty small>Loading…</Empty> : <article className="markdown leading-relaxed text-[15px] text-ink">{renderMarkdown(post.content)}</article>}
+    <div className="fixed inset-0 z-40 bg-black/30 overflow-y-auto" onClick={onClose}>
+      <div className="min-h-full flex justify-center py-10 px-5">
+        <div className="relative w-full max-w-article bg-white rounded-2xl shadow-xl p-8 sm:p-12 h-fit animate-popup" onClick={(e) => e.stopPropagation()}>
+          <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 rounded-full grid place-items-center text-soft hover:bg-cream">✕</button>
+          {err ? <p className="text-faint">{err}</p>
+            : post === null ? <p className="text-faint">Loading…</p>
+            : <article className="prose">
+                <h1>{post.title}</h1>
+                <div className="text-faint text-sm mb-8" style={{ fontFamily: "-apple-system, sans-serif" }}>{fmtDate(post.created_at)}</div>
+                {renderMarkdown(post.content)}
+              </article>}
+        </div>
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Chat with session memory
+// Floating Ask-AI widget (bottom-right of every profile)
 // ---------------------------------------------------------------------------
-function Chat({ profile, initialChatId }) {
+function AskWidget({ profile, open, setOpen, initialChatId }) {
+  const first = (profile.display_name || "").split(" ")[0];
+  return (
+    <>
+      {!open && (
+        <button onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full text-white font-medium shadow-lg bg-gradient-to-br from-accent to-accent2 hover:shadow-xl hover:-translate-y-0.5 transition">
+          <span className="text-lg leading-none">✨</span> Ask {first}’s AI
+        </button>
+      )}
+      {open && (
+        <div className="fixed bottom-6 right-6 z-40 w-[min(400px,calc(100vw-2rem))] h-[min(560px,calc(100vh-3rem))] bg-white border border-line rounded-2xl shadow-2xl flex flex-col animate-popup overflow-hidden">
+          <ChatPanel profile={profile} initialChatId={initialChatId} onClose={() => setOpen(false)} />
+        </div>
+      )}
+    </>
+  );
+}
+
+function ChatPanel({ profile, initialChatId, onClose }) {
   const [chatId, setChatId] = useState(null);
   const [myChats, setMyChats] = useState([]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [menu, setMenu] = useState(false);
   const scrollRef = useRef(null);
+  const first = (profile.display_name || "").split(" ")[0];
 
-  const refreshChats = () => listChats().then((cs) => setMyChats(cs.filter((c) => c.tenant_id === profile.tenant_id))).catch(() => {});
-
-  useEffect(() => {
-    setErr(null); refreshChats();
-    if (initialChatId) loadChat(initialChatId);
-    else { setChatId(null); setMessages([]); }
-    // eslint-disable-next-line
-  }, [profile.tenant_id, initialChatId]);
+  const refresh = () => listChats().then((cs) => setMyChats(cs.filter((c) => c.tenant_id === profile.tenant_id))).catch(() => {});
+  useEffect(() => { refresh(); if (initialChatId) load(initialChatId); /* eslint-disable-next-line */ }, [profile.tenant_id]);
   useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
 
-  async function loadChat(id) {
-    try {
-      const c = await getChat(id);
-      setChatId(id);
-      setMessages((c.messages || []).map((m) => ({ role: m.role, text: m.text, citations: m.citations || null })));
-    } catch { setErr("Could not load that chat."); }
+  async function load(id) {
+    try { const c = await getChat(id); setChatId(id); setMenu(false);
+      setMessages((c.messages || []).map((m) => ({ role: m.role, text: m.text, citations: m.citations || null }))); }
+    catch { setErr("Could not load that chat."); }
   }
-  function newChat() { setChatId(null); setMessages([]); setErr(null); }
-  async function removeChat(id, e) { e.stopPropagation(); await deleteChat(id).catch(() => {}); if (id === chatId) newChat(); refreshChats(); }
+  function fresh() { setChatId(null); setMessages([]); setErr(null); setMenu(false); }
+  async function remove(id, e) { e.stopPropagation(); await deleteChat(id).catch(() => {}); if (id === chatId) fresh(); refresh(); }
 
   async function send(e) {
     e.preventDefault();
-    const q = input.trim();
-    if (!q || busy) return;
+    const q = input.trim(); if (!q || busy) return;
     setErr(null);
     let cid = chatId;
-    if (!cid) {
-      try { const c = await createChat(profile.tenant_id, profile.user_id); cid = c.chat_id; setChatId(cid); }
-      catch (ex) { setErr(ex.message || "Could not start a chat"); return; }
-    }
+    if (!cid) { try { const c = await createChat(profile.tenant_id, profile.user_id); cid = c.chat_id; setChatId(cid); } catch (ex) { setErr(ex.message); return; } }
     setInput(""); setBusy(true);
     setMessages((m) => [...m, { role: "user", text: q }, { role: "ai", text: "", citations: null, pending: true }]);
     const queue = []; let reading = true;
     const timer = setInterval(() => {
       if (queue.length) { const t = queue.shift(); setMessages((m) => { const c = [...m]; const l = c[c.length - 1]; c[c.length - 1] = { ...l, text: l.text + t }; return c; }); }
       else if (!reading) clearInterval(timer);
-    }, 16);
+    }, 14);
     try {
-      const citations = await ask(profile.tenant_id, q, (t) => queue.push(t), cid);
+      const cites = await ask(profile.tenant_id, q, (t) => queue.push(t), cid);
       reading = false;
-      setMessages((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], citations, pending: false }; return c; });
-      refreshChats();
+      setMessages((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], citations: cites, pending: false }; return c; });
+      refresh();
     } catch (ex) {
       reading = false;
       setMessages((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], text: `⚠️ ${ex.message}`, pending: false }; return c; });
@@ -252,97 +274,95 @@ function Chat({ profile, initialChatId }) {
   }
 
   return (
-    <div className="flex flex-col h-[56vh]">
-      <div className="flex flex-wrap gap-1.5 mb-2 items-center">
-        {myChats.map((c) => (
-          <span key={c.chat_id} className={`flex items-center rounded-full border text-[12px] ${c.chat_id === chatId ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface2 text-muted"}`}>
-            <button onClick={() => loadChat(c.chat_id)} className="pl-3 pr-1.5 py-1 max-w-[150px] truncate">{c.title || "New chat"}</button>
-            <button onClick={(e) => removeChat(c.chat_id, e)} title="delete" className="pr-2.5 pl-0.5 py-1 opacity-60 hover:opacity-100">×</button>
-          </span>
-        ))}
-        <button onClick={newChat} className="rounded-full border border-line bg-surface2 text-muted text-[12px] px-3 py-1 hover:border-accent hover:text-accent">＋ New chat ({myChats.length}/5)</button>
+    <>
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-line">
+        <div className={`${AVATAR} w-8 h-8 text-xs`}>{initials(profile.display_name)}</div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-sm leading-tight truncate">Ask {profile.display_name}’s AI</div>
+          <button onClick={() => setMenu((v) => !v)} className="text-faint text-xs hover:text-accent">
+            {myChats.length ? `${myChats.length}/5 chats · switch ▾` : "new conversation"}
+          </button>
+        </div>
+        <button onClick={fresh} title="New chat" className="w-8 h-8 rounded-full grid place-items-center text-soft hover:bg-cream text-lg leading-none">＋</button>
+        <button onClick={onClose} title="Close" className="w-8 h-8 rounded-full grid place-items-center text-soft hover:bg-cream">✕</button>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col gap-3 p-1.5">
+      {menu && (
+        <div className="border-b border-line max-h-40 overflow-y-auto bg-cream">
+          {myChats.length === 0 ? <div className="px-4 py-3 text-faint text-sm">No saved chats yet.</div>
+            : myChats.map((c) => (
+              <div key={c.chat_id} className={`flex items-center px-4 py-2 text-sm hover:bg-white ${c.chat_id === chatId ? "text-accent" : "text-ink"}`}>
+                <button onClick={() => load(c.chat_id)} className="flex-1 text-left truncate">{c.title || "New chat"}</button>
+                <button onClick={(e) => remove(c.chat_id, e)} className="text-faint hover:text-err px-1">🗑</button>
+              </div>
+            ))}
+        </div>
+      )}
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.length === 0 && (
-          <div className="text-muted text-sm leading-relaxed bg-surface2 border border-line rounded-xl p-4">
-            Ask about anything <b>{profile.display_name}</b> has written about. The AI answers <b>only</b> from {profile.display_name}’s posts, remembers this conversation, and asks to clarify if your question is vague.
+          <div className="text-soft text-sm leading-relaxed bg-cream rounded-xl p-4">
+            Ask anything <b>{first}</b> has written about. Answers come <b>only</b> from their posts — remembers the conversation, and asks to clarify if a question is vague.
           </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : ""}`}>
-            <div className={`max-w-[min(80%,640px)] px-3.5 py-3 rounded-2xl leading-relaxed whitespace-pre-wrap text-[14.5px] ${m.role === "user" ? "bg-gradient-to-b from-accent to-[#4f8ff0] text-onaccent rounded-br-sm" : "bg-surface2 border border-line rounded-bl-sm"}`}>
-              {m.text || (m.pending ? <span className="text-muted tracking-widest">•••</span> : "")}
+            <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap text-[14px] ${m.role === "user" ? "bg-ink text-white rounded-br-sm" : "bg-cream text-ink rounded-bl-sm"}`}>
+              {m.text || (m.pending ? <span className="text-faint tracking-widest">•••</span> : "")}
               {m.citations && m.citations.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {m.citations.map((c, j) => <span key={j} title={`score ${c.score}`} className="text-[11.5px] text-accent bg-accent/10 border border-accent/30 px-2 py-[3px] rounded-full">{c.title}</span>)}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {m.citations.map((c, j) => <span key={j} title={`score ${c.score}`} className="text-[11px] text-accent bg-accent/10 px-2 py-px rounded-full">{c.title}</span>)}
                 </div>
               )}
             </div>
           </div>
         ))}
       </div>
-      {err && <div className="text-err text-[13px] px-1.5 pb-1">{err}</div>}
-      <form onSubmit={send} className="flex gap-2 mt-1">
-        <input className={`${INPUT} flex-1`} value={input} onChange={(e) => setInput(e.target.value)} placeholder={`Ask ${profile.display_name}’s AI…`} disabled={busy} />
-        <button type="submit" disabled={busy || !input.trim()} className={`${PRIMARY} px-5`}>{busy ? "…" : "Send"}</button>
+      {err && <div className="text-err text-xs px-4 pb-1">{err}</div>}
+      <form onSubmit={send} className="p-3 border-t border-line flex gap-2">
+        <input className={`${INPUT} rounded-full py-2`} value={input} onChange={(e) => setInput(e.target.value)} placeholder={`Ask ${first}’s AI…`} disabled={busy} />
+        <button type="submit" disabled={busy || !input.trim()} className={`${DARK} px-4 shrink-0`}>{busy ? "…" : "↑"}</button>
       </form>
-    </div>
+    </>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Chats tab — all saved chats + trash
-// ---------------------------------------------------------------------------
 function ChatsList() {
-  const [active, setActive] = useState(null);
-  const [trash, setTrash] = useState([]);
-  const [showTrash, setShowTrash] = useState(false);
+  const [active, setActive] = useState(null); const [trash, setTrash] = useState([]); const [showTrash, setShowTrash] = useState(false);
   const navigate = useNavigate();
   const refresh = () => { listChats().then(setActive).catch(() => setActive([])); listTrash().then(setTrash).catch(() => {}); };
   useEffect(refresh, []);
-
-  const when = (t) => new Date(t * 1000).toLocaleDateString();
-
-  if (active === null) return <Empty small>Loading chats…</Empty>;
+  if (active === null) return <p className="text-faint">Loading chats…</p>;
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <Label>Your chats ({active.length}) · up to 5 per person</Label>
-        {active.length === 0 ? <Empty small>No chats yet. Open someone’s profile and start one.</Empty> : (
-          <ul className="list-none p-0 m-0 flex flex-col gap-2">
+    <div className="max-w-article mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-1">Your chats</h1>
+      <p className="text-soft mb-8">{active.length} saved · up to 5 per writer.</p>
+      {active.length === 0 ? <p className="text-faint">No chats yet. Open a writer and tap “Ask their AI”.</p>
+        : <div className="divide-y divide-line border-y border-line">
             {active.map((c) => (
-              <li key={c.chat_id} className="flex items-center justify-between gap-2 bg-surface2 border border-line rounded-lg px-3.5 py-3">
-                <button onClick={() => navigate(`/u/${c.profile_user_id}?chat=${c.chat_id}`)} className="flex-1 text-left min-w-0">
-                  <div className="text-sm truncate">{c.title || "New chat"}</div>
-                  <div className="text-muted text-xs">with {c.profile_name} · {c.message_count} messages · {when(c.updated_at)}</div>
+              <div key={c.chat_id} className="flex items-center gap-3 py-4">
+                <button onClick={() => navigate(`/u/${c.profile_user_id}?chat=${c.chat_id}`)} className="flex-1 min-w-0 text-left">
+                  <div className="font-medium truncate">{c.title || "New chat"}</div>
+                  <div className="text-faint text-sm">with {c.profile_name} · {c.message_count} messages · {fmtDate(c.updated_at)}</div>
                 </button>
-                <button onClick={() => navigate(`/u/${c.profile_user_id}?chat=${c.chat_id}`)} className="text-accent text-[13px] px-2">Open</button>
-                <button onClick={() => deleteChat(c.chat_id).then(refresh)} className="text-muted text-[13px] px-2 hover:text-err">Delete</button>
-              </li>
+                <button onClick={() => navigate(`/u/${c.profile_user_id}?chat=${c.chat_id}`)} className="text-accent text-sm">Open</button>
+                <button onClick={() => deleteChat(c.chat_id).then(refresh)} className="text-faint hover:text-err text-sm">Delete</button>
+              </div>
             ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <button onClick={() => setShowTrash((s) => !s)} className="text-muted text-[13px]">{showTrash ? "▾" : "▸"} Trash ({trash.length})</button>
-        {showTrash && (
-          trash.length === 0 ? <div className="text-muted text-[13px] p-2">Trash is empty.</div> : (
-            <ul className="list-none p-0 m-0 flex flex-col gap-2 mt-2">
+          </div>}
+      <div className="mt-6">
+        <button onClick={() => setShowTrash((s) => !s)} className="text-faint text-sm hover:text-ink">{showTrash ? "▾" : "▸"} Trash ({trash.length})</button>
+        {showTrash && (trash.length === 0 ? <p className="text-faint text-sm mt-2">Trash is empty.</p>
+          : <div className="divide-y divide-line mt-2">
               {trash.map((c) => (
-                <li key={c.chat_id} className="flex items-center justify-between gap-2 bg-surface2 border border-line rounded-lg px-3.5 py-3 opacity-80">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{c.title || "New chat"}</div>
-                    <div className="text-muted text-xs">with {c.profile_name} · {c.message_count} messages</div>
-                  </div>
-                  <button onClick={() => restoreChat(c.chat_id).then(refresh).catch((e) => alert(e.message))} className="text-accent text-[13px] px-2">Restore</button>
-                  <button onClick={() => { if (confirm("Permanently delete this chat? This cannot be undone.")) permanentDeleteChat(c.chat_id).then(refresh); }} className="text-err text-[13px] px-2">Delete forever</button>
-                </li>
+                <div key={c.chat_id} className="flex items-center gap-3 py-3 text-sm">
+                  <div className="flex-1 min-w-0"><div className="truncate">{c.title || "New chat"}</div><div className="text-faint">with {c.profile_name}</div></div>
+                  <button onClick={() => restoreChat(c.chat_id).then(refresh).catch((e) => alert(e.message))} className="text-accent">Restore</button>
+                  <button onClick={() => { if (confirm("Permanently delete this chat?")) permanentDeleteChat(c.chat_id).then(refresh); }} className="text-err">Delete forever</button>
+                </div>
               ))}
-            </ul>
-          )
-        )}
+            </div>)}
       </div>
     </div>
   );
@@ -357,30 +377,38 @@ function MyBlog({ user }) {
   useEffect(() => { reload(); }, []);
   async function submit(e) {
     e.preventDefault(); setStatus({ kind: "busy", msg: "Publishing…" });
-    try {
-      const r = await createPost(title, content);
-      setStatus({ kind: "ok", msg: `Published (${r.post_id}). Indexing runs async — refresh in a few seconds.` });
-      setTitle(""); setContent(""); setTimeout(reload, 2000);
-    } catch (err) { setStatus({ kind: "err", msg: err.message }); }
+    try { const r = await createPost(title, content); setStatus({ kind: "ok", msg: `Published. Indexing runs in the background — refresh in a few seconds.` }); setTitle(""); setContent(""); setTimeout(reload, 2000); }
+    catch (err) { setStatus({ kind: "err", msg: err.message }); }
   }
-  const statusTone = { ok: "text-ok", err: "text-err", busy: "text-muted" };
+  const tone = { ok: "text-ok", err: "text-err", busy: "text-faint" };
   return (
-    <div className="flex flex-col">
+    <div className="max-w-article mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-6">Write a post</h1>
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <Label>Write a post</Label>
-        <input className={INPUT} placeholder="Post title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <textarea className={`${INPUT} resize-y leading-relaxed`} placeholder="Markdown content — use # headings; the chunker is markdown-aware." value={content} onChange={(e) => setContent(e.target.value)} rows={8} required />
-        <div className="flex items-center gap-3">
-          <button type="submit" disabled={status?.kind === "busy"} className={`${PRIMARY} px-5 py-2.5`}>Publish</button>
-          {status && <span className={`text-[13px] ${statusTone[status.kind]}`}>{status.msg}</span>}
+        <input className="w-full text-2xl font-bold tracking-tight outline-none placeholder:text-faint/60 py-1" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <textarea className="w-full outline-none resize-y text-[1.05rem] leading-8 placeholder:text-faint/60 min-h-[240px]" placeholder="Tell your story… (Markdown — use # headings)" value={content} onChange={(e) => setContent(e.target.value)} required />
+        <div className="flex items-center gap-3 border-t border-line pt-4">
+          <button type="submit" disabled={status?.kind === "busy"} className={`${DARK} px-5 py-2`}>Publish</button>
+          {status && <span className={`text-sm ${tone[status.kind]}`}>{status.msg}</span>}
         </div>
       </form>
-      <div className="mt-[18px]">
-        <Label>My posts <button onClick={reload} className="bg-surface2 border border-line text-muted px-3 py-1.5 rounded-lg cursor-pointer text-[13px]">↻</button></Label>
-        {posts === null ? <Empty small>Loading…</Empty> : posts.length === 0 ? <Empty small>No posts yet — write your first above.</Empty>
-          : <PostList posts={posts} onOpen={(p) => setReading(p.post_id)} />}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold">Your posts</h2>
+          <button onClick={reload} className="text-faint hover:text-ink text-sm">↻ Refresh</button>
+        </div>
+        {posts === null ? <p className="text-faint">Loading…</p>
+          : posts.length === 0 ? <p className="text-faint">Nothing published yet.</p>
+          : <div className="divide-y divide-line border-t border-line">
+              {posts.map((p) => (
+                <button key={p.post_id} onClick={() => setReading(p.post_id)} className="w-full text-left py-4 flex items-center justify-between group">
+                  <span className="group-hover:text-accent">{p.title}</span>
+                  <span className={`text-xs ${p.status === "indexed" ? "text-ok" : "text-warn"}`}>{p.status === "indexed" ? "AI-searchable" : "indexing…"}</span>
+                </button>
+              ))}
+            </div>}
       </div>
-      {reading && <PostReader tenantId={user.tenant_id} postId={reading} onClose={() => setReading(null)} />}
+      {reading && <Reader tenantId={user.tenant_id} postId={reading} onClose={() => setReading(null)} />}
     </div>
   );
 }
@@ -388,17 +416,17 @@ function MyBlog({ user }) {
 function renderMarkdown(md) {
   const lines = (md || "").split("\n");
   const out = []; let para = [], list = [];
-  const flushPara = () => { if (para.length) { out.push(<p key={out.length}>{para.join(" ")}</p>); para = []; } };
-  const flushList = () => { if (list.length) { out.push(<ul key={out.length}>{list.map((li, i) => <li key={i}>{li}</li>)}</ul>); list = []; } };
+  const fp = () => { if (para.length) { out.push(<p key={out.length}>{para.join(" ")}</p>); para = []; } };
+  const fl = () => { if (list.length) { out.push(<ul key={out.length}>{list.map((li, i) => <li key={i}>{li}</li>)}</ul>); list = []; } };
   for (const raw of lines) {
     const line = raw.trimEnd();
-    if (/^#\s+/.test(line)) { flushPara(); flushList(); out.push(<h1 key={out.length}>{line.replace(/^#\s+/, "")}</h1>); }
-    else if (/^##\s+/.test(line)) { flushPara(); flushList(); out.push(<h2 key={out.length}>{line.replace(/^##\s+/, "")}</h2>); }
-    else if (/^###\s+/.test(line)) { flushPara(); flushList(); out.push(<h3 key={out.length}>{line.replace(/^###\s+/, "")}</h3>); }
-    else if (/^[-*]\s+/.test(line)) { flushPara(); list.push(line.replace(/^[-*]\s+/, "")); }
-    else if (line.trim() === "") { flushPara(); flushList(); }
-    else { flushList(); para.push(line); }
+    if (/^#\s+/.test(line)) { fp(); fl(); out.push(<h1 key={out.length}>{line.replace(/^#\s+/, "")}</h1>); }
+    else if (/^##\s+/.test(line)) { fp(); fl(); out.push(<h2 key={out.length}>{line.replace(/^##\s+/, "")}</h2>); }
+    else if (/^###\s+/.test(line)) { fp(); fl(); out.push(<h3 key={out.length}>{line.replace(/^###\s+/, "")}</h3>); }
+    else if (/^[-*]\s+/.test(line)) { fp(); list.push(line.replace(/^[-*]\s+/, "")); }
+    else if (line.trim() === "") { fp(); fl(); }
+    else { fl(); para.push(line); }
   }
-  flushPara(); flushList();
+  fp(); fl();
   return out;
 }
