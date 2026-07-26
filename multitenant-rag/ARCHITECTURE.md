@@ -3,14 +3,25 @@
 Last updated: 2026-06-16
 Status: Design LOCKED — implementation starts with Phase 0 cleanup
 
-> **⚠️ SHIPPED-STATE NOTE (2026-07-26).** This is the *original* locked design. The app shipped
-> to prod with several deliberate changes — read `STATUS.md` / `MASTER-CONTEXT.md` for what's
-> actually live. Key diffs from this doc: **auth is custom JWT** (not the `X-User-Id` header
-> described below); **the product model is "visit a profile, ask THEIR AI"** (a directory, not
-> per-post); **`ask` is buffered via API Gateway** (LWA buffered), not a streaming Function URL
-> (Python has no native streaming; true streaming deferred); **saved chats + conversation memory**
-> were added (`common/chats.py`, `multitenant-chats` table); **relevance is LLM-as-judge** with a
-> 0.20 dense floor. Everything below is otherwise accurate (data models, hybrid retrieval, cost).
+> **⚠️ SHIPPED-STATE NOTE (updated 2026-07-26).** This is the *original* locked design. The app
+> shipped to prod with several deliberate changes — read `STATUS.md` / `MASTER-CONTEXT.md` for
+> what's actually live. Key diffs from this doc:
+> - **Auth is custom JWT** (not the `X-User-Id` header described below); identity from the token.
+> - **Product model** is a directory: "visit a profile, ask THEIR AI" (not per-post) with a
+>   Medium-style UI ("Inkwell") and a **floating Ask-AI widget**.
+> - **`ask` is buffered via API Gateway** (LWA buffered), not a streaming Function URL (Python has
+>   no native streaming; true streaming deferred).
+> - **Saved chats + conversation memory** added (`common/chats.py`, `multitenant-chats` table),
+>   limit **5 per profile**.
+> - **Relevance is LLM-as-judge**; dense floor **0.15** (env `RETRIEVAL_FLOOR`).
+> - **Empty-retrieval handling** added: 0 posts → honest message; has posts → one small-model call
+>   on the profile card decides overview-vs-decline (`_build_profile_prompt`).
+> - **Model tiering**: 8B (`GROQ_MODEL_SMALL`) for that decision; 70B for answers.
+> - **Semantic cache** added (`common/semcache.py`, Qdrant `multitenant_query_cache`) — despite the
+>   "Scope Constraints / does NOT include: Semantic cache" line below, which is now outdated.
+>
+> Data models below are accurate; the two additions (chats table, query-cache collection) are
+> appended in the Data Models section.
 
 ---
 
@@ -207,6 +218,32 @@ SK: timestamp_req (S)         -- format: "{timestamp}#{request_id}"
 Attributes: user_id, query, tokens_input, tokens_output, latency_ms, context_source
 TTL: expires_at (30 days from creation)
 Billing: PAY_PER_REQUEST
+```
+
+**multitenant-chats** (added — saved conversations / memory)
+```
+PK: user_id (S)              -- the visitor who owns the chat
+SK: chat_id (S)
+Attributes: tenant_id (profile chatted with), profile_user_id, profile_name, title,
+            messages (JSON string: [{role, text, citations?}]), status ("active"|"trashed"),
+            created_at, updated_at
+Billing: PAY_PER_REQUEST
+Limit: MAX_ACTIVE=5 active chats PER (user, tenant) — counted app-side via a Query+filter.
+NOTE (scale review): list/count is a Query on user_id then in-memory filter by status/tenant_id;
+no GSI. messages stored as one JSON blob in the item (400KB item cap).
+```
+
+### Qdrant Query Cache Collection (added — semantic cache)
+
+```
+Name: multitenant_query_cache  (self-created by semcache._ensure())
+Vector: dense 1024, Cosine (the question embedding)
+Payload: tenant_id (indexed keyword), question, answer, citations (JSON), created_at
+Read: lookup() dense-searches within tenant_id filter; hit if top score ≥ 0.95 and age < 24h (TTL).
+Write: store() upserts clean single-turn answers only. invalidate_tenant() deletes all points for a
+tenant on any new post (called from ingest_worker after upsert).
+NOTE (scale review): TTL is enforced app-side at read time (no server expiry); invalidation is a
+full per-tenant delete, not per-post.
 ```
 
 ### S3 Content Bucket

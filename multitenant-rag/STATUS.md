@@ -16,11 +16,12 @@ running 100% serverless on AWS (ap-south-1). Real users only — no mock data.
 ## What the product does
 
 1. **Sign up / log in** (email + password, JWT). The app is unusable when logged out.
-2. **Discover** — browse a directory of everyone's profiles.
-3. **Visit a profile** — read their blog posts, and **chat with their AI**, which answers
-   *only* from that person's posts (tenant-isolated retrieval). Off-topic → declines;
-   vague → asks a clarifying question.
-4. **Saved chats** — conversations have memory; keep up to 5, delete → trash → permanent delete.
+2. **Discover** — Medium/Substack-style ("Inkwell") author directory.
+3. **Visit a profile** — read their posts as articles (serif reader), and **chat with their AI**
+   via a **floating widget** (bottom-right), answering *only* from that person's posts
+   (tenant-isolated retrieval). Off-topic → declines; vague → clarifies; **"who is he" / overview
+   questions → synthesized overview from their posts** (or "hasn't published anything yet" if none).
+4. **Saved chats** — conversations have memory; keep **up to 5 PER profile**, delete → trash → permanent delete.
 5. **My blog** — write markdown posts (async chunk + embed + index).
 
 ## Live architecture
@@ -35,10 +36,15 @@ Browser → CloudFront (EOV3277U5A8CF)
                    → chunk → Bedrock Titan (dense) + fastembed BM25 (sparse) → Qdrant Cloud
 ```
 
-- **LLM:** Groq Llama 3.3 70B (prod) / 8B (dev) — `GROQ_MODEL` env var.
+- **LLM:** Groq Llama 3.3 70B answers (`GROQ_MODEL`); the empty-retrieval overview/decision runs on
+  8B (`GROQ_MODEL_SMALL`) — model tiering. All-8B in dev.
 - **Auth:** custom JWT (bcrypt), `multitenant/jwt` secret. Identity from the token, not a header.
-- **Relevance:** low retrieval floor (0.15, env-tunable) short-circuits clearly-irrelevant; else the LLM
-  judges in one call (answer / clarify / decline). RRF hybrid used for ranking + citations.
+- **Relevance:** dense-cosine floor (0.15, env `RETRIEVAL_FLOOR`) short-circuits clearly-irrelevant; else
+  the LLM judges in one call (answer / clarify / decline). RRF hybrid used for ranking + citations.
+- **Empty-retrieval (below floor):** 0 posts → honest "hasn't published anything yet" (no LLM); has posts
+  → one 8B call on the profile card (name+domain+titles) decides overview-vs-decline.
+- **Semantic cache:** per-tenant Qdrant cache (`multitenant_query_cache`, self-created) of clean
+  single-turn answers — cosine ≥0.95, 24h TTL, invalidated on write. ~3-4× faster on hits.
 - **`ask` is buffered** (LWA `buffered` mode via API Gateway) + a client-side typewriter.
   True edge streaming (LWA `response_stream` + Function URL + OAC) is a future item.
 
@@ -69,6 +75,6 @@ $5/mo budget alarm (`multitenant-monthly`) → praveen.kr@zohocorp.com.
 | `MASTER-CONTEXT.md` | Self-contained context to paste into a new session |
 | `PHASE-3-PLAN.md` | Original deployment runbook (historical) |
 | `CLEANUP-STEPS.md` | Phase 0 old-infra teardown (historical) |
-| `lambdas/**` | createpost, ingest_worker, ask (FastAPI+LWA), common/ (auth, chats, posts, context, secrets, logger) |
+| `lambdas/**` | createpost, ingest_worker, ask (FastAPI+LWA), common/ (auth, chats, semcache, posts, context, secrets, logger) |
 | `local/**` | LocalStack dev harness (bootstrap, run, worker, seed, test) |
 | `scripts/init_qdrant.py` | Qdrant collection initializer |

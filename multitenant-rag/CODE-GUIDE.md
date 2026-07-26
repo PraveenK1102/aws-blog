@@ -4,14 +4,31 @@ Every file in `lambdas/`, what it does, and design choices.
 
 Use this as reference while reading the code. Written to explain WHY, not just WHAT.
 
-> **⚠️ 2026-07-26 update.** Files ADDED since this guide was first written (see the actual code
-> for details): `common/auth.py` (bcrypt + JWT), `common/posts.py` (shared create-post logic used
-> by both createpost and the ask app), `common/chats.py` (saved chats CRUD, ≤5, soft+permanent
-> delete). `ask/handler.py` was replaced by **`ask/app.py`** (a FastAPI app served by uvicorn via
-> the **Lambda Web Adapter**) — it now hosts auth, /api/ask (LLM-as-judge + conversation memory),
-> chats, users, tenants, and read-post. `common/context.py` resolves identity from the **JWT**
-> (Authorization: Bearer), not `X-User-Id`. `ask/llm.py` gained 429-retry + a `history` arg for
-> follow-ups. Frontend: `blog-frontend/src/App.jsx` (React Router + Tailwind) + `src/api.js`.
+> **⚠️ 2026-07-26 update — READ THIS; several sections below describe the original design.**
+> Files ADDED / CHANGED since this guide was first written:
+> - `common/auth.py` — bcrypt + JWT (create/verify/bearer).
+> - `common/context.py` — identity from the **JWT** (Authorization: Bearer), not `X-User-Id`.
+> - `common/posts.py` — shared create-post logic (createpost handler + ask dev route).
+> - `common/chats.py` — saved chats CRUD, soft+permanent delete. **Limit is PER-PROFILE**:
+>   MAX_ACTIVE=5 counted by filtering active chats on `tenant_id` (create_chat + set_status).
+> - `common/semcache.py` — semantic answer cache in Qdrant: `lookup` (cosine ≥0.95, 24h TTL),
+>   `store` (single-turn clean answers only), `invalidate_tenant` (from ingest_worker after upsert),
+>   `_ensure` (lazy collection create). All best-effort (degrade to no-cache on error).
+> - `ask/handler.py` → **`ask/app.py`** (FastAPI served by uvicorn via the **Lambda Web Adapter**).
+>   Hosts auth, /api/ask, chats, users, tenants, read-post. `/api/ask` flow now: semantic-cache
+>   lookup (single-turn) → `_hybrid_search` → floor gate → **if below floor:** 0 posts → honest
+>   message; else one **small-model** (`GROQ_MODEL_SMALL`) call on the profile card
+>   (`_build_profile_prompt`, from `_tenant_post_titles`) decides overview-vs-decline → **else**
+>   LLM-judge answer on 70B → cache clean answers. Result types logged: answered / refused /
+>   below_floor / empty_corpus / overview / declined / cache_hit.
+> - `ask/llm.py` — 429-retry, `history` for follow-ups, and a `model` override + `GROQ_MODEL_SMALL`
+>   (model tiering: easy decision on 8B, answers on 70B).
+> - `ingest_worker/handler.py` — after Qdrant upsert, calls `semcache.invalidate_tenant(tenant_id)`.
+> - Frontend: `blog-frontend/src/App.jsx` (React Router + Tailwind, Medium-style "Inkwell" UI +
+>   floating Ask-AI widget), `src/api.js`, `tailwind.config.js` (light theme, serif article body).
+>
+> Below, the `ask/handler.py`, `common/context.py`, and `common/responses.py` sections describe
+> the ORIGINAL design (X-User-Id, streaming Function URL, 0.3 threshold) — kept for history.
 
 ---
 

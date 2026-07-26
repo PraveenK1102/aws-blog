@@ -18,11 +18,18 @@ cloud sibling of the on-prem `ticket-manager` RAG.
 
 ## The product (as shipped)
 - **Auth gate** — email+password (JWT, bcrypt). Nothing works logged out. Google login = future.
-- **Discover** → profile directory; **profile page** → their posts (readable) + "Ask their AI".
+- **UI** — Medium/Substack-style blog ("Inkwell"): author directory → author page (post feed +
+  serif article reader) → **floating "Ask their AI" widget** (bottom-right of every profile).
 - **Ask** — tenant-isolated hybrid retrieval (dense+sparse, RRF) → Groq 70B. Relevance is
-  LLM-as-judge in ONE call: answer / clarify (push back on vague) / decline. Low retrieval
-  floor 0.20 only skips the LLM for clearly-irrelevant queries.
-- **Saved chats** — conversation memory; up to 5; delete → trash → permanent delete.
+  LLM-as-judge in ONE call: answer / clarify (push back on vague) / decline. Dense cosine floor
+  0.15 (env `RETRIEVAL_FLOOR`) skips the LLM for clearly-irrelevant queries.
+- **Empty-retrieval handling** — if nothing clears the floor: 0 posts → honest "hasn't published
+  anything yet" (no LLM); has posts → ONE LLM call on the **profile card** (name+domain+titles)
+  decides overview-vs-decline ("who is he" → synthesized overview; off-topic → decline).
+- **Model tiering** — that easy decision runs on 8B (`GROQ_MODEL_SMALL`); real answers stay 70B.
+- **Semantic cache** — per-tenant Qdrant cache of clean single-turn answers (cosine ≥0.95, 24h
+  TTL, invalidate-on-write); ~3-4× faster on hits. Zero-config (self-creates its collection).
+- **Saved chats** — conversation memory; **up to 5 PER profile** (not global); delete → trash → permanent delete.
 - **My blog** — write markdown → async chunk + Bedrock Titan embed + Qdrant.
 
 ## Architecture
@@ -36,8 +43,10 @@ CloudFront (EOV3277U5A8CF)
 ```
 - **3 Lambda container images** (createpost, ingestworker, ask). ECR + GitHub Actions (OIDC, x86).
 - **DynamoDB**: users (+by_email GSI), tenants, posts (GSI by_status), usage-logs (TTL), chats.
-- **Secrets Manager**: multitenant/groq, /qdrant, /jwt. **Bedrock** Titan v2. **Groq** 70B(prod)/8B(dev).
-- **Qdrant Cloud** collection `multitenant_chunks` (prod) / `multitenant_chunks_dev` (dev).
+- **Secrets Manager**: multitenant/groq, /qdrant, /jwt. **Bedrock** Titan v2. **Groq** 70B answers +
+  8B (`GROQ_MODEL_SMALL`) for the empty-retrieval decision (prod); all-8B in dev.
+- **Qdrant Cloud** collections: `multitenant_chunks` (post chunks) + `multitenant_query_cache`
+  (semantic answer cache, self-created). Dev suffix `_dev`.
 - Account 557690605487, region ap-south-1. Repo github.com/PraveenK1102/aws-blog (subdir multitenant-rag/, frontend blog-frontend/). Branch: main (feat/auth-dev-env merged).
 
 ## Dev environment (for iterating without touching prod)
@@ -58,18 +67,29 @@ Dev seeded users: karthikraja / anitharani / senthilkumar / divyabharathi / bala
 ## Key code files (multitenant-rag/lambdas/)
 - `common/auth.py` — bcrypt + JWT (create/verify/bearer). `common/context.py` — identity from JWT.
 - `common/posts.py` — shared create-post logic (used by createpost handler + ask dev route).
-- `common/chats.py` — saved chats (create/list/get/append/soft+permanent delete, max 5).
+- `common/chats.py` — saved chats (create/list/get/append/soft+permanent delete). **Limit is
+  PER-PROFILE**: MAX_ACTIVE=5 counted filtered by tenant_id.
+- `common/semcache.py` — semantic answer cache (lookup/store/invalidate_tenant, lazy _ensure()).
 - `common/secrets.py` — cached secrets, env-var overrides for dev. `common/logger.py` — JSON logger.
-- `ask/app.py` — FastAPI app: auth, /api/ask (LLM-judge, memory), chats, users, tenants, read-post.
-- `ask/llm.py` — Groq streaming client (429 retry, history for follow-ups).
-- `create_post/handler.py` — thin adapter over common.posts. `ingest_worker/handler.py` + `chunker.py`.
-Frontend: `blog-frontend/src/App.jsx` (React Router, Tailwind), `src/api.js`.
+- `ask/app.py` — FastAPI app: auth, /api/ask (LLM-judge, memory, semantic cache, empty-retrieval
+  overview/decline via `_build_profile_prompt`), chats, users, tenants, read-post. Helpers:
+  `_hybrid_search`, `_tenant_post_titles`, `_dedupe_citations`.
+- `ask/llm.py` — Groq streaming client (429 retry, `history` for follow-ups, `model` override +
+  `GROQ_MODEL_SMALL` for tiering).
+- `create_post/handler.py` — thin adapter over common.posts. `ingest_worker/handler.py` (calls
+  `semcache.invalidate_tenant` after upsert) + `chunker.py`.
+Frontend: `blog-frontend/src/App.jsx` (React Router, Tailwind, floating Ask-AI widget), `src/api.js`,
+`tailwind.config.js` (light "Inkwell" theme).
 
 ## How to promote dev → prod
-Merge to main → CI builds 3 images → `aws lambda update-function-code ...:v1` for each. Prod-only infra
-already exists (by_email GSI, chats table, multitenant/jwt secret, widened IAM, API GW $default,
-CloudFront /api/*). Model stays 70B via `GROQ_MODEL` env. **Audit IAM per handler** (get vs query vs scan)
-— LocalStack doesn't enforce it (this bit us once: ask role needed GetItem on posts).
+Push to main → CI (`build-lambdas.yml`) builds 3 images tagged `<sha>`/`v1`/`latest` → deploy the
+changed ones by **immutable SHA**: `aws lambda update-function-code --image-uri <ECR>/<fn>:<sha>`.
+Config updates (env) must wait for the code update (`aws lambda wait function-updated`). Frontend:
+`npm run build` → `aws s3 sync dist/ s3://praveen-blog-frontend --delete` → CloudFront invalidation.
+Semantic cache needs NO infra (defaults + lazy collection create); tiering needs `GROQ_MODEL_SMALL`.
+**Audit IAM per handler** (get vs query vs scan) — LocalStack doesn't enforce it (this bit us once:
+ask role needed GetItem on posts). Prod-only infra already exists (by_email GSI, chats table, jwt secret,
+widened IAM, API GW $default, CloudFront /api/*).
 
 ## Gotchas learned (see learnings/stage-5-serverless.md for the full list)
 Python Lambda has no native streaming → LWA. Function URL public blocked by account BPA → IAM+OAC, but
