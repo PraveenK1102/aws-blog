@@ -17,6 +17,10 @@ from common.secrets import get_groq_key
 log = get_logger("llm")
 
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+# Small/fast model for easy tasks (the empty-retrieval overview-or-decline call),
+# so we don't spend the 70B on them. Defaults to the same as GROQ_MODEL if unset,
+# so behaviour is unchanged until prod sets this to an 8B model.
+GROQ_MODEL_SMALL = os.environ.get("GROQ_MODEL_SMALL", GROQ_MODEL)
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MAX_RETRIES = 4  # on 429 rate-limit, honoring Groq's suggested wait
 
@@ -43,7 +47,8 @@ def _post_with_retry(payload: dict, api_key: str) -> requests.Response:
     raise RuntimeError("Groq error: exhausted retries")
 
 
-def stream_answer(system_prompt: str, user_prompt: str, history: list | None = None) -> Iterator[dict]:
+def stream_answer(system_prompt: str, user_prompt: str, history: list | None = None,
+                  model: str | None = None) -> Iterator[dict]:
     """
     Stream tokens from Groq. Yields events:
       {"type": "content", "text": "..."}  — a token or word
@@ -52,6 +57,9 @@ def stream_answer(system_prompt: str, user_prompt: str, history: list | None = N
     `history` is prior conversation turns [{"role":"user"|"assistant","content":...}]
     inserted between the system prompt and the current question, so follow-ups
     ("yes", "tell me more") have context.
+
+    `model` overrides the default (GROQ_MODEL) — used to route easy tasks to a
+    cheaper/faster model (see GROQ_MODEL_SMALL).
 
     Uses OpenAI-compatible streaming API. Groq returns SSE (server-sent events).
     """
@@ -66,7 +74,7 @@ def stream_answer(system_prompt: str, user_prompt: str, history: list | None = N
     messages.append({"role": "user", "content": user_prompt})
 
     payload = {
-        "model": GROQ_MODEL,
+        "model": model or GROQ_MODEL,
         "messages": messages,
         "stream": True,
         "temperature": 0.3,   # low for factual RAG answers

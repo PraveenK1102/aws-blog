@@ -37,7 +37,7 @@ from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
 from common.posts import PostError, create_post as create_post_shared
 from common.secrets import get_qdrant
-from llm import stream_answer
+from llm import stream_answer, GROQ_MODEL_SMALL
 
 
 log = get_logger("ask")
@@ -552,10 +552,12 @@ async def ask(req: AskRequest, request: Request):
 
             # Let the model decide overview-vs-decline, grounded in name + domain
             # + post titles. It answers identity/overview questions and declines
-            # (with the canonical line) genuine topic misses.
+            # (with the canonical line) genuine topic misses. This is an easy task,
+            # so route it to the small/fast model instead of the 70B answer model.
             parts, tin, tout = [], 0, 0
             try:
-                for ev in stream_answer(_build_profile_prompt(tenant, titles), question, history=history):
+                for ev in stream_answer(_build_profile_prompt(tenant, titles), question,
+                                        history=history, model=GROQ_MODEL_SMALL):
                     if ev["type"] == "content":
                         parts.append(ev["text"]); yield _ndjson(ev)
                     elif ev["type"] == "usage":
