@@ -64,8 +64,10 @@ def get_chat(user_id: str, chat_id: str) -> dict | None:
 
 
 def create_chat(user_id: str, tenant_id: str, profile_name: str, profile_user_id: str = "") -> dict:
-    if len(list_chats(user_id, "active")) >= MAX_ACTIVE:
-        raise ChatLimitError(f"You can keep up to {MAX_ACTIVE} chats — delete one to start a new chat.")
+    # Limit is PER PROFILE: up to MAX_ACTIVE chats with each person, not global.
+    active_here = [c for c in list_chats(user_id, "active") if c["tenant_id"] == tenant_id]
+    if len(active_here) >= MAX_ACTIVE:
+        raise ChatLimitError(f"You can keep up to {MAX_ACTIVE} chats with {profile_name} — delete one to start a new chat here.")
     chat_id = f"chat_{uuid.uuid4().hex[:12]}"
     now = int(time.time())
     _ddb.put_item(TableName=CHATS_TABLE, Item={
@@ -101,8 +103,15 @@ def append_turn(user_id: str, chat_id: str, user_text: str, assistant_text: str,
 
 
 def set_status(user_id: str, chat_id: str, status: str) -> bool:
-    if status == "active" and len(list_chats(user_id, "active")) >= MAX_ACTIVE:
-        raise ChatLimitError(f"You already have {MAX_ACTIVE} active chats.")
+    # Restoring counts against the PER-PROFILE limit for that chat's tenant.
+    if status == "active":
+        chat = get_chat(user_id, chat_id)
+        if chat:
+            tid = chat["tenant_id"]
+            active_here = [c for c in list_chats(user_id, "active") if c["tenant_id"] == tid]
+            if len(active_here) >= MAX_ACTIVE:
+                raise ChatLimitError(
+                    f"You already have {MAX_ACTIVE} active chats with {chat.get('profile_name', 'this person')}.")
     try:
         _ddb.update_item(
             TableName=CHATS_TABLE,

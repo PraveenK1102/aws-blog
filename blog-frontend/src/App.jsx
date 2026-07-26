@@ -260,7 +260,7 @@ function Chat({ profile, initialChatId }) {
             <button onClick={(e) => removeChat(c.chat_id, e)} title="delete" className="pr-2.5 pl-0.5 py-1 opacity-60 hover:opacity-100">×</button>
           </span>
         ))}
-        <button onClick={newChat} className="rounded-full border border-line bg-surface2 text-muted text-[12px] px-3 py-1 hover:border-accent hover:text-accent">＋ New chat</button>
+        <button onClick={newChat} className="rounded-full border border-line bg-surface2 text-muted text-[12px] px-3 py-1 hover:border-accent hover:text-accent">＋ New chat ({myChats.length}/5)</button>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col gap-3 p-1.5">
@@ -308,7 +308,7 @@ function ChatsList() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Label>Your chats ({active.length}/5)</Label>
+        <Label>Your chats ({active.length}) · up to 5 per person</Label>
         {active.length === 0 ? <Empty small>No chats yet. Open someone’s profile and start one.</Empty> : (
           <ul className="list-none p-0 m-0 flex flex-col gap-2">
             {active.map((c) => (
