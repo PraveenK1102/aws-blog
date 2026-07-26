@@ -530,15 +530,46 @@ async def ask(req: AskRequest, request: Request):
             log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
                      floor=RETRIEVAL_FLOOR, hits=len(results), result_type=result_type)
 
-        # Clearly-unrelated → decline without spending an LLM call.
+        # No relevant content retrieved. "who is he?" and "his take on quantum
+        # physics?" BOTH land here for a fitness blogger — same empty retrieval,
+        # opposite right answers, and the score can't tell them apart. So:
+        #   0 posts total → honest "hasn't published anything yet" (no LLM)
+        #   has posts     → ONE LLM call decides from the profile card: answer as
+        #                   an overview if it's a who-are-they question, else
+        #                   decline. No brittle keyword gate.
         if not results or top_dense < RETRIEVAL_FLOOR:
-            msg = f"{tenant['display_name']} hasn't written about this topic."
-            yield _ndjson({"type": "content", "text": msg})
+            titles = _tenant_post_titles(tenant_id)
+
+            if not titles:
+                msg = f"{tenant['display_name']} hasn't published any posts yet, so there's nothing for me to answer from."
+                yield _ndjson({"type": "content", "text": msg})
+                yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
+                log_relevance("empty_corpus")
+                _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty_corpus", started_at)
+                if chat_id:
+                    chatstore.append_turn(asker_id, chat_id, question, msg, [])
+                return
+
+            # Let the model decide overview-vs-decline, grounded in name + domain
+            # + post titles. It answers identity/overview questions and declines
+            # (with the canonical line) genuine topic misses.
+            parts, tin, tout = [], 0, 0
+            try:
+                for ev in stream_answer(_build_profile_prompt(tenant, titles), question, history=history):
+                    if ev["type"] == "content":
+                        parts.append(ev["text"]); yield _ndjson(ev)
+                    elif ev["type"] == "usage":
+                        tin, tout = ev["input_tokens"], ev["output_tokens"]
+            except Exception as e:
+                log.error("profile stream failed", error=str(e), request_id=request_id)
+                yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
+            text = "".join(parts)
+            rtype = "declined" if "hasn't written about this topic" in text.lower() else "overview"
             yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
-            log_relevance("below_floor")
-            _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty", started_at)
+            log_relevance(rtype)
+            _log_usage(tenant_id, asker_id, request_id, question, tin, tout, rtype, started_at)
             if chat_id:
-                chatstore.append_turn(asker_id, chat_id, question, msg, [])
+                chatstore.append_turn(asker_id, chat_id, question, text, [])
             return
 
         system_prompt = _build_system_prompt(tenant, results)
@@ -609,6 +640,39 @@ def _get_tenant(tenant_id: str) -> dict | None:
         "display_name": item.get("display_name", {}).get("S", tenant_id),
         "domain": item.get("domain", {}).get("S", "general"),
     }
+
+
+def _tenant_post_titles(tenant_id: str) -> list[str]:
+    """Titles of everything a profile has published — the 'profile card' used to
+    answer identity/overview questions when retrieval finds nothing relevant."""
+    try:
+        resp = ddb.query(
+            TableName=POSTS_TABLE,
+            KeyConditionExpression="tenant_id = :t",
+            ExpressionAttributeValues={":t": {"S": tenant_id}},
+            ProjectionExpression="title",
+        )
+    except ClientError:
+        return []
+    return [i["title"]["S"] for i in resp.get("Items", []) if i.get("title", {}).get("S")]
+
+
+def _build_profile_prompt(tenant: dict, titles: list[str]) -> str:
+    """Prompt for the empty-retrieval decision: given only the profile card
+    (name, domain, post titles), the model either answers an identity/overview
+    question or declines a genuine topic miss with the canonical line."""
+    title_list = "\n".join(f"- {t}" for t in titles)
+    return f"""You are {tenant['display_name']}'s AI. Retrieval found no post that closely matches the visitor's question, so choose ONE of two responses.
+
+{tenant['display_name']}'s primary domain: {tenant['domain']}.
+Titles of everything {tenant['display_name']} has published:
+{title_list}
+
+1. If the question is about WHO {tenant['display_name']} is, what they write about, or a general overview of them → answer in 2-4 warm, natural sentences describing who they are *based on what they write about* — their domain and the themes across these titles. Do NOT invent biographical facts (age, job, location, name meaning) the titles/domain don't support. If a title directly answers it, name it. End by inviting a follow-up on a specific topic they cover.
+
+2. If the question is about a SPECIFIC topic these titles don't cover → reply with EXACTLY this line and nothing else: "{tenant['display_name']} hasn't written about this topic."
+
+Don't list the titles mechanically and don't copy any bracket markers."""
 
 
 def _hybrid_search(question: str, tenant_id: str, dense_vec: list | None = None):
