@@ -23,7 +23,7 @@ from fastembed import SparseTextEmbedding
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
-    FieldCondition, Filter, Fusion, FusionQuery, MatchValue,
+    FieldCondition, Filter, FilterSelector, Fusion, FusionQuery, MatchValue,
     Prefetch, SparseVector,
 )
 
@@ -158,6 +158,9 @@ def signup(req: SignupRequest):
         "password_hash": {"S": hash_password(req.password)},
         "tenant_id": {"S": tenant_id},
         "display_name": {"S": display},
+        # Denormalized onto the user row so the directory (list_profiles) needs no
+        # per-user tenant lookup — this is what removes the old N+1.
+        "domain": {"S": (req.domain or "general")},
         "active": {"BOOL": True},
         "created_at": {"N": str(now)},
     }, ConditionExpression="attribute_not_exists(user_id)")
@@ -255,27 +258,53 @@ def _require_login(request: Request):
 
 @app.get("/api/users")
 def list_profiles(request: Request):
-    """Directory of all profiles (you browse these and ask their AIs)."""
+    """Directory of all profiles (you browse these and ask their AIs).
+
+    Paginated, one page per call. Reads display_name/domain straight off the user row
+    (denormalized at signup), so there is NO per-user tenant lookup — this removes the
+    old N+1 (a full scan + one GetItem per user) and the silent 1MB truncation. Pass
+    the `cursor` the previous page returned to get the next page.
+
+    NOTE: Scan order isn't globally sorted, so display-name sort is per-page. A
+    globally name-sorted directory needs a GSI (PK=DIRECTORY, SK=display_name) — see
+    multitenant-rag/INFRA-FIXES.md; deferred until the user table is large.
+    """
     try:
-        me_id, my_tenant, _ = _require_login(request)
+        _me_id, my_tenant, _ = _require_login(request)
     except ContextError as e:
         return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
-    resp = ddb.scan(TableName=USERS_TABLE)
+
+    try:
+        limit = min(max(int(request.query_params.get("limit", "24")), 1), 100)
+    except ValueError:
+        limit = 24
+
+    scan_kwargs = {
+        "TableName": USERS_TABLE,
+        "Limit": limit,
+        "ProjectionExpression": "user_id, tenant_id, display_name, #d",
+        "ExpressionAttributeNames": {"#d": "domain"},
+    }
+    cursor = request.query_params.get("cursor")
+    if cursor:
+        scan_kwargs["ExclusiveStartKey"] = {"user_id": {"S": cursor}}
+
+    resp = ddb.scan(**scan_kwargs)
     profiles = []
     for it in resp.get("Items", []):
         tid = it.get("tenant_id", {}).get("S", "")
-        tenant = _get_tenant(tid) if tid else None
-        if not tenant:
+        if not tid:
             continue
         profiles.append({
             "user_id": it["user_id"]["S"],
             "tenant_id": tid,
-            "display_name": tenant.get("display_name", ""),
-            "domain": tenant.get("domain", ""),
+            "display_name": it.get("display_name", {}).get("S", ""),
+            "domain": it.get("domain", {}).get("S", ""),
             "is_me": tid == my_tenant,
         })
     profiles.sort(key=lambda p: p["display_name"].lower())
-    return {"users": profiles}
+    next_cursor = resp.get("LastEvaluatedKey", {}).get("user_id", {}).get("S")
+    return {"users": profiles, "next_cursor": next_cursor}
 
 
 @app.get("/api/users/{user_id}")
@@ -353,8 +382,12 @@ def get_post(tenant_id: str, post_id: str, request: Request):
     if s3_key:
         try:
             content = s3.get_object(Bucket=S3_CONTENT_BUCKET, Key=s3_key)["Body"].read().decode("utf-8")
-        except ClientError:
-            content = ""
+        except ClientError as e:
+            # Don't fake an empty post on a read failure — a blank body reads as
+            # "nothing published". Surface it (like the DDB branch above) so it's
+            # diagnosable instead of a silent wrong answer.
+            log.error("get_post s3 read failed", error=str(e), post_id=post_id, tenant_id=tenant_id)
+            return JSONResponse(status_code=500, content={"error": "could not load post"})
     return {
         "post_id": post_id,
         "title": item.get("title", {}).get("S", ""),
@@ -362,6 +395,66 @@ def get_post(tenant_id: str, post_id: str, request: Request):
         "status": item.get("ingestion_status", {}).get("S", ""),
         "created_at": int(item.get("created_at", {}).get("N", "0")),
     }
+
+
+@app.delete("/api/tenants/{tenant_id}/posts/{post_id}")
+def delete_post(tenant_id: str, post_id: str, request: Request):
+    """Delete one of YOUR OWN posts, cleaning up every store it touches.
+
+    Owner-only: unlike the public GET routes, the tenant in the path MUST equal the
+    caller's JWT tenant. Fans out to DynamoDB (first, so it vanishes from lists
+    immediately) + Qdrant vectors + S3 + the answer cache. The non-DDB steps are
+    best-effort and logged; a fully transactional version would enqueue the cleanup.
+    """
+    try:
+        _user_id, my_tenant, _ = get_context_from_headers(dict(request.headers))
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    if tenant_id != my_tenant:
+        return JSONResponse(status_code=403, content={"error": "you can only delete your own posts"})
+
+    try:
+        item = ddb.get_item(
+            TableName=POSTS_TABLE,
+            Key={"tenant_id": {"S": tenant_id}, "post_id": {"S": post_id}},
+        ).get("Item")
+    except ClientError as e:
+        log.error("delete_post ddb get failed", error=str(e), post_id=post_id)
+        return JSONResponse(status_code=500, content={"error": "could not delete post"})
+    if not item:
+        return JSONResponse(status_code=404, content={"error": "post not found"})
+
+    # 1. DynamoDB row first — gone from the writer's post list right away.
+    try:
+        ddb.delete_item(TableName=POSTS_TABLE,
+                        Key={"tenant_id": {"S": tenant_id}, "post_id": {"S": post_id}})
+    except ClientError as e:
+        log.error("delete_post ddb delete failed", error=str(e), post_id=post_id)
+        return JSONResponse(status_code=500, content={"error": "could not delete post"})
+
+    # 2. Qdrant vectors for this post (same delete-by-post_id primitive the ingester uses).
+    try:
+        _get_qdrant_client().delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=FilterSelector(filter=Filter(
+                must=[FieldCondition(key="post_id", match=MatchValue(value=post_id))])),
+        )
+    except Exception as e:
+        log.error("delete_post qdrant delete failed", error=str(e), post_id=post_id)
+
+    # 3. S3 object.
+    s3_key = item.get("s3_key", {}).get("S")
+    if s3_key:
+        try:
+            s3.delete_object(Bucket=S3_CONTENT_BUCKET, Key=s3_key)
+        except ClientError as e:
+            log.error("delete_post s3 delete failed", error=str(e), post_id=post_id)
+
+    # 4. A removed post may have fed cached answers — bust this tenant's answer cache.
+    semcache.invalidate_tenant(tenant_id)
+
+    log.info("post deleted", tenant_id=tenant_id, post_id=post_id)
+    return {"ok": True, "post_id": post_id}
 
 
 # ---------------------------------------------------------------------------

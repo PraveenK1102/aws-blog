@@ -10,7 +10,6 @@ import hashlib
 import json
 import os
 import time
-import uuid
 
 import boto3
 from botocore.exceptions import ClientError
@@ -35,6 +34,17 @@ class PostError(Exception):
 def create_post(user_id: str, tenant_id: str, title: str, content: str, log=None) -> dict:
     """Create a post for a tenant. Returns {post_id, status[, message]}.
 
+    Dedup and create are ONE idempotent step: post_id is derived from the content
+    hash, so identical content maps to the same id and a conditional PutItem
+    (attribute_not_exists) rejects a duplicate atomically. This replaces the old
+    query+Limit=1 check, which applied Limit BEFORE the content_hash filter and so
+    read one arbitrary post and almost never caught the duplicate (and was racy —
+    two fast double-clicks could both pass the query). The conditional write is
+    correct and race-safe with no extra read.
+
+    If any step after the S3 write fails, we roll back so no orphaned or
+    half-created post ("pending" with no queued work) is ever left behind.
+
     Raises PostError on validation/storage failure.
     """
     bucket = os.environ["S3_CONTENT_BUCKET"]
@@ -48,19 +58,14 @@ def create_post(user_id: str, tenant_id: str, title: str, content: str, log=None
         raise PostError(400, "content cannot be empty")
 
     content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-    existing = _find_existing_by_hash(posts_table, tenant_id, content_hash)
-    if existing:
-        return {
-            "post_id": existing["post_id"],
-            "status": existing["ingestion_status"],
-            "message": "identical content already exists",
-        }
-
-    post_id = f"post_{uuid.uuid4().hex[:12]}"
+    # Deterministic id from (tenant, content) — identical content => same id => the
+    # conditional PutItem below dedups it.
+    post_id = "post_" + hashlib.sha256(
+        f"{tenant_id}|{content_hash}".encode("utf-8")).hexdigest()[:16]
     s3_key = f"tenants/{tenant_id}/posts/{post_id}.md"
     now = int(time.time())
 
-    # 1. content -> S3
+    # 1. content -> S3 (same id -> same key; a duplicate just rewrites identical bytes)
     try:
         _s3.put_object(Bucket=bucket, Key=s3_key, Body=content.encode("utf-8"),
                        ContentType="text/markdown")
@@ -69,7 +74,7 @@ def create_post(user_id: str, tenant_id: str, title: str, content: str, log=None
             log.error("s3 put failed", error=str(e), tenant_id=tenant_id, post_id=post_id)
         raise PostError(500, "failed to save content")
 
-    # 2. metadata -> DynamoDB (rollback S3 on failure)
+    # 2. metadata -> DynamoDB, conditional on the post not already existing (dedup).
     try:
         _ddb.put_item(TableName=posts_table, Item={
             "tenant_id": {"S": tenant_id},
@@ -82,8 +87,17 @@ def create_post(user_id: str, tenant_id: str, title: str, content: str, log=None
             "chunk_count": {"N": "0"},
             "created_at": {"N": str(now)},
             "updated_at": {"N": str(now)},
-        })
+        }, ConditionExpression="attribute_not_exists(post_id)")
     except ClientError as e:
+        if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            # Identical content already exists for this tenant -> return it, don't re-ingest.
+            existing = _ddb.get_item(
+                TableName=posts_table,
+                Key={"tenant_id": {"S": tenant_id}, "post_id": {"S": post_id}},
+            ).get("Item", {})
+            status = existing.get("ingestion_status", {}).get("S", "pending")
+            return {"post_id": post_id, "status": status,
+                    "message": "identical content already exists"}
         if log:
             log.error("dynamodb put failed", error=str(e), post_id=post_id)
         try:
@@ -92,7 +106,8 @@ def create_post(user_id: str, tenant_id: str, title: str, content: str, log=None
             pass
         raise PostError(500, "failed to save metadata")
 
-    # 3. enqueue async ingestion (per-tenant FIFO ordering)
+    # 3. enqueue async ingestion (per-tenant FIFO). If this fails, roll BOTH stores
+    #    back and fail the request — never leave a post stuck "pending" with no worker.
     try:
         _sqs.send_message(
             QueueUrl=queue_url,
@@ -104,27 +119,18 @@ def create_post(user_id: str, tenant_id: str, title: str, content: str, log=None
         )
     except ClientError as e:
         if log:
-            log.error("sqs send failed", error=str(e), post_id=post_id)
-        return {"post_id": post_id, "status": "pending",
-                "warning": "ingestion queue send failed — needs manual retry"}
+            log.error("sqs send failed — rolling back post", error=str(e), post_id=post_id)
+        try:
+            _ddb.delete_item(TableName=posts_table,
+                             Key={"tenant_id": {"S": tenant_id}, "post_id": {"S": post_id}})
+        except ClientError:
+            pass
+        try:
+            _s3.delete_object(Bucket=bucket, Key=s3_key)
+        except ClientError:
+            pass
+        raise PostError(503, "couldn't start indexing — please try again")
 
     if log:
         log.info("post created", user_id=user_id, tenant_id=tenant_id, post_id=post_id)
     return {"post_id": post_id, "status": "pending"}
-
-
-def _find_existing_by_hash(posts_table: str, tenant_id: str, content_hash: str) -> dict | None:
-    try:
-        resp = _ddb.query(
-            TableName=posts_table,
-            KeyConditionExpression="tenant_id = :t",
-            FilterExpression="content_hash = :h",
-            ExpressionAttributeValues={":t": {"S": tenant_id}, ":h": {"S": content_hash}},
-            Limit=1,
-        )
-    except ClientError:
-        return None
-    items = resp.get("Items", [])
-    if not items:
-        return None
-    return {"post_id": items[0]["post_id"]["S"], "ingestion_status": items[0]["ingestion_status"]["S"]}

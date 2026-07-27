@@ -19,11 +19,19 @@ async function req(path, { method = "GET", body, auth = true } = {}) {
   });
   const text = await res.text();
   let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  let parsed = true;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; parsed = false; }
   if (!res.ok) {
     const err = new Error((data && data.error) || res.statusText);
     err.status = res.status;
     err.data = data;
+    throw err;
+  }
+  // Defense-in-depth: a 2xx whose body isn't JSON is almost always CloudFront's SPA
+  // fallback returning index.html for a real /api error. Don't hand HTML back as data.
+  if (!parsed && typeof data === "string" && /^\s*</.test(data)) {
+    const err = new Error("Unexpected response from the server. Please retry.");
+    err.status = res.status;
     throw err;
   }
   return data;
@@ -37,8 +45,11 @@ export const login = (email, password) =>
 
 export const me = () => req("/api/auth/me");
 
-// Directory of all profiles (you browse these and ask their AIs).
-export const listProfiles = () => req("/api/users").then((d) => d.users || []);
+// Directory of profiles, paginated. Pass the cursor from the previous page to get the
+// next; returns { users, nextCursor } (nextCursor is null when there are no more).
+export const listProfiles = (cursor) =>
+  req(`/api/users?limit=24${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`)
+    .then((d) => ({ users: d.users || [], nextCursor: d.next_cursor || null }));
 // One profile by user_id (for loading a /u/:userId page directly).
 export const getProfile = (userId) => req(`/api/users/${encodeURIComponent(userId)}`);
 // A profile's posts (any logged-in user can view).
@@ -51,6 +62,9 @@ export const getPost = (tenantId, postId) =>
 export const listMyPosts = () => req("/api/posts").then((d) => d.posts || []);
 export const createPost = (title, content) =>
   req("/api/posts", { method: "POST", body: { title, content } });
+// Delete one of your own posts (owner-only; the server checks the JWT tenant).
+export const deletePost = (tenantId, postId) =>
+  req(`/api/tenants/${encodeURIComponent(tenantId)}/posts/${encodeURIComponent(postId)}`, { method: "DELETE" });
 
 // Saved chats (conversation memory, up to 5)
 export const listChats = () => req("/api/chats").then((d) => d.chats || []);

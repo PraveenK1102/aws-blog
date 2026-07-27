@@ -178,7 +178,12 @@ def _mark_indexed(tenant_id: str, post_id: str, chunk_count: int) -> None:
             },
         )
     except ClientError as e:
-        log.error("failed to update status", error=str(e), post_id=post_id)
+        # Don't swallow: if this final write fails after a successful Qdrant upsert,
+        # the post is searchable but stuck "pending". Re-raise so SQS retries the whole
+        # message — re-ingest is idempotent (delete-by-post_id + re-upsert), so repeating
+        # it is safe and the status eventually becomes consistent.
+        log.error("failed to update status — will retry", error=str(e), post_id=post_id)
+        raise
 
 
 def _embed_dense_batch(texts: list[str]) -> list[list[float]]:

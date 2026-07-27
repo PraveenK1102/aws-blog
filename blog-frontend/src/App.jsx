@@ -3,7 +3,7 @@ import {
   BrowserRouter, Routes, Route, NavLink, Link, useParams, useNavigate, Navigate, useSearchParams,
 } from "react-router-dom";
 import {
-  ask, createPost, listProfiles, getProfile, listProfilePosts, listMyPosts, getPost,
+  ask, createPost, deletePost, listProfiles, getProfile, listProfilePosts, listMyPosts, getPost,
   listChats, listTrash, getChat, createChat, deleteChat, restoreChat, permanentDeleteChat,
   login, signup, me, getToken, setToken, clearToken,
 } from "./api";
@@ -106,15 +106,32 @@ function Shell({ user, onLogout, children }) {
 // ---------------------------------------------------------------------------
 function Discover() {
   const [profiles, setProfiles] = useState(null);
-  useEffect(() => { listProfiles().then(setProfiles).catch(() => setProfiles([])); }, []);
+  const [cursor, setCursor] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [err, setErr] = useState(false);
+
+  // One page per call; append when following a cursor. (Backend paginates /api/users.)
+  const loadPage = (cur) => listProfiles(cur).then(({ users, nextCursor }) => {
+    setProfiles((prev) => (cur && prev ? [...prev, ...users] : users));
+    setCursor(nextCursor);
+  });
+
+  useEffect(() => { loadPage(null).catch(() => setErr(true)); /* eslint-disable-next-line */ }, []);
+
+  if (err && profiles === null) return (
+    <p className="text-faint">Couldn’t load writers.{" "}
+      <button onClick={() => { setErr(false); setProfiles(null); loadPage(null).catch(() => setErr(true)); }} className="text-accent">Retry</button>
+    </p>
+  );
   if (profiles === null) return <p className="text-faint">Loading writers…</p>;
   return (
     <div>
       <h1 className="text-3xl font-bold tracking-tight mb-1">Discover writers</h1>
       <p className="text-soft mb-8">Open a profile to read their posts — or ask their AI, which answers only from what they wrote.</p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {profiles.length === 0 ? <p className="text-faint">No writers yet.</p>
+        : <div className="grid gap-4 sm:grid-cols-2">
         {profiles.map((p) => (
-          <Link key={p.tenant_id} to={`/u/${p.user_id}`}
+          <Link key={p.user_id} to={`/u/${p.user_id}`}
             className="group flex items-center gap-4 bg-white border border-line rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition">
             <div className={`${AVATAR} w-12 h-12 text-lg`}>{initials(p.display_name)}</div>
             <div className="min-w-0">
@@ -127,7 +144,15 @@ function Discover() {
             <span className="ml-auto text-faint group-hover:text-accent transition">→</span>
           </Link>
         ))}
-      </div>
+      </div>}
+      {cursor && (
+        <div className="mt-8 text-center">
+          <button onClick={() => { setLoadingMore(true); loadPage(cursor).catch(() => {}).finally(() => setLoadingMore(false)); }}
+            disabled={loadingMore} className={`${DARK} px-5 py-2.5`}>
+            {loadingMore ? "Loading…" : "Load more"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -401,10 +426,13 @@ function MyBlog({ user }) {
           : posts.length === 0 ? <p className="text-faint">Nothing published yet.</p>
           : <div className="divide-y divide-line border-t border-line">
               {posts.map((p) => (
-                <button key={p.post_id} onClick={() => setReading(p.post_id)} className="w-full text-left py-4 flex items-center justify-between group">
-                  <span className="group-hover:text-accent">{p.title}</span>
-                  <span className={`text-xs ${p.status === "indexed" ? "text-ok" : "text-warn"}`}>{p.status === "indexed" ? "AI-searchable" : "indexing…"}</span>
-                </button>
+                <div key={p.post_id} className="w-full py-4 flex items-center justify-between gap-3 group">
+                  <button onClick={() => setReading(p.post_id)} className="flex-1 min-w-0 text-left truncate group-hover:text-accent">{p.title}</button>
+                  <span className={`text-xs shrink-0 ${p.status === "indexed" ? "text-ok" : "text-warn"}`}>{p.status === "indexed" ? "AI-searchable" : "indexing…"}</span>
+                  <button
+                    onClick={() => { if (confirm("Delete this post? It's removed from your blog and from the AI's knowledge.")) deletePost(user.tenant_id, p.post_id).then(reload).catch((e) => alert(e.message)); }}
+                    className="text-faint hover:text-err text-sm shrink-0">Delete</button>
+                </div>
               ))}
             </div>}
       </div>
