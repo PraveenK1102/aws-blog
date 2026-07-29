@@ -57,3 +57,24 @@ aws --endpoint-url=http://localhost:4566 dynamodb create-table --table-name mult
   --attribute-definitions AttributeName=user_id,AttributeType=S AttributeName=chat_id,AttributeType=S \
   --key-schema AttributeName=user_id,KeyType=HASH AttributeName=chat_id,KeyType=RANGE \
   --billing-mode PAY_PER_REQUEST --query 'TableDescription.TableStatus' --output text 2>/dev/null || true
+
+# (appended) social + groups (Phase 1–3)
+# follows: PK follower_id, SK followee_id; GSI by_followee (who follows X)
+aws $LS dynamodb create-table --table-name multitenant-follows \
+  --attribute-definitions AttributeName=follower_id,AttributeType=S AttributeName=followee_id,AttributeType=S \
+  --key-schema AttributeName=follower_id,KeyType=HASH AttributeName=followee_id,KeyType=RANGE \
+  --global-secondary-indexes '[{"IndexName":"by_followee","KeySchema":[{"AttributeName":"followee_id","KeyType":"HASH"},{"AttributeName":"follower_id","KeyType":"RANGE"}],"Projection":{"ProjectionType":"KEYS_ONLY"}}]' \
+  --billing-mode PAY_PER_REQUEST --query 'TableDescription.TableStatus' --output text 2>/dev/null || true
+
+# groups: PK group_id
+aws $LS dynamodb create-table --table-name multitenant-groups \
+  --attribute-definitions AttributeName=group_id,AttributeType=S \
+  --key-schema AttributeName=group_id,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST --query 'TableDescription.TableStatus' --output text 2>/dev/null || true
+
+# group-members: PK group_id, SK user_id; GSI by_member ("my groups")
+aws $LS dynamodb create-table --table-name multitenant-group-members \
+  --attribute-definitions AttributeName=group_id,AttributeType=S AttributeName=user_id,AttributeType=S \
+  --key-schema AttributeName=group_id,KeyType=HASH AttributeName=user_id,KeyType=RANGE \
+  --global-secondary-indexes '[{"IndexName":"by_member","KeySchema":[{"AttributeName":"user_id","KeyType":"HASH"},{"AttributeName":"group_id","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}}]' \
+  --billing-mode PAY_PER_REQUEST --query 'TableDescription.TableStatus' --output text 2>/dev/null || true

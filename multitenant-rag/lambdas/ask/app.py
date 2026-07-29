@@ -23,7 +23,7 @@ from fastembed import SparseTextEmbedding
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
-    FieldCondition, Filter, Fusion, FusionQuery, MatchValue,
+    FieldCondition, Filter, Fusion, FusionQuery, MatchAny, MatchValue,
     Prefetch, SparseVector,
 )
 
@@ -32,6 +32,8 @@ from common.auth import (
     bearer_from_headers,
 )
 from common import chats as chatstore
+from common import follows as followstore
+from common import groups as groupstore
 from common import semcache
 from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
@@ -282,7 +284,7 @@ def list_profiles(request: Request):
 def get_profile(user_id: str, request: Request):
     """One profile by user_id (for loading a /u/:userId page directly)."""
     try:
-        _me_id, my_tenant, _ = _require_login(request)
+        me_id, my_tenant, _ = _require_login(request)
     except ContextError as e:
         return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
     try:
@@ -300,6 +302,8 @@ def get_profile(user_id: str, request: Request):
         "display_name": tenant.get("display_name", ""),
         "domain": tenant.get("domain", ""),
         "is_me": tid == my_tenant,
+        "is_following": (me_id != user_id) and followstore.is_following(me_id, user_id),
+        "follower_count": followstore.count_followers(user_id),
     }
 
 
@@ -805,3 +809,341 @@ def _log_usage(tenant_id: str, user_id: str, request_id: str, query: str,
         )
     except ClientError as e:
         log.error("usage log failed", error=str(e), request_id=request_id)
+
+
+# ===========================================================================
+# Phase 1–3: follow, groups, group ask (multi-tenant), global search.
+# All new; the single-profile /api/ask flow above is unchanged.
+# ===========================================================================
+
+class GroupCreateRequest(BaseModel):
+    name: str
+
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+
+
+class GroupAskRequest(BaseModel):
+    question: str
+    group_id: str | None = None
+    tenant_ids: list[str] | None = None
+    chat_id: str | None = None  # optional; group ask is stateless in v1 if omitted
+
+
+class GlobalSearchRequest(BaseModel):
+    question: str
+    limit: int | None = 20
+
+
+# --- tenant-name cache (attribution + discovery display) -------------------
+_tenant_name_cache: dict[str, str] = {}
+
+
+def _tenant_name(tenant_id: str) -> str:
+    if not tenant_id:
+        return ""
+    if tenant_id in _tenant_name_cache:
+        return _tenant_name_cache[tenant_id]
+    t = _get_tenant(tenant_id)
+    name = t["display_name"] if t else tenant_id
+    _tenant_name_cache[tenant_id] = name
+    return name
+
+
+# --- Phase 1: follow / unfollow / following --------------------------------
+
+@app.post("/api/users/{user_id}/follow")
+def follow_user(user_id: str, request: Request):
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    if not followstore.follow(me_id, user_id):
+        return JSONResponse(status_code=400, content={"error": "you can't follow yourself"})
+    return {"ok": True, "is_following": True}
+
+
+@app.delete("/api/users/{user_id}/follow")
+def unfollow_user(user_id: str, request: Request):
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    followstore.unfollow(me_id, user_id)
+    return {"ok": True, "is_following": False}
+
+
+@app.get("/api/me/following")
+def my_following(request: Request):
+    try:
+        me_id, my_tenant, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    profiles = []
+    for uid in followstore.list_following(me_id):
+        try:
+            item = ddb.get_item(TableName=USERS_TABLE, Key={"user_id": {"S": uid}}).get("Item")
+        except ClientError:
+            item = None
+        if not item:
+            continue
+        tid = item.get("tenant_id", {}).get("S", "")
+        tenant = _get_tenant(tid) if tid else None
+        if not tenant:
+            continue
+        profiles.append({
+            "user_id": uid, "tenant_id": tid,
+            "display_name": tenant.get("display_name", ""),
+            "domain": tenant.get("domain", ""),
+            "is_me": tid == my_tenant, "is_following": True,
+        })
+    profiles.sort(key=lambda p: p["display_name"].lower())
+    return {"users": profiles}
+
+
+# --- Phase 1: groups -------------------------------------------------------
+
+@app.post("/api/groups")
+def create_group_ep(req: GroupCreateRequest, request: Request):
+    try:
+        me_id, my_tenant, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        return groupstore.create_group(me_id, my_tenant, req.name)
+    except groupstore.GroupError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+
+
+@app.get("/api/groups")
+def my_groups_ep(request: Request):
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    return {"groups": groupstore.list_my_groups(me_id)}
+
+
+@app.get("/api/groups/{group_id}")
+def group_detail_ep(group_id: str, request: Request):
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    g = groupstore.get_group(group_id)
+    if not g:
+        return JSONResponse(status_code=404, content={"error": "group not found"})
+    members = []
+    for m in groupstore.list_members(group_id):
+        tenant = _get_tenant(m["tenant_id"]) if m["tenant_id"] else None
+        members.append({
+            "user_id": m["user_id"], "tenant_id": m["tenant_id"],
+            "display_name": tenant.get("display_name", "") if tenant else "",
+        })
+    g["members"] = members
+    g["is_owner"] = g["owner_id"] == me_id
+    return g
+
+
+@app.post("/api/groups/{group_id}/members")
+def add_member_ep(group_id: str, req: AddMemberRequest, request: Request):
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        item = ddb.get_item(TableName=USERS_TABLE, Key={"user_id": {"S": req.user_id}}).get("Item")
+    except ClientError:
+        item = None
+    if not item:
+        return JSONResponse(status_code=404, content={"error": "user not found"})
+    tid = item.get("tenant_id", {}).get("S", "")
+    try:
+        groupstore.add_member(group_id, me_id, req.user_id, tid)
+    except groupstore.GroupError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    return {"ok": True}
+
+
+@app.delete("/api/groups/{group_id}/members/{user_id}")
+def remove_member_ep(group_id: str, user_id: str, request: Request):
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        groupstore.remove_member(group_id, me_id, user_id)
+    except groupstore.GroupError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    return {"ok": True}
+
+
+# --- Phase 2: multi-tenant group ask (tag N people / a group, ask) ---------
+
+def _hybrid_search_multi(question: str, tenant_ids: list[str], dense_vec: list | None = None):
+    """Hybrid retrieval across a SET of tenants (MatchAny filter). Same shape as
+    _hybrid_search, but the filter is tenant_id IN [set] instead of == one."""
+    dense = dense_vec if dense_vec is not None else _embed_dense(question)
+    sparse = _embed_sparse(question)
+    qdrant = _get_qdrant_client()
+    flt = Filter(must=[FieldCondition(key="tenant_id", match=MatchAny(any=tenant_ids))])
+    dense_res = qdrant.query_points(
+        collection_name=COLLECTION_NAME, query=dense, using="dense",
+        query_filter=flt, limit=1, with_payload=False)
+    top_dense = dense_res.points[0].score if dense_res.points else 0.0
+    result = qdrant.query_points(
+        collection_name=COLLECTION_NAME,
+        prefetch=[
+            Prefetch(query=dense, using="dense", limit=30),
+            Prefetch(query=SparseVector(indices=sparse["indices"], values=sparse["values"]),
+                     using="sparse", limit=30),
+        ],
+        query=FusionQuery(fusion=Fusion.RRF),
+        query_filter=flt, limit=TOP_K * 2, with_payload=True)
+    return result.points, top_dense
+
+
+def _build_group_system_prompt(results) -> str:
+    blocks = []
+    for r in results:
+        writer = _tenant_name(r.payload.get("tenant_id", ""))
+        blocks.append(f"[From {writer} — post: {r.payload.get('title', '')}]\n{r.payload.get('chunk_text', '')}")
+    ctx = "\n\n---\n\n".join(blocks)
+    return f"""You are answering a question using blog posts from MULTIPLE writers.
+Below are excerpts, each labeled with the writer it came from:
+
+{ctx}
+
+Answer using ONLY these excerpts. Attribute facts to the writer (e.g. "Ravi writes ...");
+if several writers cover it, mention them. If none are relevant, reply exactly:
+"No one in this selection has written about this." Write natural prose; never copy the
+bracketed labels."""
+
+
+def _dedupe_citations_attributed(results) -> list[dict]:
+    """Collapse chunk hits into distinct posts (best score each), with the writer."""
+    best: dict[str, dict] = {}
+    for r in results:
+        pid = r.payload.get("post_id")
+        if not pid:
+            continue
+        score = round(r.score, 4)
+        if pid not in best or score > best[pid]["score"]:
+            best[pid] = {
+                "post_id": pid, "title": r.payload.get("title", ""),
+                "writer": _tenant_name(r.payload.get("tenant_id", "")),
+                "tenant_id": r.payload.get("tenant_id", ""),
+                "user_id": r.payload.get("user_id", ""),
+                "score": score,
+            }
+    return sorted(best.values(), key=lambda c: c["score"], reverse=True)
+
+
+@app.post("/api/ask/group")
+async def ask_group(req: GroupAskRequest, request: Request):
+    """Ask a set of profiles (explicit tenant_ids) or a group. Cross-tenant by
+    design → PUBLIC posts only (every post here is public). Stateless unless a
+    chat_id is supplied. No semantic cache (cross-tenant), no per-profile overview."""
+    request_id = str(uuid.uuid4())
+    started_at = time.time()
+    try:
+        asker_id, _, _ = get_context_from_headers(dict(request.headers))
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+
+    question = (req.question or "").strip()
+    if not question:
+        return JSONResponse(status_code=400, content={"error": "question is required"})
+
+    # Resolve the target set of tenants.
+    targets: list[str] = []
+    if req.group_id:
+        g = groupstore.get_group(req.group_id)
+        if not g:
+            return JSONResponse(status_code=404, content={"error": "group not found"})
+        targets = groupstore.member_tenant_ids(req.group_id)
+    elif req.tenant_ids:
+        targets = [t for t in req.tenant_ids if t]
+    targets = list(dict.fromkeys(targets))  # dedupe, preserve order
+    if not targets:
+        return JSONResponse(status_code=400, content={"error": "select at least one profile"})
+
+    chat_id = (req.chat_id or "").strip() or None
+    history = []
+    if chat_id:
+        chat = chatstore.get_chat(asker_id, chat_id)
+        if chat and chat["status"] == "active":
+            for m in chat["messages"][-8:]:
+                history.append({"role": m["role"], "content": m.get("text", "")})
+
+    log.info("group query start", asker_id=asker_id, targets=len(targets), request_id=request_id)
+
+    def event_stream():
+        q_dense = _embed_dense(question)
+        results, top_dense = _hybrid_search_multi(question, targets, dense_vec=q_dense)
+        if not results or top_dense < RETRIEVAL_FLOOR:
+            msg = "No one in this selection has written about that yet."
+            yield _ndjson({"type": "content", "text": msg})
+            yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
+            if chat_id:
+                chatstore.append_turn(asker_id, chat_id, question, msg, [])
+            return
+        system_prompt = _build_group_system_prompt(results)
+        parts: list[str] = []
+        try:
+            for ev in stream_answer(system_prompt, question, history=history):
+                if ev["type"] == "content":
+                    parts.append(ev["text"])
+                    yield _ndjson(ev)
+        except Exception as e:
+            log.error("group stream failed", error=str(e), request_id=request_id)
+            yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
+        text = "".join(parts)
+        citations = _dedupe_citations_attributed(results)
+        yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
+        latency = int((time.time() - started_at) * 1000)
+        log.info("group query done", request_id=request_id, hits=len(citations), latency_ms=latency)
+        if chat_id:
+            chatstore.append_turn(asker_id, chat_id, question, text, citations)
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+
+
+# --- Phase 3: global discovery search (LLM-free, no tenant filter) ----------
+
+@app.post("/api/search/global")
+def global_search_ep(req: GlobalSearchRequest, request: Request):
+    """Search ALL writers' PUBLIC posts (no tenant filter) — a discovery feature:
+    'who on the platform wrote about X?'. LLM-free (pure vector search), so it
+    doesn't touch the rate-limited model. Rate-limit at the edge (API GW/WAF)."""
+    try:
+        _asker, _, _ = get_context_from_headers(dict(request.headers))
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    q = (req.question or "").strip()
+    if not q:
+        return JSONResponse(status_code=400, content={"error": "question is required"})
+    limit = min(max(int(req.limit or 20), 1), 50)
+    dense = _embed_dense(q)
+    qdrant = _get_qdrant_client()
+    res = qdrant.query_points(
+        collection_name=COLLECTION_NAME, query=dense, using="dense",
+        limit=limit, with_payload=True)  # NO tenant filter = global
+    best: dict[str, dict] = {}
+    for p in res.points:
+        pid = p.payload.get("post_id")
+        if not pid:
+            continue
+        score = round(p.score, 4)
+        if pid not in best or score > best[pid]["score"]:
+            best[pid] = {
+                "post_id": pid, "title": p.payload.get("title", ""),
+                "writer": _tenant_name(p.payload.get("tenant_id", "")),
+                "tenant_id": p.payload.get("tenant_id", ""),
+                "user_id": p.payload.get("user_id", ""),
+                "snippet": (p.payload.get("chunk_text", "") or "")[:200],
+                "score": score,
+            }
+    results = sorted(best.values(), key=lambda c: c["score"], reverse=True)
+    return {"results": results}

@@ -98,3 +98,47 @@ export async function ask(tenantId, question, onToken, chatId) {
   if (buffer) handleLine(buffer);
   return citations;
 }
+
+// --- Phase 1: follow / groups ---
+export const followUser = (userId) => req(`/api/users/${encodeURIComponent(userId)}/follow`, { method: "POST" });
+export const unfollowUser = (userId) => req(`/api/users/${encodeURIComponent(userId)}/follow`, { method: "DELETE" });
+export const listFollowing = () => req("/api/me/following").then((d) => d.users || []);
+
+export const createGroup = (name) => req("/api/groups", { method: "POST", body: { name } });
+export const listGroups = () => req("/api/groups").then((d) => d.groups || []);
+export const getGroup = (groupId) => req(`/api/groups/${groupId}`);
+export const addGroupMember = (groupId, userId) => req(`/api/groups/${groupId}/members`, { method: "POST", body: { user_id: userId } });
+export const removeGroupMember = (groupId, userId) => req(`/api/groups/${groupId}/members/${encodeURIComponent(userId)}`, { method: "DELETE" });
+
+// --- Phase 3: global discovery search (LLM-free) ---
+export const globalSearch = (question) =>
+  req("/api/search/global", { method: "POST", body: { question } }).then((d) => d.results || []);
+
+// Ask a GROUP (group_id) or an explicit set of profiles (tenantIds). Streams NDJSON like ask().
+export async function askGroup({ groupId, tenantIds }, question, onToken, chatId) {
+  const res = await fetch("/api/ask/group", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify({ question, group_id: groupId || undefined, tenant_ids: tenantIds || undefined, chat_id: chatId || undefined }),
+  });
+  if (!res.ok) { await res.text(); throw new Error(`ask failed (${res.status})`); }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "", citations = [];
+  const handleLine = (line) => {
+    line = line.trim(); if (!line) return;
+    let evt; try { evt = JSON.parse(line); } catch { return; }
+    if (evt.type === "content") onToken(evt.text);
+    else if (evt.type === "done") citations = evt.citations || [];
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (const line of lines) handleLine(line);
+  }
+  if (buffer) handleLine(buffer);
+  return citations;
+}
