@@ -123,3 +123,37 @@ def list_my_groups(user_id: str) -> list[dict]:
             break
         kw["ExclusiveStartKey"] = lek
     return out
+
+
+def is_member(group_id: str, user_id: str) -> bool:
+    try:
+        r = _ddb.get_item(TableName=MEMBERS_TABLE,
+                          Key={"group_id": {"S": group_id}, "user_id": {"S": user_id}})
+        return "Item" in r
+    except ClientError:
+        return False
+
+
+def join_group(group_id: str, user_id: str, tenant_id: str) -> dict:
+    """Self-subscribe: any logged-in user can join a group (idempotent)."""
+    g = get_group(group_id)
+    if not g:
+        raise GroupError(404, "group not found")
+    _add_member_item(group_id, user_id, tenant_id)
+    return g
+
+
+def list_all_groups(limit: int = 100) -> list[dict]:
+    """All groups, for discovery. A Scan — fine at small scale; swap for a
+    name-sorted directory index (like the users directory) when it grows."""
+    out: list[dict] = []
+    try:
+        r = _ddb.scan(TableName=GROUPS_TABLE, Limit=limit)
+    except ClientError:
+        return out
+    for it in r.get("Items", []):
+        out.append({"group_id": it["group_id"]["S"], "name": it.get("name", {}).get("S", ""),
+                    "owner_id": it.get("owner_id", {}).get("S", ""),
+                    "created_at": int(it.get("created_at", {}).get("N", "0"))})
+    out.sort(key=lambda g: g["name"].lower())
+    return out

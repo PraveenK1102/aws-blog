@@ -109,6 +109,9 @@ export const listGroups = () => req("/api/groups").then((d) => d.groups || []);
 export const getGroup = (groupId) => req(`/api/groups/${groupId}`);
 export const addGroupMember = (groupId, userId) => req(`/api/groups/${groupId}/members`, { method: "POST", body: { user_id: userId } });
 export const removeGroupMember = (groupId, userId) => req(`/api/groups/${groupId}/members/${encodeURIComponent(userId)}`, { method: "DELETE" });
+export const discoverGroups = () => req("/api/discover/groups").then((d) => d.groups || []);
+export const subscribeGroup = (groupId) => req(`/api/groups/${groupId}/subscribe`, { method: "POST" });
+export const unsubscribeGroup = (groupId) => req(`/api/groups/${groupId}/subscribe`, { method: "DELETE" });
 
 // --- Phase 3: global discovery search (LLM-free) ---
 export const globalSearch = (question) =>

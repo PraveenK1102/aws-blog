@@ -943,7 +943,51 @@ def group_detail_ep(group_id: str, request: Request):
         })
     g["members"] = members
     g["is_owner"] = g["owner_id"] == me_id
+    g["is_member"] = groupstore.is_member(group_id, me_id)
     return g
+
+
+@app.get("/api/discover/groups")
+def discover_groups_ep(request: Request):
+    """All groups anyone can join (discovery). Static path declared with its own
+    prefix so it never collides with /api/groups/{group_id}."""
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    groups = groupstore.list_all_groups()
+    for g in groups:
+        g["is_member"] = groupstore.is_member(g["group_id"], me_id)
+        g["is_owner"] = g["owner_id"] == me_id
+    return {"groups": groups}
+
+
+@app.post("/api/groups/{group_id}/subscribe")
+def subscribe_group_ep(group_id: str, request: Request):
+    """Self-subscribe: any logged-in user can join a group."""
+    try:
+        me_id, my_tenant, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        groupstore.join_group(group_id, me_id, my_tenant)
+    except groupstore.GroupError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    return {"ok": True, "is_member": True}
+
+
+@app.delete("/api/groups/{group_id}/subscribe")
+def unsubscribe_group_ep(group_id: str, request: Request):
+    """Leave a group you subscribed to (self-remove)."""
+    try:
+        me_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        groupstore.remove_member(group_id, me_id, me_id)
+    except groupstore.GroupError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    return {"ok": True, "is_member": False}
 
 
 @app.post("/api/groups/{group_id}/members")

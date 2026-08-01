@@ -8,6 +8,7 @@ import {
   login, signup, me, getToken, setToken, clearToken,
   followUser, unfollowUser, listFollowing,
   createGroup, listGroups, getGroup, addGroupMember, removeGroupMember,
+  discoverGroups, subscribeGroup, unsubscribeGroup,
   globalSearch, askGroup,
 } from "./api";
 
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Discover />} />
           <Route path="/search" element={<GlobalSearchPage />} />
+          <Route path="/ask" element={<AskPeople />} />
           <Route path="/following" element={<Following />} />
           <Route path="/groups" element={<GroupsList />} />
           <Route path="/groups/:groupId" element={<GroupDetail />} />
@@ -100,6 +102,7 @@ function Shell({ user, onLogout, children }) {
             <NavLink to="/search" className={link}>Search</NavLink>
             <NavLink to="/following" className={link}>Following</NavLink>
             <NavLink to="/groups" className={link}>Groups</NavLink>
+            <NavLink to="/ask" className={link}>Ask</NavLink>
             <NavLink to="/chats" className={link}>Chats</NavLink>
             <NavLink to="/me" className={link}>Write</NavLink>
             <span className="w-px h-5 bg-line" />
@@ -490,14 +493,22 @@ function Following() {
 
 function GroupsList() {
   const [groups, setGroups] = useState(null);
+  const [discover, setDiscover] = useState([]);
   const [name, setName] = useState("");
   const navigate = useNavigate();
-  const reload = () => listGroups().then(setGroups).catch(() => setGroups([]));
+  const reload = () => {
+    listGroups().then(setGroups).catch(() => setGroups([]));
+    discoverGroups().then(setDiscover).catch(() => setDiscover([]));
+  };
   useEffect(reload, []);
   async function create(e) {
     e.preventDefault(); if (!name.trim()) return;
     try { const g = await createGroup(name.trim()); setName(""); navigate(`/groups/${g.group_id}`); }
     catch (ex) { alert(ex.message); }
+  }
+  async function toggle(g) {
+    try { if (g.is_member) await unsubscribeGroup(g.group_id); else await subscribeGroup(g.group_id); reload(); }
+    catch (e) { alert(e.message); }
   }
   if (groups === null) return <p className="text-faint">Loading…</p>;
   return (
@@ -508,13 +519,28 @@ function GroupsList() {
         <input className={INPUT} placeholder="New group name" value={name} onChange={(e) => setName(e.target.value)} />
         <button className={`${DARK} px-4 shrink-0`} type="submit">Create</button>
       </form>
-      {groups.length === 0 ? <p className="text-faint">No groups yet.</p>
-        : <div className="divide-y divide-line border-y border-line">
+      <h2 className="font-bold mb-2">Your groups</h2>
+      {groups.length === 0 ? <p className="text-faint mb-8">You're not in any group yet.</p>
+        : <div className="divide-y divide-line border-y border-line mb-8">
             {groups.map((g) => (
               <button key={g.group_id} onClick={() => navigate(`/groups/${g.group_id}`)} className="w-full text-left py-4 flex items-center justify-between group">
                 <span className="font-medium group-hover:text-accent">{g.name}</span>
                 <span className="text-faint group-hover:text-accent">→</span>
               </button>
+            ))}
+          </div>}
+      <h2 className="font-bold mb-2">Discover groups</h2>
+      {discover.length === 0 ? <p className="text-faint">No groups to discover yet.</p>
+        : <div className="divide-y divide-line border-y border-line">
+            {discover.map((g) => (
+              <div key={g.group_id} className="py-4 flex items-center gap-3">
+                <button onClick={() => navigate(`/groups/${g.group_id}`)} className="flex-1 min-w-0 text-left font-medium hover:text-accent truncate">{g.name}</button>
+                {g.is_owner
+                  ? <span className="text-faint text-xs shrink-0">owner</span>
+                  : <button onClick={() => toggle(g)} className={g.is_member
+                      ? "shrink-0 border border-line rounded-full px-3 py-1 text-sm text-soft hover:text-ink"
+                      : `${DARK} shrink-0 px-3 py-1 text-sm`}>{g.is_member ? "Leave" : "Join"}</button>}
+              </div>
             ))}
           </div>}
     </div>
@@ -548,11 +574,19 @@ function GroupDetail() {
   if (!group) return <p className="text-faint">Group not found. <Link to="/groups" className="text-accent">Back</Link></p>;
   async function add(userId) { try { await addGroupMember(groupId, userId); reload(); } catch (e) { alert(e.message); } }
   async function remove(userId) { try { await removeGroupMember(groupId, userId); reload(); } catch (e) { alert(e.message); } }
+  async function toggleSub() { try { if (group.is_member) await unsubscribeGroup(groupId); else await subscribeGroup(groupId); reload(); } catch (e) { alert(e.message); } }
   return (
     <div className="max-w-article mx-auto">
       <Link to="/groups" className="text-soft hover:text-ink text-sm">← Groups</Link>
       <h1 className="text-2xl font-bold tracking-tight mt-3 mb-1">{group.name}</h1>
-      <p className="text-soft mb-6">{group.members.length} member{group.members.length === 1 ? "" : "s"}</p>
+      <p className="text-soft mb-3">{group.members.length} member{group.members.length === 1 ? "" : "s"}</p>
+      {!group.is_owner && (
+        <button onClick={toggleSub} className={group.is_member
+          ? "border border-line rounded-full px-4 py-1.5 text-sm text-soft hover:text-ink mb-6"
+          : `${DARK} px-4 py-1.5 text-sm mb-6`}>
+          {group.is_member ? "Leave group" : "Join group"}
+        </button>
+      )}
       <div className="flex flex-wrap gap-2 mb-4">
         {group.members.map((m) => (
           <span key={m.user_id} className="inline-flex items-center gap-2 bg-cream border border-line rounded-full pl-3 pr-2 py-1 text-sm">
@@ -563,12 +597,12 @@ function GroupDetail() {
       </div>
       {group.is_owner && <button onClick={() => setDirOpen((v) => !v)} className="text-accent text-sm mb-6">{dirOpen ? "Close" : "+ Add members"}</button>}
       {dirOpen && <MemberPicker existing={group.members.map((m) => m.user_id)} onAdd={add} />}
-      <GroupChatPanel groupId={groupId} groupName={group.name} />
+      <GroupChatPanel target={{ groupId }} title={`Ask everyone in ${group.name}`} />
     </div>
   );
 }
 
-function GroupChatPanel({ groupId, groupName }) {
+function GroupChatPanel({ target, title }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -584,7 +618,7 @@ function GroupChatPanel({ groupId, groupName }) {
       else if (!reading) clearInterval(timer);
     }, 14);
     try {
-      const cites = await askGroup({ groupId }, q, (t) => queue.push(t));
+      const cites = await askGroup(target, q, (t) => queue.push(t));
       reading = false;
       setMessages((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], citations: cites, pending: false }; return c; });
     } catch (ex) {
@@ -594,7 +628,7 @@ function GroupChatPanel({ groupId, groupName }) {
   }
   return (
     <div className="border border-line rounded-2xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-line font-semibold text-sm">Ask everyone in {groupName}</div>
+      <div className="px-4 py-3 border-b border-line font-semibold text-sm">{title}</div>
       <div ref={scrollRef} className="max-h-96 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.length === 0 && <div className="text-soft text-sm bg-cream rounded-xl p-4">Ask a question — it searches every member's posts and tells you who wrote what.</div>}
         {messages.map((m, i) => (
@@ -645,6 +679,45 @@ function GlobalSearchPage() {
               </Link>
             ))}
           </div>}
+    </div>
+  );
+}
+
+function AskPeople() {
+  const [profiles, setProfiles] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [q, setQ] = useState("");
+  useEffect(() => { listProfiles().then(setProfiles).catch(() => setProfiles([])); }, []);
+  const isSel = (p) => selected.some((x) => x.tenant_id === p.tenant_id);
+  const toggle = (p) => setSelected((s) => isSel(p) ? s.filter((x) => x.tenant_id !== p.tenant_id) : [...s, p]);
+  const filtered = profiles.filter((p) => !p.is_me && (!q.trim() || (p.display_name || "").toLowerCase().includes(q.toLowerCase())));
+  const tenantIds = selected.map((s) => s.tenant_id);
+  return (
+    <div className="max-w-article mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-1">Ask a few people</h1>
+      <p className="text-soft mb-6">Pick any writers and ask them all at once — no group needed.</p>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {selected.map((s) => (
+            <span key={s.tenant_id} className="inline-flex items-center gap-2 bg-cream border border-line rounded-full pl-3 pr-2 py-1 text-sm">
+              {s.display_name}<button onClick={() => toggle(s)} className="text-faint hover:text-err">✕</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <input className={`${INPUT} mb-3`} placeholder="Search writers to add…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="border border-line rounded-xl divide-y divide-line mb-6 max-h-56 overflow-y-auto">
+        {filtered.length === 0 ? <div className="px-4 py-3 text-faint text-sm">No writers.</div>
+          : filtered.map((p) => (
+            <button key={p.user_id} onClick={() => toggle(p)} className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-cream">
+              <span className={`w-4 h-4 rounded border grid place-items-center text-white text-[10px] shrink-0 ${isSel(p) ? "bg-accent border-accent" : "border-line"}`}>{isSel(p) ? "✓" : ""}</span>
+              <span className="flex-1 truncate">{p.display_name} <span className="text-faint text-sm">· {p.domain}</span></span>
+            </button>
+          ))}
+      </div>
+      {tenantIds.length === 0
+        ? <p className="text-faint">Select at least one writer to start.</p>
+        : <GroupChatPanel key={tenantIds.join(",")} target={{ tenantIds }} title={`Ask ${selected.length} writer${selected.length === 1 ? "" : "s"}`} />}
     </div>
   );
 }
