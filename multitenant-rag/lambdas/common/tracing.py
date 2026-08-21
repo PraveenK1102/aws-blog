@@ -62,6 +62,8 @@ _ALLOWED_META = {
     "input_tokens", "output_tokens", "result_type", "latency_ms",
     "dims", "reused_query_embedding", "embedded_internally",
     "error_type", "retry_count",
+    # group/search flows: non-sensitive counts only (never the ids themselves)
+    "target_count", "result_count",
 }
 
 

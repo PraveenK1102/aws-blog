@@ -1184,33 +1184,78 @@ async def ask_group(req: GroupAskRequest, request: Request):
 
     log.info("group query start", asker_id=asker_id, targets=len(targets), request_id=request_id)
 
+    # LangSmith trace root for the group (multi-tenant) ask. Same no-op-unless-
+    # enabled, fail-open, privacy-safe helper as the single-profile /api/ask.
+    # request_id (already minted above) is the run id -> shared with CloudWatch.
+    # No semantic_cache span: group ask is cross-tenant and intentionally uncached.
+    span = tracer.start_root(
+        "group_ask_request", run_id=request_id,
+        metadata={"request_id": request_id, "has_history": bool(history),
+                  "environment": ENVIRONMENT, "target_count": len(targets)},
+    )
+
     def event_stream():
-        q_dense = _embed_dense(question)
-        results, top_dense = _hybrid_search_multi(question, targets, dense_vec=q_dense)
-        if not results or top_dense < RETRIEVAL_FLOOR:
-            msg = "No one in this selection has written about that yet."
-            yield _ndjson({"type": "content", "text": msg})
-            yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
-            if chat_id:
-                chatstore.append_turn(asker_id, chat_id, question, msg, [])
-            return
-        system_prompt = _build_group_system_prompt(results)
-        parts: list[str] = []
         try:
-            for ev in stream_answer(system_prompt, question, history=history):
-                if ev["type"] == "content":
-                    parts.append(ev["text"])
-                    yield _ndjson(ev)
+            with span.child("retrieval", run_type="retriever") as rt:
+                with rt.child("dense_embedding", run_type="embedding") as de:
+                    q_dense = _embed_dense(question)
+                    de.set(dims=len(q_dense) if q_dense else 0)
+                with rt.child("hybrid_qdrant_search", run_type="retriever") as hs:
+                    results, top_dense = _hybrid_search_multi(question, targets, dense_vec=q_dense)
+                    hs.set(hits=len(results), top_dense=round(top_dense, 3))
+                rt.set(hits=len(results), top_dense=round(top_dense, 3),
+                       floor=RETRIEVAL_FLOOR, target_count=len(targets))
+
+            if not results or top_dense < RETRIEVAL_FLOOR:
+                msg = "No one in this selection has written about that yet."
+                yield _ndjson({"type": "content", "text": msg})
+                yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
+                span.set(result_type="empty")
+                if chat_id:
+                    chatstore.append_turn(asker_id, chat_id, question, msg, [])
+                return
+
+            # Aggregation / context preparation: fuse the multi-writer excerpts
+            # into one attributed prompt.
+            with span.child("context_preparation", run_type="chain") as cp:
+                system_prompt = _build_group_system_prompt(results)
+                cp.set(hits=len(results))
+
+            parts: list[str] = []
+            tin, tout = 0, 0
+            with span.child("groq_generation", run_type="llm") as gen:
+                gen.set(model=GROQ_MODEL)
+                try:
+                    for ev in stream_answer(system_prompt, question, history=history):
+                        if ev["type"] == "content":
+                            parts.append(ev["text"])
+                            yield _ndjson(ev)
+                        elif ev["type"] == "usage":
+                            # Previously ignored; captured for trace metadata only
+                            # (never yielded to the client — response is unchanged).
+                            tin, tout = ev["input_tokens"], ev["output_tokens"]
+                except Exception as e:
+                    gen.record_error(e)
+                    log.error("group stream failed", error=str(e), request_id=request_id)
+                    yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
+                gen.set(input_tokens=tin, output_tokens=tout)
+
+            with span.child("completion", run_type="chain") as comp:
+                text = "".join(parts)
+                citations = _dedupe_citations_attributed(results)
+                comp.set(citation_count=len(citations))
+                span.set(result_type="answered", citation_count=len(citations))
+
+            yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
+            latency = int((time.time() - started_at) * 1000)
+            log.info("group query done", request_id=request_id, hits=len(citations), latency_ms=latency)
+            if chat_id:
+                chatstore.append_turn(asker_id, chat_id, question, text, citations)
         except Exception as e:
-            log.error("group stream failed", error=str(e), request_id=request_id)
-            yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
-        text = "".join(parts)
-        citations = _dedupe_citations_attributed(results)
-        yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
-        latency = int((time.time() - started_at) * 1000)
-        log.info("group query done", request_id=request_id, hits=len(citations), latency_ms=latency)
-        if chat_id:
-            chatstore.append_turn(asker_id, chat_id, question, text, citations)
+            span.record_error(e)
+            raise
+        finally:
+            span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 

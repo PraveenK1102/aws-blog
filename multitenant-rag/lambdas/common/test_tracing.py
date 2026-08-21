@@ -105,6 +105,15 @@ class PrivacyWhitelistTests(unittest.TestCase):
         self.assertEqual(_clean(None), {})
         self.assertEqual(_clean({}), {})
 
+    def test_clean_group_flow_keeps_counts_drops_identities(self):
+        # Group/global flows: counts are safe; tenant identities/lists are not.
+        out = _clean({
+            "target_count": 3, "result_count": 12, "hits": 5,   # safe
+            "tenant_ids": ["tenant_a", "tenant_b"],              # forbidden
+            "targets": ["tenant_a"], "group_id": "grp_1",        # forbidden
+        })
+        self.assertEqual(out, {"target_count": 3, "result_count": 12, "hits": 5})
+
 
 class _ExplodingRT:
     """A RunTree stand-in that raises on every method it exposes."""
