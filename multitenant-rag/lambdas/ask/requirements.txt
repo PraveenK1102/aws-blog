@@ -6,3 +6,6 @@ fastapi>=0.111.0
 uvicorn>=0.30.0
 pyjwt>=2.8.0
 bcrypt>=4.1.0
+# Observability: LangSmith app-level tracing (direct SDK, no LangChain). Pinned
+# to the 0.11 line verified compatible with these deps on Python 3.12.
+langsmith>=0.11.1,<0.12
