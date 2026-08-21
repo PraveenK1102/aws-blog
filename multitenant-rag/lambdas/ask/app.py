@@ -37,7 +37,8 @@ from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
 from common.posts import PostError, create_post as create_post_shared
 from common.secrets import get_qdrant
-from llm import stream_answer, GROQ_MODEL_SMALL
+from common.tracing import get_tracer
+from llm import stream_answer, GROQ_MODEL, GROQ_MODEL_SMALL
 
 
 log = get_logger("ask")
@@ -57,6 +58,10 @@ SCORE_THRESHOLD = 0.3
 # the LLM and let IT judge whether the content genuinely answers the question.
 RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.15"))
 TOP_K = 5
+# Deployment label attached to traces (safe metadata only). Prod should set
+# ENVIRONMENT=prod; the LangSmith project name (LANGSMITH_PROJECT) is the
+# primary dev/prod separator.
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "unknown")
 
 ddb = boto3.client("dynamodb", region_name=REGION)
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
@@ -64,6 +69,10 @@ s3 = boto3.client("s3", region_name=REGION)
 
 _qdrant: QdrantClient | None = None
 _bm25: SparseTextEmbedding | None = None
+
+# LangSmith tracer (no-op unless LANGSMITH_TRACING is enabled and a key resolves).
+# Resolved once per container; never on the request critical path.
+tracer = get_tracer()
 
 app = FastAPI()
 
@@ -499,116 +508,168 @@ async def ask(req: AskRequest, request: Request):
     if prev_user and len(question.split()) <= 4:
         retrieval_query = f"{prev_user} {question}"
 
+    # LangSmith trace root for this request (no-op unless tracing is enabled).
+    # request_id is the run id, so CloudWatch logs, the DDB usage row, and the
+    # LangSmith trace share one correlation id. Only whitelisted, non-PII
+    # metadata is ever attached (see common/tracing.py). This adds observability
+    # only; the RAG flow below is unchanged.
+    span = tracer.start_root(
+        "ask_request", run_id=request_id,
+        metadata={"request_id": request_id, "has_history": bool(history),
+                  "environment": ENVIRONMENT},
+    )
+
     # Everything below runs inside the streamed generator. Starlette iterates a
     # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
     # are fine and don't block the event loop.
     def event_stream():
-        # --- Semantic cache (single-turn only; conversation context would make a
-        # cached answer wrong for follow-ups). Embed the question once and reuse
-        # the vector for retrieval on a miss. ---
-        q_dense = None
-        if not history:
-            q_dense = _embed_dense(question)
-            hit = semcache.lookup(tenant_id, q_dense)
-            if hit is not None:
-                log.info("relevance", request_id=request_id, top_dense=hit["score"],
-                         floor=RETRIEVAL_FLOOR, hits=len(hit["citations"]), result_type="cache_hit")
-                yield _ndjson({"type": "content", "text": hit["answer"]})
-                yield _ndjson({"type": "done", "citations": hit["citations"], "cache_hit": True})
-                _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "cache_hit", started_at)
-                if chat_id:
-                    chatstore.append_turn(asker_id, chat_id, question, hit["answer"], hit["citations"])
-                return
-
-        results, top_dense = _hybrid_search(retrieval_query, tenant_id, dense_vec=q_dense)
-
-        def log_relevance(result_type):
-            # One line per query carrying BOTH the score and the outcome, so the
-            # floor can be calibrated from data: the floor should sit just below
-            # the min(top_dense) of queries with result_type=answered. Tune via:
-            #   filter msg="relevance" and result_type="answered" | stats min(top_dense)
-            log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
-                     floor=RETRIEVAL_FLOOR, hits=len(results), result_type=result_type)
-
-        # No relevant content retrieved. "who is he?" and "his take on quantum
-        # physics?" BOTH land here for a fitness blogger — same empty retrieval,
-        # opposite right answers, and the score can't tell them apart. So:
-        #   0 posts total → honest "hasn't published anything yet" (no LLM)
-        #   has posts     → ONE LLM call decides from the profile card: answer as
-        #                   an overview if it's a who-are-they question, else
-        #                   decline. No brittle keyword gate.
-        if not results or top_dense < RETRIEVAL_FLOOR:
-            titles = _tenant_post_titles(tenant_id)
-
-            if not titles:
-                msg = f"{tenant['display_name']} hasn't published any posts yet, so there's nothing for me to answer from."
-                yield _ndjson({"type": "content", "text": msg})
-                yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
-                log_relevance("empty_corpus")
-                _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty_corpus", started_at)
-                if chat_id:
-                    chatstore.append_turn(asker_id, chat_id, question, msg, [])
-                return
-
-            # Let the model decide overview-vs-decline, grounded in name + domain
-            # + post titles. It answers identity/overview questions and declines
-            # (with the canonical line) genuine topic misses. This is an easy task,
-            # so route it to the small/fast model instead of the 70B answer model.
-            parts, tin, tout = [], 0, 0
-            try:
-                for ev in stream_answer(_build_profile_prompt(tenant, titles), question,
-                                        history=history, model=GROQ_MODEL_SMALL):
-                    if ev["type"] == "content":
-                        parts.append(ev["text"]); yield _ndjson(ev)
-                    elif ev["type"] == "usage":
-                        tin, tout = ev["input_tokens"], ev["output_tokens"]
-            except Exception as e:
-                log.error("profile stream failed", error=str(e), request_id=request_id)
-                yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
-            text = "".join(parts)
-            rtype = "declined" if "hasn't written about this topic" in text.lower() else "overview"
-            yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
-            log_relevance(rtype)
-            _log_usage(tenant_id, asker_id, request_id, question, tin, tout, rtype, started_at)
-            if chat_id:
-                chatstore.append_turn(asker_id, chat_id, question, text, [])
-            return
-
-        system_prompt = _build_system_prompt(tenant, results)
-
-        answer_parts: list[str] = []
-        total_input = 0
-        total_output = 0
         try:
-            for ev in stream_answer(system_prompt, question, history=history):
-                if ev["type"] == "content":
-                    answer_parts.append(ev["text"])
-                    yield _ndjson(ev)
-                elif ev["type"] == "usage":
-                    total_input = ev["input_tokens"]
-                    total_output = ev["output_tokens"]
+            # --- Semantic cache (single-turn only; conversation context would make a
+            # cached answer wrong for follow-ups). Embed the question once and reuse
+            # the vector for retrieval on a miss. ---
+            q_dense = None
+            if not history:
+                with span.child("semantic_cache", run_type="retriever") as sc:
+                    # The query is dense-embedded once here and reused for retrieval
+                    # on a miss, so the embedding span lives under the cache probe.
+                    with sc.child("dense_embedding", run_type="embedding") as de:
+                        q_dense = _embed_dense(question)
+                        de.set(dims=len(q_dense) if q_dense else 0)
+                    hit = semcache.lookup(tenant_id, q_dense)
+                    sc.set(cache_hit=hit is not None)
+                    if hit is not None:
+                        sc.set(citation_count=len(hit["citations"]),
+                               top_dense=round(hit["score"], 3))
+                if hit is not None:
+                    span.set(result_type="cache_hit")
+                    log.info("relevance", request_id=request_id, top_dense=hit["score"],
+                             floor=RETRIEVAL_FLOOR, hits=len(hit["citations"]), result_type="cache_hit")
+                    yield _ndjson({"type": "content", "text": hit["answer"]})
+                    yield _ndjson({"type": "done", "citations": hit["citations"], "cache_hit": True})
+                    _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "cache_hit", started_at)
+                    if chat_id:
+                        chatstore.append_turn(asker_id, chat_id, question, hit["answer"], hit["citations"])
+                    return
+
+            with span.child("retrieval", run_type="retriever") as rt:
+                with rt.child("hybrid_qdrant_search", run_type="retriever") as hs:
+                    results, top_dense = _hybrid_search(retrieval_query, tenant_id, dense_vec=q_dense)
+                    hs.set(hits=len(results), top_dense=round(top_dense, 3))
+                # reused_query_embedding: single-turn reuses the cache-path embed;
+                # embedded_internally: history path has _hybrid_search embed inline.
+                rt.set(hits=len(results), top_dense=round(top_dense, 3), floor=RETRIEVAL_FLOOR,
+                       reused_query_embedding=q_dense is not None,
+                       embedded_internally=q_dense is None)
+
+            def log_relevance(result_type):
+                # One line per query carrying BOTH the score and the outcome, so the
+                # floor can be calibrated from data: the floor should sit just below
+                # the min(top_dense) of queries with result_type=answered. Tune via:
+                #   filter msg="relevance" and result_type="answered" | stats min(top_dense)
+                log.info("relevance", request_id=request_id, top_dense=round(top_dense, 3),
+                         floor=RETRIEVAL_FLOOR, hits=len(results), result_type=result_type)
+
+            # No relevant content retrieved. "who is he?" and "his take on quantum
+            # physics?" BOTH land here for a fitness blogger — same empty retrieval,
+            # opposite right answers, and the score can't tell them apart. So:
+            #   0 posts total → honest "hasn't published anything yet" (no LLM)
+            #   has posts     → ONE LLM call decides from the profile card: answer as
+            #                   an overview if it's a who-are-they question, else
+            #                   decline. No brittle keyword gate.
+            if not results or top_dense < RETRIEVAL_FLOOR:
+                titles = _tenant_post_titles(tenant_id)
+
+                if not titles:
+                    msg = f"{tenant['display_name']} hasn't published any posts yet, so there's nothing for me to answer from."
+                    yield _ndjson({"type": "content", "text": msg})
+                    yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
+                    log_relevance("empty_corpus")
+                    span.set(result_type="empty_corpus")
+                    _log_usage(tenant_id, asker_id, request_id, question, 0, 0, "empty_corpus", started_at)
+                    if chat_id:
+                        chatstore.append_turn(asker_id, chat_id, question, msg, [])
+                    return
+
+                # Let the model decide overview-vs-decline, grounded in name + domain
+                # + post titles. It answers identity/overview questions and declines
+                # (with the canonical line) genuine topic misses. This is an easy task,
+                # so route it to the small/fast model instead of the 70B answer model.
+                parts, tin, tout = [], 0, 0
+                with span.child("groq_generation", run_type="llm") as gen:
+                    gen.set(model=GROQ_MODEL_SMALL)
+                    try:
+                        for ev in stream_answer(_build_profile_prompt(tenant, titles), question,
+                                                history=history, model=GROQ_MODEL_SMALL):
+                            if ev["type"] == "content":
+                                parts.append(ev["text"]); yield _ndjson(ev)
+                            elif ev["type"] == "usage":
+                                tin, tout = ev["input_tokens"], ev["output_tokens"]
+                    except Exception as e:
+                        gen.record_error(e)
+                        log.error("profile stream failed", error=str(e), request_id=request_id)
+                        yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
+                    gen.set(input_tokens=tin, output_tokens=tout)
+                text = "".join(parts)
+                rtype = "declined" if "hasn't written about this topic" in text.lower() else "overview"
+                yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
+                log_relevance(rtype)
+                span.set(result_type=rtype)
+                _log_usage(tenant_id, asker_id, request_id, question, tin, tout, rtype, started_at)
+                if chat_id:
+                    chatstore.append_turn(asker_id, chat_id, question, text, [])
+                return
+
+            system_prompt = _build_system_prompt(tenant, results)
+
+            answer_parts: list[str] = []
+            total_input = 0
+            total_output = 0
+            with span.child("groq_generation", run_type="llm") as gen:
+                gen.set(model=GROQ_MODEL)
+                try:
+                    for ev in stream_answer(system_prompt, question, history=history):
+                        if ev["type"] == "content":
+                            answer_parts.append(ev["text"])
+                            yield _ndjson(ev)
+                        elif ev["type"] == "usage":
+                            total_input = ev["input_tokens"]
+                            total_output = ev["output_tokens"]
+                except Exception as e:
+                    gen.record_error(e)
+                    log.error("llm stream failed", error=str(e), request_id=request_id)
+                    yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
+                gen.set(input_tokens=total_input, output_tokens=total_output)
+
+            # Citation refinement: if the model refused (context didn't answer the
+            # question), don't cite unrelated sources. Otherwise cite distinct posts
+            # (deduped, best score each) rather than repeated chunks.
+            with span.child("completion", run_type="chain") as comp:
+                answer_text = "".join(answer_parts)
+                refused = "hasn't written about" in answer_text.lower()
+                citations = [] if refused else _dedupe_citations(results)
+                result_type = "refused" if refused else "answered"
+                comp.set(result_type=result_type, citation_count=len(citations))
+                log_relevance(result_type)
+                span.set(result_type=result_type)
+
+                # Cache only clean single-turn answers (not refusals/clarifications, not
+                # follow-ups). Invalidated when the tenant writes (see ingest_worker).
+                if result_type == "answered" and not history and q_dense is not None:
+                    semcache.store(tenant_id, question, q_dense, answer_text, citations)
+
+            yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
+            _log_usage(tenant_id, asker_id, request_id, question, total_input, total_output, result_type, started_at)
+            if chat_id:
+                chatstore.append_turn(asker_id, chat_id, question, answer_text, citations)
         except Exception as e:
-            log.error("llm stream failed", error=str(e), request_id=request_id)
-            yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
-
-        # Citation refinement: if the model refused (context didn't answer the
-        # question), don't cite unrelated sources. Otherwise cite distinct posts
-        # (deduped, best score each) rather than repeated chunks.
-        answer_text = "".join(answer_parts)
-        refused = "hasn't written about" in answer_text.lower()
-        citations = [] if refused else _dedupe_citations(results)
-        result_type = "refused" if refused else "answered"
-        log_relevance(result_type)
-
-        # Cache only clean single-turn answers (not refusals/clarifications, not
-        # follow-ups). Invalidated when the tenant writes (see ingest_worker).
-        if result_type == "answered" and not history and q_dense is not None:
-            semcache.store(tenant_id, question, q_dense, answer_text, citations)
-
-        yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
-        _log_usage(tenant_id, asker_id, request_id, question, total_input, total_output, result_type, started_at)
-        if chat_id:
-            chatstore.append_turn(asker_id, chat_id, question, answer_text, citations)
+            # Preserve original error propagation; just record the type on the trace.
+            span.record_error(e)
+            raise
+        finally:
+            # Runs on every branch (cache hit, empty corpus, overview, decline,
+            # normal, handled failure, client disconnect) — ends the root run and
+            # flushes pending traces before the Lambda execution env can freeze.
+            span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 

@@ -57,3 +57,23 @@ def get_jwt_secret() -> str:
     if env:
         return env
     return get_secret("multitenant/jwt")["secret"]
+
+
+def get_langsmith_key() -> str | None:
+    """LangSmith API key for observability tracing.
+
+    Local dev override via LANGSMITH_API_KEY env; prod via Secrets Manager
+    `multitenant/langsmith` (JSON with an `api_key` field). Unlike the Groq/
+    Qdrant/JWT helpers this NEVER raises and returns None when no key is
+    resolvable — tracing is optional and must never break the request path, so
+    a missing secret simply disables tracing rather than failing a cold start.
+    """
+    env = os.environ.get("LANGSMITH_API_KEY")
+    if env:
+        return env
+    try:
+        return get_secret("multitenant/langsmith").get("api_key")
+    except Exception:
+        # Secret not created yet / no access — tracing stays disabled. This is a
+        # supported state (the AWS secret + IAM are a separate deployment step).
+        return None
