@@ -114,6 +114,22 @@ class PrivacyWhitelistTests(unittest.TestCase):
         })
         self.assertEqual(out, {"target_count": 3, "result_count": 12, "hits": 5})
 
+    def test_clean_global_search_metadata(self):
+        # global_search_request: only safe operational fields survive; raw query,
+        # result payloads, snippets, titles, tenant/user ids are all rejected.
+        out = _clean({
+            "request_id": "rid-9", "environment": "prod", "dims": 1024,
+            "hits": 20, "result_count": 12, "latency_ms": 88, "error_type": "TimeoutError",
+            # forbidden:
+            "query": "who wrote about kubernetes?", "results": [{"post_id": "p1"}],
+            "snippet": "a chunk of a post...", "title": "My Post",
+            "tenant_id": "tenant_x", "user_id": "user_y", "writer": "Jane",
+        })
+        self.assertEqual(out, {
+            "request_id": "rid-9", "environment": "prod", "dims": 1024,
+            "hits": 20, "result_count": 12, "latency_ms": 88, "error_type": "TimeoutError",
+        })
+
 
 class _ExplodingRT:
     """A RunTree stand-in that raises on every method it exposes."""

@@ -1,4 +1,12 @@
-"""LangSmith application tracing — Phase 1 (single-profile /api/ask only).
+"""LangSmith application tracing for the query/RAG flows.
+
+Currently instruments the three user-facing query routes in the ask Lambda:
+  * POST /api/ask (and /ask)   — single-profile RAG (root run "ask_request")
+  * POST /api/ask/group        — multi-tenant group RAG ("group_ask_request")
+  * POST /api/search/global    — LLM-free discovery search ("global_search_request")
+Each route creates ONE root run keyed on its existing request_id and a small tree
+of child spans over the real operations it performs. CRUD/auth/chat/ingestion
+routes are deliberately not traced.
 
 Direct LangSmith SDK usage (RunTree). No LangChain, no LangGraph, no OpenAI SDK.
 

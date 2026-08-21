@@ -1275,25 +1275,57 @@ def global_search_ep(req: GlobalSearchRequest, request: Request):
     if not q:
         return JSONResponse(status_code=400, content={"error": "question is required"})
     limit = min(max(int(req.limit or 20), 1), 50)
-    dense = _embed_dense(q)
-    qdrant = _get_qdrant_client()
-    res = qdrant.query_points(
-        collection_name=COLLECTION_NAME, query=dense, using="dense",
-        limit=limit, with_payload=True)  # NO tenant filter = global
-    best: dict[str, dict] = {}
-    for p in res.points:
-        pid = p.payload.get("post_id")
-        if not pid:
-            continue
-        score = round(p.score, 4)
-        if pid not in best or score > best[pid]["score"]:
-            best[pid] = {
-                "post_id": pid, "title": p.payload.get("title", ""),
-                "writer": _tenant_name(p.payload.get("tenant_id", "")),
-                "tenant_id": p.payload.get("tenant_id", ""),
-                "user_id": p.payload.get("user_id", ""),
-                "snippet": (p.payload.get("chunk_text", "") or "")[:200],
-                "score": score,
-            }
-    results = sorted(best.values(), key=lambda c: c["score"], reverse=True)
-    return {"results": results}
+
+    # LangSmith trace for the LLM-free discovery search. Same no-op-unless-enabled,
+    # fail-open, privacy-safe helper as /api/ask; request_id (the run id) is shared
+    # with CloudWatch. Synchronous route, so finalize/flush in a finally.
+    request_id = str(uuid.uuid4())
+    started_at = time.time()
+    log.info("global search start", request_id=request_id)
+    span = tracer.start_root(
+        "global_search_request", run_id=request_id,
+        metadata={"request_id": request_id, "environment": ENVIRONMENT},
+    )
+    try:
+        with span.child("retrieval", run_type="retriever") as rt:
+            with rt.child("dense_embedding", run_type="embedding") as de:
+                dense = _embed_dense(q)
+                de.set(dims=len(dense) if dense else 0)
+            qdrant = _get_qdrant_client()
+            with rt.child("qdrant_search", run_type="retriever") as qs:
+                res = qdrant.query_points(
+                    collection_name=COLLECTION_NAME, query=dense, using="dense",
+                    limit=limit, with_payload=True)  # NO tenant filter = global
+                qs.set(hits=len(res.points))
+            rt.set(hits=len(res.points))
+
+        with span.child("result_processing", run_type="chain") as rp:
+            best: dict[str, dict] = {}
+            for p in res.points:
+                pid = p.payload.get("post_id")
+                if not pid:
+                    continue
+                score = round(p.score, 4)
+                if pid not in best or score > best[pid]["score"]:
+                    best[pid] = {
+                        "post_id": pid, "title": p.payload.get("title", ""),
+                        "writer": _tenant_name(p.payload.get("tenant_id", "")),
+                        "tenant_id": p.payload.get("tenant_id", ""),
+                        "user_id": p.payload.get("user_id", ""),
+                        "snippet": (p.payload.get("chunk_text", "") or "")[:200],
+                        "score": score,
+                    }
+            results = sorted(best.values(), key=lambda c: c["score"], reverse=True)
+            rp.set(result_count=len(results))
+
+        log.info("global search done", request_id=request_id,
+                 result_count=len(results), latency_ms=int((time.time() - started_at) * 1000))
+        return {"results": results}
+    except Exception as e:
+        # Attach the exception class to the trace, log the type only (never the
+        # exception content — it may carry user data), and preserve propagation.
+        span.record_error(e)
+        log.error("global search failed", request_id=request_id, error_type=type(e).__name__)
+        raise
+    finally:
+        span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
