@@ -74,6 +74,9 @@ _ALLOWED_META = {
     "target_count", "result_count",
     # generation-failure signal (boolean only; no message/provider body)
     "generation_error",
+    # context-budget observability (counts/estimates only — never chunk text)
+    "retrieval_candidate_count", "llm_context_chunk_count",
+    "llm_context_estimated_tokens", "max_llm_context_chunks",
 }
 
 

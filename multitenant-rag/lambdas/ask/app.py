@@ -60,6 +60,11 @@ SCORE_THRESHOLD = 0.3
 # the LLM and let IT judge whether the content genuinely answers the question.
 RETRIEVAL_FLOOR = float(os.environ.get("RETRIEVAL_FLOOR", "0.15"))
 TOP_K = 5
+# How many FINAL ranked chunks are placed into the LLM prompt. This is a separate
+# concept from retrieval breadth: hybrid search still fetches a wider candidate
+# pool (dense/sparse prefetch 20-30 each, RRF-fused to TOP_K or TOP_K*2) — this
+# only caps what reaches the model, and therefore what may be cited.
+MAX_LLM_CONTEXT_CHUNKS = int(os.environ.get("MAX_LLM_CONTEXT_CHUNKS", "5"))
 # Deployment label attached to traces (safe metadata only). Prod should set
 # ENVIRONMENT=prod; the LangSmith project name (LANGSMITH_PROJECT) is the
 # primary dev/prod separator.
@@ -632,7 +637,13 @@ async def ask(req: AskRequest, request: Request):
                     chatstore.append_turn(asker_id, chat_id, question, text, [])
                 return
 
-            system_prompt = _build_system_prompt(tenant, results)
+            # Candidates retrieved may exceed what we send; cap the final context.
+            ctx = _llm_context(results)
+            span.set(retrieval_candidate_count=len(results),
+                     llm_context_chunk_count=len(ctx),
+                     llm_context_estimated_tokens=_context_est_tokens(ctx),
+                     max_llm_context_chunks=MAX_LLM_CONTEXT_CHUNKS)
+            system_prompt = _build_system_prompt(tenant, ctx)
 
             answer_parts: list[str] = []
             total_input = 0
@@ -662,7 +673,8 @@ async def ask(req: AskRequest, request: Request):
             with span.child("completion", run_type="chain") as comp:
                 answer_text = "".join(answer_parts)
                 refused = "hasn't written about" in answer_text.lower()
-                citations = [] if refused else _dedupe_citations(results)
+                # Cite ONLY from the chunks the model actually received.
+                citations = [] if refused else _dedupe_citations(ctx)
                 # generation_error wins: with an empty answer the old logic said
                 # "answered", which both mislabelled telemetry AND let an empty
                 # answer be written to the semantic cache below.
@@ -692,6 +704,22 @@ async def ask(req: AskRequest, request: Request):
             span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+
+
+def _llm_context(results):
+    """Final context selection: the best MAX_LLM_CONTEXT_CHUNKS already-ranked chunks.
+
+    Retrieval breadth is untouched (the caller may hold more candidates); this is
+    the single place where "what the model sees" is decided. The SAME returned list
+    must feed both the prompt and the citations, so we never cite evidence the model
+    never received. Fewer than the cap is returned as-is (no padding).
+    """
+    return list(results)[:MAX_LLM_CONTEXT_CHUNKS]
+
+
+def _context_est_tokens(results) -> int:
+    """chars/4 — the same heuristic the ingestion chunker uses. Safe, content-free metric."""
+    return int(sum(len((getattr(r, "payload", {}) or {}).get("chunk_text") or "") for r in results) / 4)
 
 
 def _dedupe_citations(results) -> list[dict]:
@@ -1234,8 +1262,18 @@ async def ask_group(req: GroupAskRequest, request: Request):
             # Aggregation / context preparation: fuse the multi-writer excerpts
             # into one attributed prompt.
             with span.child("context_preparation", run_type="chain") as cp:
-                system_prompt = _build_group_system_prompt(results)
-                cp.set(hits=len(results))
+                # _hybrid_search_multi returns a wider candidate pool (TOP_K*2);
+                # only the best MAX_LLM_CONTEXT_CHUNKS go to the model.
+                ctx = _llm_context(results)
+                system_prompt = _build_group_system_prompt(ctx)
+                cp.set(hits=len(results),
+                       retrieval_candidate_count=len(results),
+                       llm_context_chunk_count=len(ctx),
+                       llm_context_estimated_tokens=_context_est_tokens(ctx),
+                       max_llm_context_chunks=MAX_LLM_CONTEXT_CHUNKS)
+            span.set(retrieval_candidate_count=len(results),
+                     llm_context_chunk_count=len(ctx),
+                     max_llm_context_chunks=MAX_LLM_CONTEXT_CHUNKS)
 
             parts: list[str] = []
             tin, tout = 0, 0
@@ -1261,7 +1299,7 @@ async def ask_group(req: GroupAskRequest, request: Request):
 
             with span.child("completion", run_type="chain") as comp:
                 text = "".join(parts)
-                citations = _dedupe_citations_attributed(results)
+                citations = _dedupe_citations_attributed(ctx)   # only what the model saw
                 comp.set(citation_count=len(citations))
                 span.set(result_type=("generation_error" if gen_failed else "answered"),
                          citation_count=len(citations))
