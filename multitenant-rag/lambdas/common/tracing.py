@@ -72,6 +72,8 @@ _ALLOWED_META = {
     "error_type", "retry_count",
     # group/search flows: non-sensitive counts only (never the ids themselves)
     "target_count", "result_count",
+    # generation-failure signal (boolean only; no message/provider body)
+    "generation_error",
 }
 
 
@@ -90,11 +92,12 @@ def _clean(md: dict | None) -> dict:
 class _Span:
     """A single run node. `_rt is None` means no-op (tracing disabled/failed)."""
 
-    __slots__ = ("_rt", "_client")
+    __slots__ = ("_rt", "_client", "_errored")
 
     def __init__(self, rt=None, client=None):
         self._rt = rt
         self._client = client
+        self._errored = None
 
     # -- context manager: used for child spans (with span.child(...) as s:) ----
     def __enter__(self):
@@ -103,7 +106,9 @@ class _Span:
     def __exit__(self, exc_type, exc, tb):
         try:
             if self._rt is not None:
-                err = exc_type.__name__ if exc_type is not None else None
+                # A propagating exception wins; otherwise preserve an error that
+                # record_error() captured from a CAUGHT provider failure.
+                err = exc_type.__name__ if exc_type is not None else self._errored
                 if err:
                     self._rt.add_metadata({"error_type": err})
                 self._rt.end(error=err)
@@ -137,10 +142,23 @@ class _Span:
             log.warning("trace set failed", error_type=type(e).__name__)
 
     def record_error(self, exc: BaseException) -> None:
+        """Mark this span as a genuine LangSmith ERROR (not just metadata).
+
+        Used when the application CATCHES a provider failure and returns its
+        fallback response: the exception never propagates through __exit__, so
+        without this the run would close as `success` and error telemetry would
+        be untrustworthy. Sets RunTree.error to the exception CLASS NAME ONLY —
+        never the exception message or the provider response body, which could
+        carry request content. `_errored` makes __exit__ preserve the error
+        status when the block exits normally.
+        """
         if self._rt is None:
             return
         try:
-            self._rt.add_metadata({"error_type": type(exc).__name__})
+            err = type(exc).__name__
+            self._rt.add_metadata({"error_type": err})
+            self._rt.error = err          # what makes LangSmith show status=error
+            self._errored = err
         except Exception:
             pass
 

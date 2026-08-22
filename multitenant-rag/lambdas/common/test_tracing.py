@@ -7,6 +7,7 @@ the privacy whitelist. Run:
     PYTHONPATH=multitenant-rag/lambdas python -m unittest common.test_tracing -v
 """
 
+import json
 import os
 import unittest
 from unittest import mock
@@ -172,5 +173,171 @@ class FailSafetyTests(unittest.TestCase):
             span.finish(metadata={"latency_ms": 1})
 
 
+class ErrorSemanticsTests(unittest.TestCase):
+    """PHASE 3/4: a CAUGHT provider failure must still mark the span as a LangSmith error,
+    exposing only the exception CLASS NAME (never the message/provider body)."""
+
+    class _RT:
+        def __init__(self):
+            self.error=None; self.meta={}; self.ended=False; self.end_error="__unset__"
+        def add_metadata(self,md): self.meta.update(md)
+        def end(self,*a,**k): self.ended=True; self.end_error=k.get("error", a[0] if a else None)
+        def patch(self): pass
+        def post(self): pass
+
+    def test_caught_error_marks_span_error(self):
+        rt=self._RT(); s=_Span(rt)
+        with s:
+            try:
+                raise RuntimeError("Groq error 429: {secret provider body}")
+            except Exception as e:
+                s.record_error(e)          # app catches and falls back
+        self.assertEqual(rt.error,"RuntimeError")       # span flagged as error
+        self.assertEqual(rt.end_error,"RuntimeError")   # preserved through __exit__
+        self.assertEqual(rt.meta.get("error_type"),"RuntimeError")
+
+    def test_success_stays_success(self):
+        rt=self._RT(); s=_Span(rt)
+        with s:
+            pass
+        self.assertIsNone(rt.error)
+        self.assertIsNone(rt.end_error)
+        self.assertNotIn("error_type", rt.meta)
+
+    def test_exception_message_cannot_leak(self):
+        rt=self._RT(); s=_Span(rt)
+        msg="429 body {\"key\":\"gsk_supersecret\"} question=what is X"
+        try:
+            raise RuntimeError(msg)
+        except Exception as e:
+            s.record_error(e)
+        blob=json.dumps({"error":rt.error,"meta":rt.meta})
+        self.assertNotIn("gsk_supersecret", blob)
+        self.assertNotIn("question=", blob)
+        self.assertNotIn("429", blob)
+
+    def test_propagating_exception_still_wins(self):
+        rt=self._RT(); s=_Span(rt)
+        with self.assertRaises(KeyError):
+            with s:
+                raise KeyError("boom")
+        # __exit__ passes the class name to end(error=...) (SDK stores it there)
+        self.assertEqual(rt.end_error, "KeyError")
+        self.assertEqual(rt.meta.get("error_type"), "KeyError")
+
+    def test_root_generation_error_key_whitelisted(self):
+        # the root signal the app sets alongside the fallback response
+        self.assertEqual(_clean({"generation_error":True}), {"generation_error":True})
+
+    def test_record_error_is_failopen_on_noop_span(self):
+        _Span().record_error(RuntimeError("x"))   # must not raise
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class _RecordingSpan:
+    """Fake span that records everything the app sets, for endpoint-level assertions."""
+    def __init__(self, store, name="root"):
+        self.store = store; self.name = name
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def child(self, name, run_type="chain", metadata=None):
+        self.store.setdefault("children", []).append(name)
+        return _RecordingSpan(self.store, name)
+    def set(self, **md):
+        if self.name == "root":
+            self.store.setdefault("root_meta", {}).update(md)
+        else:
+            self.store.setdefault(f"meta:{self.name}", {}).update(md)
+    def record_error(self, exc):
+        self.store.setdefault("errors", []).append((self.name, type(exc).__name__))
+    def finish(self, metadata=None):
+        self.store.setdefault("root_meta", {}).update(metadata or {})
+
+
+class _RecordingTracer:
+    def __init__(self, store): self.store = store
+    def start_root(self, name, run_id, metadata=None):
+        self.store["root_name"] = name
+        self.store.setdefault("root_meta", {}).update(metadata or {})
+        return _RecordingSpan(self.store)
+
+
+class GenerationErrorEndpointTests(unittest.TestCase):
+    """PHASE 3/4 at the endpoint level: a caught Groq failure must (a) keep the exact
+    NDJSON fallback, (b) report result_type=generation_error, (c) mark the llm span as
+    an error, and (d) NOT write the empty answer into the semantic cache."""
+
+    def _run_ask(self, raise_exc):
+        import asyncio, json as _json, os as _os
+        _os.environ.setdefault("TENANTS_TABLE", "t"); _os.environ.setdefault("USAGE_TABLE", "u")
+        import app
+        store = {}
+        fake_hit = type("R", (), {"payload": {"title": "T", "chunk_text": "c"}, "score": 0.5})()
+
+        def boom(*a, **k):
+            if raise_exc: raise RuntimeError("Groq error 429: {\"key\":\"gsk_secret\"} q=leak")
+            yield {"type": "content", "text": "real answer"}
+            yield {"type": "usage", "input_tokens": 10, "output_tokens": 5}
+
+        with mock.patch.object(app, "tracer", _RecordingTracer(store)), \
+             mock.patch.object(app, "get_context_from_headers", return_value=("asker", "tn", None)), \
+             mock.patch.object(app, "_get_tenant", return_value={"display_name": "D", "domain": "x"}), \
+             mock.patch.object(app, "_embed_dense", return_value=[0.0]*1024), \
+             mock.patch.object(app, "_hybrid_search", return_value=([fake_hit], 0.5)), \
+             mock.patch.object(app, "_build_system_prompt", return_value="sys"), \
+             mock.patch.object(app, "_dedupe_citations", return_value=[{"title": "T"}]), \
+             mock.patch.object(app, "_log_usage") as log_usage, \
+             mock.patch.object(app, "stream_answer", side_effect=boom), \
+             mock.patch.object(app.semcache, "lookup", return_value=None), \
+             mock.patch.object(app.semcache, "store") as store_fn:
+            req = app.AskRequest(question="q", tenant_id="tn")
+            http = type("Rq", (), {"headers": {}})()
+
+            async def _collect():
+                resp = await app.ask(req, http)
+                out = []
+                # Starlette wraps a sync generator in a threadpool async iterator
+                async for chunk in resp.body_iterator:
+                    out.append(chunk if isinstance(chunk, bytes) else str(chunk).encode())
+                return out
+
+            loop = asyncio.new_event_loop()
+            try:
+                chunks = loop.run_until_complete(_collect())
+            finally:
+                loop.close()
+            events = [_json.loads(l) for l in b"".join(chunks).decode().splitlines() if l.strip()]
+        return store, events, log_usage, store_fn
+
+    def test_generation_failure_semantics(self):
+        store, events, log_usage, store_fn = self._run_ask(raise_exc=True)
+        texts = "".join(e.get("text", "") for e in events if e["type"] == "content")
+        done = [e for e in events if e["type"] == "done"]
+        # (a) API contract preserved: fallback text + a done event that still carries citations
+        self.assertIn("[Error while generating response]", texts)
+        self.assertEqual(len(done), 1)
+        self.assertEqual(done[0]["citations"], [{"title": "T"}])
+        # (b) root reports the generation error
+        self.assertEqual(store["root_meta"].get("result_type"), "generation_error")
+        self.assertTrue(store["root_meta"].get("generation_error"))
+        self.assertEqual(store["root_meta"].get("error_type"), "RuntimeError")
+        # (c) the llm span itself was marked errored
+        self.assertIn(("groq_generation", "RuntimeError"), store.get("errors", []))
+        # (d) NO cache poisoning: the empty answer must not be stored
+        store_fn.assert_not_called()
+        # usage log agrees with the trace
+        self.assertEqual(log_usage.call_args[0][6], "generation_error")
+        # no leak of the provider body / secret anywhere in trace metadata
+        blob = json.dumps(store, default=str)
+        self.assertNotIn("gsk_secret", blob); self.assertNotIn("q=leak", blob); self.assertNotIn("429", blob)
+
+    def test_successful_generation_unchanged(self):
+        store, events, log_usage, store_fn = self._run_ask(raise_exc=False)
+        self.assertEqual(store["root_meta"].get("result_type"), "answered")
+        self.assertNotIn("generation_error", store["root_meta"])
+        self.assertEqual(store.get("errors", []), [])
+        store_fn.assert_called_once()          # healthy answers still cached
+        self.assertEqual(log_usage.call_args[0][6], "answered")

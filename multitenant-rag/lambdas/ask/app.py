@@ -599,6 +599,7 @@ async def ask(req: AskRequest, request: Request):
                 # (with the canonical line) genuine topic misses. This is an easy task,
                 # so route it to the small/fast model instead of the 70B answer model.
                 parts, tin, tout = [], 0, 0
+                gen_failed = False
                 with span.child("groq_generation", run_type="llm") as gen:
                     gen.set(model=GROQ_MODEL_SMALL)
                     try:
@@ -609,12 +610,20 @@ async def ask(req: AskRequest, request: Request):
                             elif ev["type"] == "usage":
                                 tin, tout = ev["input_tokens"], ev["output_tokens"]
                     except Exception as e:
+                        gen_failed = True
                         gen.record_error(e)
+                        # Root carries a safe signal that generation failed; the
+                        # HTTP/NDJSON fallback below is unchanged.
+                        span.set(generation_error=True, error_type=type(e).__name__)
                         log.error("profile stream failed", error=str(e), request_id=request_id)
                         yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
                     gen.set(input_tokens=tin, output_tokens=tout)
                 text = "".join(parts)
-                rtype = "declined" if "hasn't written about this topic" in text.lower() else "overview"
+                # A failed generation must NOT be labelled as a normal outcome:
+                # `parts` is empty, so the old logic silently reported "overview".
+                rtype = ("generation_error" if gen_failed
+                         else ("declined" if "hasn't written about this topic" in text.lower()
+                               else "overview"))
                 yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
                 log_relevance(rtype)
                 span.set(result_type=rtype)
@@ -628,6 +637,7 @@ async def ask(req: AskRequest, request: Request):
             answer_parts: list[str] = []
             total_input = 0
             total_output = 0
+            gen_failed = False
             with span.child("groq_generation", run_type="llm") as gen:
                 gen.set(model=GROQ_MODEL)
                 try:
@@ -639,7 +649,9 @@ async def ask(req: AskRequest, request: Request):
                             total_input = ev["input_tokens"]
                             total_output = ev["output_tokens"]
                 except Exception as e:
+                    gen_failed = True
                     gen.record_error(e)
+                    span.set(generation_error=True, error_type=type(e).__name__)
                     log.error("llm stream failed", error=str(e), request_id=request_id)
                     yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
                 gen.set(input_tokens=total_input, output_tokens=total_output)
@@ -651,7 +663,11 @@ async def ask(req: AskRequest, request: Request):
                 answer_text = "".join(answer_parts)
                 refused = "hasn't written about" in answer_text.lower()
                 citations = [] if refused else _dedupe_citations(results)
-                result_type = "refused" if refused else "answered"
+                # generation_error wins: with an empty answer the old logic said
+                # "answered", which both mislabelled telemetry AND let an empty
+                # answer be written to the semantic cache below.
+                result_type = ("generation_error" if gen_failed
+                               else ("refused" if refused else "answered"))
                 comp.set(result_type=result_type, citation_count=len(citations))
                 log_relevance(result_type)
                 span.set(result_type=result_type)
@@ -1223,6 +1239,7 @@ async def ask_group(req: GroupAskRequest, request: Request):
 
             parts: list[str] = []
             tin, tout = 0, 0
+            gen_failed = False
             with span.child("groq_generation", run_type="llm") as gen:
                 gen.set(model=GROQ_MODEL)
                 try:
@@ -1235,7 +1252,9 @@ async def ask_group(req: GroupAskRequest, request: Request):
                             # (never yielded to the client — response is unchanged).
                             tin, tout = ev["input_tokens"], ev["output_tokens"]
                 except Exception as e:
+                    gen_failed = True
                     gen.record_error(e)
+                    span.set(generation_error=True, error_type=type(e).__name__)
                     log.error("group stream failed", error=str(e), request_id=request_id)
                     yield _ndjson({"type": "content", "text": "\n\n[Error while generating response]"})
                 gen.set(input_tokens=tin, output_tokens=tout)
@@ -1244,7 +1263,8 @@ async def ask_group(req: GroupAskRequest, request: Request):
                 text = "".join(parts)
                 citations = _dedupe_citations_attributed(results)
                 comp.set(citation_count=len(citations))
-                span.set(result_type="answered", citation_count=len(citations))
+                span.set(result_type=("generation_error" if gen_failed else "answered"),
+                         citation_count=len(citations))
 
             yield _ndjson({"type": "done", "citations": citations, "cache_hit": False})
             latency = int((time.time() - started_at) * 1000)
