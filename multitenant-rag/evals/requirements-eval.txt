@@ -1,0 +1,18 @@
+# OFFLINE EVALUATION ONLY — never added to any Lambda/production image.
+#
+# Production Lambda deps live in lambdas/*/requirements.txt and do NOT include
+# langgraph or langchain-core. langchain-core appears below only because it is a
+# transitive dependency of langgraph; no application or eval module we wrote
+# imports LangChain APIs.
+#
+# Pinned so the routed-graph experiments stay reproducible after the previous
+# ephemeral /tmp virtualenv was lost.
+
+langgraph==1.2.11          # graph orchestration for offline routed-RAG experiments
+langchain-core==1.6.0      # TRANSITIVE dependency of langgraph only
+
+# Reused from the production runtime for production-equivalent retrieval in evals
+boto3>=1.34.0              # Bedrock Titan embeddings + Secrets Manager
+qdrant-client>=1.11.0      # hybrid RRF search
+fastembed>=0.4.0           # BM25 sparse vectors
+requests>=2.31.0           # NVIDIA NIM provider calls
