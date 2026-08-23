@@ -47,17 +47,18 @@ sudo apt update && sudo apt install -y docker.io
 sudo usermod -aG docker ubuntu   # add ubuntu user to docker group
 
 # RDS setup
+# export DB_PASSWORD='<choose-a-strong-password>'   # set in your shell; never commit the real value
 aws ec2 create-security-group --group-name blog-rds-sg --description "PostgreSQL from EC2 only" --vpc-id vpc-0afd1ce4e85f54254
 aws ec2 authorize-security-group-ingress --group-id sg-08b5c84adf8754574 --protocol tcp --port 5432 --source-group sg-06e037bf33bab6949
 aws rds create-db-subnet-group --db-subnet-group-name blog-db-subnets --db-subnet-group-description "Subnets for blog RDS" --subnet-ids subnet-0e708c31627f75e88 subnet-0509f2074e5604061 subnet-06b31780d679f2a1d
-aws rds create-db-instance --db-instance-identifier blog-db --db-instance-class db.t3.micro --engine postgres --engine-version 16 --master-username bloguser --master-user-password blogpass123 --allocated-storage 20 --db-name blogdb --vpc-security-group-ids sg-08b5c84adf8754574 --db-subnet-group-name blog-db-subnets --no-publicly-accessible --no-multi-az --storage-type gp2
+aws rds create-db-instance --db-instance-identifier blog-db --db-instance-class db.t3.micro --engine postgres --engine-version 16 --master-username bloguser --master-user-password "$DB_PASSWORD" --allocated-storage 20 --db-name blogdb --vpc-security-group-ids sg-08b5c84adf8754574 --db-subnet-group-name blog-db-subnets --no-publicly-accessible --no-multi-az --storage-type gp2
 
 # Deploy backend on EC2 (run these in EC2 Instance Connect terminal)
 git clone https://github.com/PraveenK1102/aws-blog.git
 cd aws-blog/blog-backend
 docker build -t blog-backend .
 docker run -d --name blog-app -p 4000:4000 \
-  -e DATABASE_URL="postgresql://bloguser:blogpass123@blog-db.cnakgsquy4bt.ap-south-1.rds.amazonaws.com:5432/blogdb" \
+  -e DATABASE_URL="postgresql://bloguser:${DB_PASSWORD}@blog-db.cnakgsquy4bt.ap-south-1.rds.amazonaws.com:5432/blogdb" \
   -e JWT_SECRET="super-secret-jwt-key-change-later" \
   -e PORT=4000 \
   -e CORS_ORIGIN="*" \

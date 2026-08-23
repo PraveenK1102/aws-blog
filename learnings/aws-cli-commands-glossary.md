@@ -112,7 +112,7 @@ aws rds create-db-instance \
   --db-instance-identifier blog-db \
   --db-instance-class db.t3.micro \
   --engine postgres --engine-version 16 \
-  --master-username bloguser --master-user-password blogpass123 \
+  --master-username bloguser --master-user-password "$DB_PASSWORD" \   # export DB_PASSWORD first; never commit it
   --allocated-storage 20 \
   --db-name blogdb \
   --vpc-security-group-ids sg-08b5c84adf8754574 \

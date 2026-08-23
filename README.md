@@ -31,7 +31,8 @@ Health: http://localhost:4000/health
 cd blog-backend
 docker compose up postgres -d
 cp .env.example .env
-# In .env set: DATABASE_URL=postgresql://bloguser:blogpass@localhost:5432/blogdb
+# In .env set: DATABASE_URL=postgresql://bloguser:${POSTGRES_PASSWORD}@localhost:5432/blogdb
+#   (use the same password as POSTGRES_PASSWORD in blog-backend/docker-compose.yml)
 npm install
 npx prisma db push
 npm run dev

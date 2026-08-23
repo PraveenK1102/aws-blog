@@ -42,7 +42,7 @@ A 6-stage plan to go from zero cloud experience to production-grade AWS knowledg
 
 4. **Deploy Backend on EC2**
    - Clone your blog-backend repo on EC2 (or `scp` the code)
-   - Set `DATABASE_URL=postgresql://bloguser:blogpass@<rds-endpoint>:5432/blogdb`
+   - Set `DATABASE_URL=postgresql://bloguser:${DB_PASSWORD}@<rds-endpoint>:5432/blogdb` (keep the real password out of the repo)
    - Run `docker build -t blog-backend .` and `docker run -d -p 4000:4000 --env-file .env blog-backend`
    - Run Prisma migrations against RDS: `npx prisma db push`
    - Test: `curl http://<ec2-public-ip>:4000/health`

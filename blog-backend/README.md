@@ -18,7 +18,7 @@ Health: http://localhost:4000/health
 ```bash
 docker compose up postgres -d
 cp .env.example .env
-# Edit .env: DATABASE_URL=postgresql://bloguser:blogpass@localhost:5432/blogdb
+# Edit .env: DATABASE_URL=postgresql://bloguser:${POSTGRES_PASSWORD}@localhost:5432/blogdb
 npm install
 npx prisma db push
 npm run dev
