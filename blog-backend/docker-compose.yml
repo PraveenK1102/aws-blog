@@ -4,7 +4,7 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DATABASE_URL: postgresql://bloguser:blogpass@postgres:5432/blogdb
+      DATABASE_URL: postgresql://bloguser:${POSTGRES_PASSWORD:-localdev_only}@postgres:5432/blogdb
       JWT_SECRET: dev-jwt-secret-change-in-production
       PORT: 4000
       CORS_ORIGIN: http://localhost:3000
@@ -19,7 +19,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: bloguser
-      POSTGRES_PASSWORD: blogpass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev_only}
       POSTGRES_DB: blogdb
     ports:
       - "5432:5432"
