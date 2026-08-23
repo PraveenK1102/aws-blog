@@ -1,0 +1,12 @@
+item,min,max,approved_limit,status
+router_v2_calls,0,0,0,WITHIN
+nvidia20b_decomposition_calls,18,18,18,WITHIN
+nvidia20b_final_generation_calls,18,18,18,WITHIN
+titan_embedding_calls,36,54,54,WITHIN
+qdrant_branch_searches_logical,36,54,54,WITHIN
+qdrant_query_points_physical,72,108,54,*** EXCEEDS ***
+bm25_sparse_encodes,36,54,,—
+groq_calls,0,0,0,WITHIN
+nvidia120b_calls,0,0,0,WITHIN
+v2_compound_cases,18,18,18,WITHIN
+v2_simple_cases_reused_from_baseline,34,34,,no new calls
