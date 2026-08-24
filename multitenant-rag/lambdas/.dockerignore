@@ -1,0 +1,10 @@
+# Tests are not part of the Lambda runtime. They must still live beside the code
+# they test (rag/test_*.py) so `python -m unittest rag.test_graph` works from the
+# repo, but shipping them would add dead weight and an unused import surface
+# (test_endpoint_integration imports fastapi.testclient/httpx, which the runtime
+# image deliberately does not install).
+**/test_*.py
+**/conftest_helpers.py
+**/__pycache__/
+**/*.pyc
+.pytest_cache/

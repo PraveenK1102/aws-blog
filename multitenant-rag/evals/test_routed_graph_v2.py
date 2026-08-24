@@ -412,20 +412,45 @@ class ZeroCostReplayTests(unittest.TestCase):
 
 
 class ProductionUntouchedTests(unittest.TestCase):
-    def test_no_langgraph_in_any_lambda_requirements(self):
+    """These two assertions were written while the routed graph was OFFLINE-ONLY, to
+    prove the experiment had not leaked into production. Phase 1 hardening
+    (2026-08-24, architect-approved) deliberately reversed that: `langgraph==1.2.11`
+    is now a production dependency of the ask Lambda and `lambdas/ask/rag/` holds the
+    production graph.
+
+    The tests are therefore RETARGETED, not deleted — the safety property that still
+    matters is that production takes EXACTLY the approved dependency and nothing more.
+    Production-side enforcement lives in `lambdas/ask/rag/test_dependency_boundary.py`.
+    """
+
+    def test_only_the_ask_lambda_takes_langgraph_and_it_is_pinned(self):
         import glob
         for f in glob.glob(os.path.join(HERE,"..","lambdas","*","requirements.txt")):
-            body=open(f).read()
-            for line in body.splitlines():
-                s=line.strip()
-                if s.startswith("#") or not s: continue
-                self.assertNotIn("langgraph",s.lower(),f)
-                self.assertNotIn("langchain",s.lower(),f)
+            lines=[l.strip() for l in open(f, encoding="utf-8").read().splitlines()]
+            reqs=[l for l in lines if l and not l.startswith("#")]
+            lg=[l for l in reqs if l.lower().startswith("langgraph")]
+            if os.path.basename(os.path.dirname(f))=="ask":
+                self.assertEqual(lg,["langgraph==1.2.11"],f)
+            else:
+                self.assertEqual(lg,[],f"{f}: only the ask Lambda may take langgraph")
+            # No Lambda may take LangChain directly, in any form.
+            for l in reqs:
+                self.assertFalse(l.lower().startswith("langchain"),f"{f}: {l}")
 
-    def test_lambda_requirements_unmodified_in_git(self):
-        out=subprocess.run(["git","status","--porcelain","multitenant-rag/lambdas"],
-                           cwd=REPO,capture_output=True,text=True).stdout.strip()
-        self.assertEqual(out,"","production lambda files modified")
+    def test_frozen_eval_modules_are_unmodified_in_git(self):
+        """The frozen experiment modules must stay frozen even though production
+        changed. `lambdas/` is now expected to differ; `evals/` frozen files are not.
+
+        Only MODIFIED/DELETED tracked files count. Some frozen eval modules are still
+        untracked in this repo (`??`), which is a pre-existing state, not a change.
+        """
+        files=["multitenant-rag/evals/decomp_graph.py",
+               "multitenant-rag/evals/router_v2.py",
+               "multitenant-rag/evals/routed_graph_v2.py"]
+        out=subprocess.run(["git","status","--porcelain"]+files,
+                           cwd=REPO,capture_output=True,text=True).stdout.splitlines()
+        changed=[l for l in out if l[:2].strip() in ("M","D","MM","AM","R")]
+        self.assertEqual(changed,[],f"a FROZEN eval module was modified: {changed}")
 
     def test_eval_requirements_pins_langgraph_and_marks_it_offline(self):
         body=open(os.path.join(HERE,"requirements-eval.txt")).read()

@@ -77,6 +77,24 @@ _ALLOWED_META = {
     # context-budget observability (counts/estimates only — never chunk text)
     "retrieval_candidate_count", "llm_context_chunk_count",
     "llm_context_estimated_tokens", "max_llm_context_chunks",
+    # --- routed RAG (§21). Counts, booleans, enums, timings and token totals
+    # only. Deliberately ABSENT and never addable here: the question, the
+    # answer, any prompt, any retrieved chunk text, sub-question text, chat
+    # history, tenant ids, group ids, emails, user ids, JWTs, secrets.
+    "routed", "route_type", "route_decision", "router_reason_code",
+    "router_parse_ok", "router_failed",
+    "decomposition_used", "decomposition_fallback", "decomposition_failed",
+    "subquestion_count", "branch", "branch_count",
+    "successful_branch_count", "failed_branch_count", "partial_branch_failure",
+    "relevance_floor_passed", "final_context_count", "estimated_context_tokens",
+    "provider", "total_tokens",
+    "request_deadline_ms", "remaining_budget_ms", "deadline_exceeded",
+    "router_calls", "decomposition_calls", "generation_calls",
+    "groq_logical_calls", "retrieval_branches", "titan_embeddings",
+    "qdrant_dense_probes", "qdrant_hybrid_queries", "qdrant_physical_queries",
+    "semcache_embeddings", "rate_limit_events",
+    "answer_path", "feature_flag_enabled", "fallback_reason",
+    "candidate_count", "evidence_missing", "top_dense_similarity",
 }
 
 

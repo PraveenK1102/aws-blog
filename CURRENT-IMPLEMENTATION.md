@@ -726,6 +726,68 @@ reliability.
 
 Details: **`GROQ120B-ROUTED-GENERATION-VALIDATION.md`** (20 sections).
 
+## 9l. Production routed-RAG hardening (Phase 1) — IMPLEMENTED + TESTED, **NOT DEPLOYED**
+
+**The validated routed architecture now exists in production code, disabled by default.**
+Feature flag `ROUTED_RAG_ENABLED` (default **false**) — with it off, `/api/ask` and
+`/api/ask/group` behave byte-for-byte as today and the graph is never built.
+
+New package **`lambdas/ask/rag/`** (15 modules) owns the production graph logic. It imports
+**nothing** from `evals/` — proven by AST analysis over the shipped file set, and the Dockerfile
+never copies `evals/`. Production functions reach the graph through `RagDeps` injection, which also
+avoids a circular import with `app.py` and keeps every node testable without AWS.
+
+**Frozen contracts carried byte-for-byte and hash-locked:** `ROUTER_SYS` `763d12cd82245285`
+(the holdout-passing identity), `ANALYZER_SYS` `ae8185181e88f25f`, `GEN_SYS_COMPOUND`
+`8c30bb9b064e6784`. `assert_frozen()` runs at graph build; a cross-check test re-derives all three
+from the frozen eval modules and compares byte-for-byte.
+
+**Graph:** `resolve_scope → load_history → fold_followup → semantic_cache_check →`
+(hit → END) `→ route_question →` simple/compound `→ [decompose → Send fan-out → retrieve_branch xN
+(Semaphore(2)) → merge_evidence (defer=True)] → build_context → generate → finalize → END`.
+
+| Hardening | Implementation |
+|---|---|
+| Models | Router + decomposition **Groq 20B**, generation **Groq 120B**. No NVIDIA, no second provider |
+| Request budget | `RequestBudget`: ≤1 router / ≤1 decomposition / ≤1 generation / ≤3 logical Groq / ≤3 branches / ≤3 Titan / ≤6 physical Qdrant / ≤5 context chunks. Checked **before** each call, thread-safe, no residue on reject |
+| Deadline | `REQUEST_DEADLINE_MS=24000`, `time.monotonic()` from entry; every call timeout is `min(ceiling, remaining − 1500 ms reserve)`; a branch that cannot finish is not started |
+| Timeouts | **Fixed two audit gaps**: Bedrock/DDB now `botocore.Config` (connect 3 s / read 8 s / 2 attempts), Qdrant now `timeout=8` (it had **none**). Groq 6/6/12 s, each clamped to remaining budget |
+| 429 policy | **No proactive pacing** — the 7 s experiment pacing was NOT carried over (`time.sleep` never called on the happy path, asserted). Retry only if the provider's own hint ≤2 s **and** the budget affords wait+call; ≤1 retry. Router/decomposition failure → fall back to normal RAG and still answer; generation failure → controlled error contract |
+| Scope safety | Frozen immutable `Scope`; every `Send` carries the exact parent scope and `assert_parity()` runs before retrieval; empty/blank/widened scope **fails closed** |
+| Partial failure | Survivor branches still answer; **all** branches empty → `empty_context`, no generation call; scope never widens |
+| Semantic cache | Probe runs **before** routing, so a hit spends **zero** Groq calls (asserted). Eligibility unchanged: single route + no history only; group route uncached |
+| Citation invariant | One capped list feeds both prompt and citations; the ≤5 cap is **asserted**, not assumed |
+| Observability | §20 span tree (`semantic_cache`, `router_v2`, `decomposition`, `retrieval_branch_N` with its 4 physical ops, `merge_evidence`, `build_context`, `groq_generation`), emitted from **measured** node latencies after the answer — `RunTree.create_child` is not documented thread-safe and parallel branches must not put that assumption on the request path |
+| Privacy | Whitelist extended with counts/booleans/enums/timings only. No question, answer, prompt, chunk text, sub-question, history, tenant id, group id, email, JWT or secret can pass — tested adversarially, including that an exception message is reduced to its class name |
+
+**Closes both offline replay caveats:** the compound prompt is rendered from **real Qdrant point
+objects** (no reconstruction), and the simple/fallback path uses the **existing production prompt
+builders** (`_build_system_prompt` / `_build_group_system_prompt`) instead of a substituted compound
+prompt.
+
+**One production hardening beyond the offline graph, flagged:** compound routing now additionally
+requires `parse_ok`. The frozen parser can return `needs_decomposition=True` with `parse_ok=False`
+(e.g. `compound_flag_with_simple_reason_code`); the offline graph never exercised that path because
+every holdout case parsed cleanly. No holdout metric changes.
+
+**Tests: 140 new, all passing; 39 pre-existing still passing (verified identical at HEAD) = 179.**
+`rag/test_frozen_parity.py` (14), `test_graph.py` (47), `test_budget_deadline.py` (32),
+`test_dependency_boundary.py` (11), `test_flag_and_observability.py` (22),
+`test_endpoint_integration.py` (14).
+
+**Local container (arm64 via colima; production ships x86_64 from CI):** builds at 155.7 MB,
+cold-imports `app` + `rag` in **901 ms**, compiles the 14-node graph, serves `GET /health`
+`{"ok":true}`, flag reads `False`. No `ragas`/`deepeval`/`langchain_community`/`langchain_openai`/
+`instructor`, no eval source anywhere in the image, no top-level `langchain`; `langchain_core` 1.6.0
+present **only** as a LangGraph transitive dependency. A new `lambdas/.dockerignore` keeps test
+files out of the runtime image.
+
+**Provider calls this task: Groq 0, Titan 0, Qdrant data-plane 0, NVIDIA 0, RAGAS 0, DeepEval 0.**
+**AWS mutations: 0. Nothing deployed.** The ingestion **DLQ is still absent** and is now the top
+open P0. `case-041` unchanged (backlog).
+
+Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (30 sections).
+
 ## 10. Observability
 - **CloudWatch (deployed):** structured JSON logs (`common/logger.py`); per-query `relevance` lines; `usage-logs` DDB table; new logs "global search start/done" (request_id, result_count, latency_ms — never the query).
 - **LangSmith (deployed; backend delivery pending an authed query):** per-request traces for the three query flows (project `multitenant-rag-prod`), as in §7.
@@ -804,6 +866,44 @@ Details: **`GROQ120B-ROUTED-GENERATION-VALIDATION.md`** (20 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-24 — SECURITY: real `.env` was included in the committed release archive (rotate)
+- **`multitenant-rag-current.zip` in commit `60fe1e3` contains `multitenant-rag/local/.env`**, which
+  holds a **real Qdrant API key** and the **dev JWT secret**. Repo is **public** ⇒ treat both as
+  disclosed. The file is gitignored, so `git status` never flagged it; the `zip -x` list simply did
+  not exclude `.env`, and the ad-hoc scan reported CLEAN because it only matched *quoted*
+  assignments and known key prefixes.
+- **Fixed forward:** archive now excludes `.env`/`.env.*`/`*.pem`/`*.key`/`credentials*`/`*.p12`/
+  `id_rsa*`/`*.keystore`; absence of both live values verified by direct match. Added
+  `multitenant-rag/tools/secret_scan.py` (examines **unquoted** `NAME=VALUE` in any file type +
+  quoted literals, entropy + placeholder/safe-name allowlist) and
+  `tools/build_release_archive.sh`, which **deletes the archive** if the scan finds anything.
+- **No history rewrite, no force push** (forbidden) ⇒ the values remain in public history at
+  `60fe1e3`. **USER ACTION REQUIRED: rotate the Qdrant API key and the dev `JWT_SECRET`.**
+  Production JWT signing (Secrets Manager `multitenant/jwt`) was NOT in the archive.
+
+### 2026-08-24 — Production routed-RAG hardening Phase 1 (implemented + tested, NOT deployed)
+- Ported the validated routed LangGraph architecture into **`lambdas/ask/rag/`** (15 modules) behind
+  **`ROUTED_RAG_ENABLED` (default false)**. Flag is read per request, so rollback needs no redeploy.
+- Production code imports **nothing** from `evals/` (AST-asserted); frozen prompts carried
+  byte-for-byte and hash-locked (`763d12cd82245285` / `ae8185181e88f25f` / `8c30bb9b064e6784`).
+- Added `RequestBudget` (10 hard bounds, pre-call, thread-safe) and a **24 s monotonic deadline**
+  inside the verified 30 s API Gateway limit.
+- **Fixed two real audit gaps**: Bedrock/DynamoDB had boto3 DEFAULT timeouts and the Qdrant client had
+  **none**. Both now bounded; Groq gets per-call ceilings clamped to remaining budget.
+- 429 policy is reactive-only and deadline-gated; the 7 s experiment pacing was deliberately NOT
+  carried into production.
+- Scope hardened: immutable `Scope`, per-branch `assert_parity()`, fail-closed on empty/widened scope.
+- Closed both offline replay caveats — real point objects for the compound prompt, real production
+  prompt builders on the simple/fallback path.
+- Found and fixed a routing defect: compound routing now requires `parse_ok`, so a verdict that
+  violated the frozen schema can no longer spend a decomposition call and 3 branches.
+- **140 new tests pass; 39 pre-existing still pass (identical at HEAD).** Local arm64 image builds,
+  cold-imports in 901 ms, compiles the 14-node graph and serves `/health`.
+- Groq/Titan/Qdrant/NVIDIA/RAGAS/DeepEval calls: **0**. AWS mutations: **0**. Production unchanged
+  (`LastModified 2026-08-22T18:27:50Z`, image `d5af30e`).
+- Reports: `PRODUCTION-ROUTED-RAG-HARDENING.md` (30 sections); `PRODUCTION-READINESS-GAP-MATRIX.md`
+  updated (12 rows closed in code; **ingestion DLQ is now the top open P0**).
 
 ### 2026-08-24 — Groq 120B routed generation validation (all 18 cases) — offline, nothing deployed
 - Ran the **deployed production generation model** (`openai/gpt-oss-120b`) on **all 18** persisted routed

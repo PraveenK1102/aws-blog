@@ -15,6 +15,7 @@ import time
 import uuid
 
 import boto3
+from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,6 +42,16 @@ from common.posts import PostError, create_post as create_post_shared
 from common.secrets import get_qdrant
 from common.tracing import get_tracer
 from llm import stream_answer, GROQ_MODEL, GROQ_MODEL_SMALL
+
+# Routed RAG (LangGraph). Imported at module scope so a cold start fails loudly
+# if the dependency is missing, but the graph is only BUILT and RUN when
+# ROUTED_RAG_ENABLED is true (see rag/config.py).
+from rag import config as rag_config
+from rag import graph as rag_graph
+from rag import observability as rag_obs
+from rag import scope as rag_scope
+from rag.budget import RequestBudget
+from rag.deps import RagDeps
 
 
 log = get_logger("ask")
@@ -70,8 +81,21 @@ MAX_LLM_CONTEXT_CHUNKS = int(os.environ.get("MAX_LLM_CONTEXT_CHUNKS", "5"))
 # primary dev/prod separator.
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "unknown")
 
-ddb = boto3.client("dynamodb", region_name=REGION)
-bedrock = boto3.client("bedrock-runtime", region_name=REGION)
+# Bounded external-call timeouts (§18). Before this, Titan used boto3 DEFAULTS
+# (60 s connect / 60 s read with retries), which is incompatible with a 24 s
+# application deadline: one slow Bedrock call could outlive the API Gateway
+# 30 s integration timeout on its own. These ceilings apply to BOTH the existing
+# and the routed path; the routed path additionally clamps each call to what
+# remains of the request budget (rag/budget.py::timeout_for).
+_BOTO_TIMEOUT_CFG = BotoConfig(
+    connect_timeout=float(os.environ.get("AWS_CONNECT_TIMEOUT_S", "3")),
+    read_timeout=float(os.environ.get("AWS_READ_TIMEOUT_S", "8")),
+    retries={"max_attempts": int(os.environ.get("AWS_MAX_ATTEMPTS", "2")),
+             "mode": "standard"},
+)
+
+ddb = boto3.client("dynamodb", region_name=REGION, config=_BOTO_TIMEOUT_CFG)
+bedrock = boto3.client("bedrock-runtime", region_name=REGION, config=_BOTO_TIMEOUT_CFG)
 s3 = boto3.client("s3", region_name=REGION)
 
 _qdrant: QdrantClient | None = None
@@ -528,6 +552,37 @@ async def ask(req: AskRequest, request: Request):
                   "environment": ENVIRONMENT},
     )
 
+    # --- FEATURE FLAG: routed RAG (LangGraph). Default false -> the existing
+    # path below runs byte-for-byte as it does today. Read per request so the
+    # switch takes effect on the next invocation, for instant rollback. ---
+    if rag_config.routed_rag_enabled():
+        try:
+            scope = rag_scope.single(tenant_id)
+        except rag_scope.ScopeError as e:
+            # Fail closed: never fall through to a wider search.
+            log.error("routed scope rejected", error_type=type(e).__name__,
+                      request_id=request_id)
+            span.set(routed=True, result_type="scope_error",
+                     error_type=type(e).__name__)
+            span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
+            return JSONResponse(status_code=400,
+                                content={"error": "invalid profile scope"})
+        span.set(feature_flag_enabled=True)
+
+        def routed_stream():
+            try:
+                yield from _routed_stream(
+                    request_id=request_id, question=question, scope=scope,
+                    history=history, span=span, started_at=started_at,
+                    asker_id=asker_id, chat_id=chat_id, route_type="single",
+                    log_usage=True)
+            finally:
+                span.finish(metadata={
+                    "latency_ms": int((time.time() - started_at) * 1000)})
+
+        return StreamingResponse(routed_stream(),
+                                 media_type="application/x-ndjson")
+
     # Everything below runs inside the streamed generator. Starlette iterates a
     # sync generator in a threadpool, so blocking calls (Bedrock, Qdrant, Groq)
     # are fine and don't block the event loop.
@@ -706,6 +761,131 @@ async def ask(req: AskRequest, request: Request):
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 
+# ---------------------------------------------------------------------------
+# Routed RAG (LangGraph) — feature-flagged. See PRODUCTION-ROUTED-RAG-HARDENING.md
+# ---------------------------------------------------------------------------
+
+def _rag_deps() -> RagDeps:
+    """Bind the routed graph to the EXISTING production functions (§11).
+
+    Constructed per request (cheap — it only captures function references) so a
+    test can substitute fakes without touching module state.
+    """
+    return RagDeps(
+        hybrid_search=_hybrid_search,
+        hybrid_search_multi=_hybrid_search_multi,
+        embed_dense=_embed_dense,
+        semcache_lookup=semcache.lookup,
+        semcache_store=semcache.store,
+        llm_context=_llm_context,
+        dedupe_citations=_dedupe_citations,
+        dedupe_citations_attributed=_dedupe_citations_attributed,
+        context_est_tokens=_context_est_tokens,
+        build_system_prompt=_build_system_prompt,
+        build_group_system_prompt=_build_group_system_prompt,
+        get_tenant=_get_tenant,
+        retrieval_floor=RETRIEVAL_FLOOR,
+        max_llm_context_chunks=MAX_LLM_CONTEXT_CHUNKS,
+    )
+
+
+ROUTED_UNAVAILABLE_TEXT = "\n\n[Error while generating response]"
+
+
+def _routed_stream(*, request_id: str, question: str, scope, history: list,
+                   span, started_at: float, asker_id: str, chat_id: str | None,
+                   route_type: str, log_usage: bool):
+    """Run the routed graph and yield the SAME NDJSON event schema as the
+    existing path: zero or more {"type":"content"} then one {"type":"done"}.
+
+    Event GRANULARITY differs from the streaming path: the routed generation is a
+    single non-streaming Groq call, so the answer arrives as ONE content event
+    rather than per-token events. This is not user-visible in the deployed
+    configuration because the Lambda Web Adapter runs in `buffered` mode
+    (AWS_LWA_INVOKE_MODE=buffered) and collects the whole StreamingResponse into
+    one HTTP response before the client sees any of it; the frontend then
+    typewriter-animates the text it received. Documented in §5/§30 of the
+    hardening report rather than hidden.
+
+    Persistence (semantic-cache write, chat append, usage row) happens HERE,
+    outside the graph, so a persistence failure cannot invalidate an answer the
+    user has already received.
+    """
+    budget = RequestBudget()
+    deps = _rag_deps()
+    state = None
+    try:
+        state = rag_graph.run(request_id=request_id, question=question,
+                              scope=scope, history=history, deps=deps,
+                              budget=budget)
+    except Exception as e:
+        # Any unexpected graph failure degrades to the controlled error contract
+        # rather than a 500 through the streaming body.
+        span.record_error(e)
+        span.set(routed=True, route_type=route_type, result_type="graph_error",
+                 error_type=type(e).__name__)
+        log.error("routed graph failed", error_type=type(e).__name__,
+                  request_id=request_id)
+        yield _ndjson({"type": "content", "text": ROUTED_UNAVAILABLE_TEXT})
+        yield _ndjson({"type": "done", "citations": [], "cache_hit": False})
+        if log_usage:
+            _log_usage(scope.single_tenant or "", asker_id, request_id, question,
+                       0, 0, "graph_error", started_at)
+        return
+
+    answer = state.get("final_answer") or ""
+    citations = list(state.get("citations") or [])
+    result_type = state.get("result_type") or "answered"
+    cache_hit = bool(state.get("cache_hit"))
+
+    if result_type == "empty_context":
+        # No evidence passed the relevance floor. The routed path deliberately
+        # does NOT reimplement the existing empty-retrieval profile-overview
+        # behaviour (that is the non-routed path's contract and is unchanged);
+        # it returns the honest no-content answer.
+        answer = ("No relevant content was found for this question."
+                  if scope.kind == "single"
+                  else "No one in this selection has written about that yet.")
+        citations = []
+    elif result_type in ("provider_unavailable", "generation_error"):
+        answer = ROUTED_UNAVAILABLE_TEXT
+        citations = []
+
+    if answer:
+        yield _ndjson({"type": "content", "text": answer})
+    yield _ndjson({"type": "done", "citations": citations, "cache_hit": cache_hit})
+
+    # --- observability: replay the measured graph into the §20 span tree ---
+    rag_obs.emit_spans(span, state, budget, route_type=route_type)
+    snap = budget.snapshot()
+    log.info("relevance", request_id=request_id,
+             top_dense=state.get("top_dense"), floor=RETRIEVAL_FLOOR,
+             hits=len(state.get("merged_context") or []),
+             result_type=result_type, routed=True,
+             answer_path=state.get("answer_path"),
+             branch_count=state.get("branch_count"),
+             remaining_budget_ms=snap["remaining_budget_ms"])
+
+    # --- persistence, deliberately outside the graph ---
+    if (result_type == "answered" and not cache_hit and scope.kind == "single"
+            and not history and state.get("query_dense") is not None):
+        try:
+            deps.semcache_store(scope.single_tenant, question,
+                                state["query_dense"], answer, citations)
+        except Exception as e:
+            log.error("semcache store failed", error_type=type(e).__name__)
+
+    if log_usage:
+        _log_usage(scope.single_tenant or "", asker_id, request_id, question,
+                   snap["input_tokens"], snap["output_tokens"], result_type,
+                   started_at)
+    if chat_id:
+        try:
+            chatstore.append_turn(asker_id, chat_id, question, answer, citations)
+        except Exception as e:
+            log.error("chat append failed", error_type=type(e).__name__)
+
+
 def _llm_context(results):
     """Final context selection: the best MAX_LLM_CONTEXT_CHUNKS already-ranked chunks.
 
@@ -882,11 +1062,17 @@ financial topics add a brief disclaimer (not personalized advice; consult a prof
 """
 
 
+QDRANT_TIMEOUT_S = float(os.environ.get("QDRANT_TIMEOUT_S", "8"))
+
+
 def _get_qdrant_client() -> QdrantClient:
     global _qdrant
     if _qdrant is None:
         url, api_key = get_qdrant()
-        _qdrant = QdrantClient(url=url, api_key=api_key)
+        # Explicit timeout (§18): the client previously had none, so a hung
+        # Qdrant call could block until the API Gateway deadline killed the
+        # request with no controlled response.
+        _qdrant = QdrantClient(url=url, api_key=api_key, timeout=QDRANT_TIMEOUT_S)
     return _qdrant
 
 
@@ -1237,6 +1423,36 @@ async def ask_group(req: GroupAskRequest, request: Request):
         metadata={"request_id": request_id, "has_history": bool(history),
                   "environment": ENVIRONMENT, "target_count": len(targets)},
     )
+
+    # --- FEATURE FLAG: routed RAG for the group (multi-tenant) route. The
+    # scope is the ALREADY-AUTHORIZED target set resolved above; the graph can
+    # only narrow within it, never widen. No semantic cache on this route. ---
+    if rag_config.routed_rag_enabled():
+        try:
+            gscope = rag_scope.multi(targets, kind="group" if req.group_id else "multi")
+        except rag_scope.ScopeError as e:
+            log.error("routed group scope rejected", error_type=type(e).__name__,
+                      request_id=request_id)
+            span.set(routed=True, result_type="scope_error",
+                     error_type=type(e).__name__)
+            span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
+            return JSONResponse(status_code=400,
+                                content={"error": "invalid group scope"})
+        span.set(feature_flag_enabled=True)
+
+        def routed_group_stream():
+            try:
+                yield from _routed_stream(
+                    request_id=request_id, question=question, scope=gscope,
+                    history=history, span=span, started_at=started_at,
+                    asker_id=asker_id, chat_id=chat_id,
+                    route_type=gscope.kind, log_usage=False)
+            finally:
+                span.finish(metadata={
+                    "latency_ms": int((time.time() - started_at) * 1000)})
+
+        return StreamingResponse(routed_group_stream(),
+                                 media_type="application/x-ndjson")
 
     def event_stream():
         try:

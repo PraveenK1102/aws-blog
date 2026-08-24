@@ -24,6 +24,9 @@ RUN mkdir -p /opt/fastembed_cache && \
 
 COPY common/ ./common/
 COPY ask/app.py ask/llm.py ./
+# Routed RAG package (LangGraph). Production graph logic lives here; it
+# never imports evals/, and evals/ is never copied into the image.
+COPY ask/rag/ ./rag/
 
 # uvicorn serves the FastAPI app on the port LWA proxies to.
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]

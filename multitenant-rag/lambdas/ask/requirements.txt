@@ -9,3 +9,10 @@ bcrypt>=4.1.0
 # Observability: LangSmith app-level tracing (direct SDK, no LangChain). Pinned
 # to the 0.11 line verified compatible with these deps on Python 3.12.
 langsmith>=0.11.1,<0.12
+
+# Routed RAG orchestration. Pinned to the exact version the routed graph was
+# validated against (rag-routed-langgraph-v2-offline).
+# langchain-core arrives ONLY as a langgraph transitive dependency — no
+# application module imports a LangChain API. Enforced by
+# rag/test_dependency_boundary.py.
+langgraph==1.2.11
