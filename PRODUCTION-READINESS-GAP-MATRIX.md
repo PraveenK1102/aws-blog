@@ -3,6 +3,14 @@
 Audit 2026-08-23, grounded in code and read-only AWS describes. **Zero provider/inference calls.**
 No AWS mutation, nothing deployed.
 
+> **UPDATE 2026-08-24T19:24Z — ROUTED RAG DEPLOYED, AWAITING MANUAL SMOKE.**
+> `multitenant-ask` now runs x86_64 image `sha256:3ada41fc…` (commit `4126661`) with
+> `ROUTED_RAG_ENABLED=true`. Flag-false verification passed first (health 200, 0 import
+> errors, LangSmith→prod). **Not declared successful** — no authenticated request made.
+> Rollback: flag→false (instant), then `d5af30e` / `sha256:2791dfa4…` (preserved).
+> **#11 ingestion DLQ deliberately excluded** from this deployment (independent failure
+> domains) and remains the **top open P0**. **#19 authenticated smoke is the active blocker.**
+>
 > **UPDATE 2026-08-25 — Titan budget accepted; release controls hardened; DEPLOYMENT GATED.**
 > Architect accepted Titan **total ≤ 4** per request = **1 semantic-cache probe + ≤3
 > retrieval** embeddings. `titan_embeddings_total` is now an *enforced* bound and the
@@ -74,8 +82,9 @@ Priority: **P0** blocks enabling routed RAG · **P1** needed soon after · **P2*
 | #4 | scope-safety production tests | **closed in code** |
 | #7/#8 | per-request budgets + explicit timeouts | **closed in code** |
 | #11 | ingestion DLQ | **OPEN — top remaining P0** |
-| #19 | authenticated smoke | **ready, requires the user to run it** |
-| #27 | **credential rotation (new)** | **OPEN — BLOCKS DEPLOYMENT.** Qdrant key rotate+revoke; local dev `JWT_SECRET` replace. Production `multitenant/jwt` NOT implicated |
+| #19 | authenticated smoke | **ACTIVE BLOCKER — routed RAG is live and unverified; user must run the smoke** |
+| #27 | credential rotation | ✅ **CLOSED 2026-08-25** — Qdrant rotated+revoked, dev `JWT_SECRET` replaced, verified behaviourally; production `multitenant/jwt` untouched |
+| #20 | deployment | ✅ **DONE 2026-08-24** — x86_64 image deployed by digest, flag-gated, rollback preserved |
 
 Nothing here is deployed. The code ships disabled; enabling is the next architect-approved task.
 

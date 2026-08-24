@@ -845,6 +845,41 @@ NVIDIA 0, RAGAS 0, DeepEval 0. AWS mutations 0. Production UNCHANGED.
 
 Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (31 sections).
 
+## 9n. ROUTED RAG DEPLOYED TO PRODUCTION (2026-08-24T19:24Z) — AWAITING MANUAL SMOKE
+
+**Status: DEPLOYED / AWAITING MANUAL AUTHENTICATED SMOKE. Not declared successful.**
+
+Routed LangGraph RAG is **live in production** with `ROUTED_RAG_ENABLED=true`, but no
+authenticated end-to-end request has been made, so routed behaviour is **unverified**.
+
+| | |
+|---|---|
+| Image | `multitenant-ask@sha256:3ada41fc85255adf544bb266b98ca62887b8639ea85f2b14c824005d530cfca0` |
+| Tag / commit | `41266619fe4b36bcccf3f0d2d6f8dc719bd8553f` (immutable, = git SHA) |
+| Architecture | **x86_64** — built by GitHub Actions `build-lambdas.yml` on native amd64 runners (CI run `32764221478`), NOT the earlier arm64 local build |
+| Lambda | `Active` / `LastUpdateStatus: Successful`, 60 s / 2048 MB, deployed **by digest** |
+| Env | 15 vars — the 14 captured baseline vars preserved verbatim + `ROUTED_RAG_ENABLED` |
+| Rollback | flag→false (instant, no redeploy); then image `d5af30e…` digest `sha256:2791dfa4…` (preserved) |
+
+**Flag-false verification passed before enabling:** `/health` 200 through API Gateway; cold
+start 5.67 s billed / 16.6 s wall including image pull; warm `/health` ~0.37 s; uvicorn
+started; `langsmith tracing enabled project=multitenant-rag-prod`; **0 import errors or
+tracebacks**; no routed execution. The langgraph-in-production import risk is retired.
+
+Verified inside the deployed image: `REQUEST_DEADLINE_MS=24000` (vs API Gateway 30,000 ms,
+unchanged), models `20b`/`20b`/`120b`, Titan retrieval ≤3 + semcache ≤1 = **total ≤4**,
+frozen prompt hashes intact, 15 rag modules and **no** eval source, RAGAS, DeepEval,
+`langchain_community`, `langchain_openai` or top-level `langchain`.
+
+**No authenticated request was made** — no credentials available, and creating a production
+user or requesting a password is prohibited. Automated tests cover flag=false → legacy path;
+the rest is the user's smoke.
+
+**DLQ deliberately NOT part of this deployment** (independent failure domains; keeps rollback
+attribution clear). It remains the **top open ingestion P0**.
+
+Details: **`PRODUCTION-ROUTED-RAG-DEPLOYMENT.md`** (20 sections).
+
 ## 10. Observability
 - **CloudWatch (deployed):** structured JSON logs (`common/logger.py`); per-query `relevance` lines; `usage-logs` DDB table; new logs "global search start/done" (request_id, result_count, latency_ms — never the query).
 - **LangSmith (deployed; backend delivery pending an authed query):** per-request traces for the three query flows (project `multitenant-rag-prod`), as in §7.
@@ -902,6 +937,11 @@ Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (31 sections).
 - **Not performed (no creds):** authenticated functional smoke (login → ask / search / follow / group / group-ask) and live-LangSmith-trace + CloudWatch↔LangSmith correlation. See §13/§16.
 
 ## 13. Deployment State
+
+> **2026-08-24:** `multitenant-ask` now runs image `sha256:3ada41fc…` (commit `4126661`) with
+> **`ROUTED_RAG_ENABLED=true`** — DEPLOYED / AWAITING MANUAL AUTHENTICATED SMOKE. Rollback:
+> flag→false (instant), then image `sha256:2791dfa4…` (`d5af30e`). See
+> `PRODUCTION-ROUTED-RAG-DEPLOYMENT.md`.
 **Currently running in AWS (verified 2026-08-23):** `main` @ `d5af30e`. ask Lambda on image `d5af30e…` with `MAX_LLM_CONTEXT_CHUNKS=5`; social DynamoDB tables ACTIVE; scoped IAM applied; LangSmith env + secret wired and tracing enabled at init; new frontend live behind CloudFront. All rev-5 + social/search + global-search routes reachable; no init/IAM/import errors in logs.
 
 **Verified but only at routing/infra level (functional behaviour pending authed smoke):** follow/unfollow, groups, group ask, global search read/write against the new tables under the new IAM.
@@ -923,6 +963,24 @@ Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (31 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-24 — Routed LangGraph RAG DEPLOYED to production (awaiting manual smoke)
+- Deployed x86_64 image `sha256:3ada41fc…` (tag/commit `4126661`, CI run `32764221478` on native
+  amd64 GitHub runners) to `multitenant-ask` **by digest**. Old image `d5af30e…`
+  (`sha256:2791dfa4…`) preserved as rollback.
+- Two-stage: deployed with `ROUTED_RAG_ENABLED=false`, verified the legacy path healthy
+  (`/health` 200, warm ~0.37 s, 0 import errors, LangSmith → `multitenant-rag-prod`), then set
+  `ROUTED_RAG_ENABLED=true`. `Active`/`Successful` at 19:24:00Z.
+- Env handled by rebuilding from a captured baseline + exactly one addition, asserted so no
+  existing variable could be dropped: **14 → 15 vars, 0 dropped**. Timeout, memory, IAM role,
+  API Gateway, CloudFront, Secrets Manager, Qdrant config, Groq models and context cap all
+  unchanged.
+- Preflight all-pass: 210 tests (152 routed + 19 release/security + 39 pre-existing), release
+  guard clean, archive 0 `.env`, secret scan clean, image `d5af30e` confirmed pre-deploy, API
+  Gateway 30,000 ms, ask timeout 60 s.
+- **NOT declared successful** — no authenticated request made. Awaiting the user's manual smoke.
+- DLQ deferred by architect decision; still the top open ingestion P0.
+- Report: `PRODUCTION-ROUTED-RAG-DEPLOYMENT.md` (20 sections).
 
 ### 2026-08-25 — Titan budget accepted (total ≤4) + release-security hardening; DEPLOYMENT GATED
 - **Titan total ≤4 per request accepted** = 1 semantic-cache probe + ≤3 retrieval embeddings.
