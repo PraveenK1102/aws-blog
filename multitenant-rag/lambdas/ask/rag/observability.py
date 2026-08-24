@@ -65,9 +65,11 @@ def _emit(root, state, budget, route_type: str) -> None:
              **{k: snap[k] for k in (
                  "request_deadline_ms", "remaining_budget_ms", "deadline_exceeded",
                  "router_calls", "decomposition_calls", "generation_calls",
-                 "groq_logical_calls", "retrieval_branches", "titan_embeddings",
+                 "groq_logical_calls", "retrieval_branches",
+                 "semcache_titan_embeddings", "retrieval_titan_embeddings",
+                 "titan_embeddings_total",
                  "qdrant_dense_probes", "qdrant_hybrid_queries",
-                 "qdrant_physical_queries", "semcache_embeddings",
+                 "qdrant_physical_queries",
                  "rate_limit_events", "retry_count", "total_tokens")})
 
     # ---- semantic_cache ----

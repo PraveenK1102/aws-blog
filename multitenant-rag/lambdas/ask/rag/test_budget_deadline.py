@@ -34,7 +34,9 @@ class HardBoundTests(unittest.TestCase):
         self.assertEqual(LIMITS["generation_calls"], 1)
         self.assertEqual(LIMITS["groq_logical_calls"], 3)
         self.assertEqual(LIMITS["retrieval_branches"], 3)
-        self.assertEqual(LIMITS["titan_embeddings"], 3)
+        self.assertEqual(LIMITS["retrieval_titan_embeddings"], 3)
+        self.assertEqual(LIMITS["semcache_titan_embeddings"], 1)
+        self.assertEqual(LIMITS["titan_embeddings_total"], 4)
         self.assertEqual(LIMITS["qdrant_dense_probes"], 3)
         self.assertEqual(LIMITS["qdrant_hybrid_queries"], 3)
         self.assertEqual(LIMITS["qdrant_physical_queries"], 6)
@@ -79,13 +81,14 @@ class HardBoundTests(unittest.TestCase):
         with self.assertRaises(BudgetExceeded) as cm:
             b.spend_retrieval()
         self.assertIn(cm.exception.resource,
-                      ("retrieval_branches", "titan_embeddings",
-                       "qdrant_physical_queries"))
+                      ("retrieval_branches", "retrieval_titan_embeddings",
+                       "titan_embeddings_total", "qdrant_physical_queries"))
 
     def test_reused_embedding_is_not_double_counted(self):
         b = RequestBudget()
         b.spend_retrieval(embed=False)
-        self.assertEqual(b.counts["titan_embeddings"], 0)
+        self.assertEqual(b.counts["retrieval_titan_embeddings"], 0)
+        self.assertEqual(b.counts["titan_embeddings_total"], 0)
         self.assertEqual(b.counts["qdrant_physical_queries"], 2)
 
     def test_decomposition_is_capped_by_remaining_branch_room(self):
@@ -335,6 +338,140 @@ class PartialBranchFailureTests(unittest.TestCase):
         for k in ("partial_branch_failure", "failed_branch_count",
                   "successful_branch_count", "branch_count"):
             self.assertIn(k, st)
+
+
+class TitanBudgetScenarioTests(unittest.TestCase):
+    """ARCHITECT-ACCEPTED Titan accounting (2026-08-24), option (a).
+
+    The per-request TOTAL maximum is 4, not 3:
+        1 semantic-cache probe embedding + up to 3 retrieval embeddings.
+    "3" is the RETRIEVAL bound alone. These tests pin all three scenarios so a
+    future reader cannot mistake the retrieval bound for the request total.
+    """
+
+    def test_simple_cache_eligible_request_uses_one_titan_call(self):
+        """The probe vector is REUSED for retrieval, never re-embedded."""
+        embeds = []
+        deps = make_deps(embed_dense=lambda t: embeds.append(t) or [0.01] * 1024)
+        st, _, b = run(deps=deps, provider=FakeProvider(router=ROUTER_SIMPLE))
+        self.assertEqual(st["answer_path"], "simple")
+        self.assertEqual(b.counts["semcache_titan_embeddings"], 1)
+        self.assertEqual(b.counts["titan_embeddings_total"], 1)
+        self.assertLessEqual(b.snapshot()["titan_embeddings_total"], 1)
+
+    def test_two_branch_compound_after_cache_miss_uses_three_titan_calls(self):
+        st, _, b = run(provider=FakeProvider(router=ROUTER_COMPOUND,
+                                             decomposition=DECOMP_TWO))
+        self.assertEqual(st["answer_path"], "compound")
+        self.assertEqual(st["branch_count"], 2)
+        self.assertEqual(b.counts["semcache_titan_embeddings"], 1)
+        self.assertEqual(b.counts["retrieval_titan_embeddings"], 2)
+        self.assertEqual(b.counts["titan_embeddings_total"], 3)
+        self.assertLessEqual(b.snapshot()["titan_embeddings_total"], 3)
+
+    def test_three_branch_compound_after_cache_miss_uses_four_titan_calls(self):
+        st, _, b = run(provider=FakeProvider(router=ROUTER_COMPOUND,
+                                             decomposition=DECOMP_THREE))
+        self.assertEqual(st["answer_path"], "compound")
+        self.assertEqual(st["branch_count"], 3)
+        self.assertEqual(b.counts["semcache_titan_embeddings"], 1)
+        self.assertEqual(b.counts["retrieval_titan_embeddings"], 3)
+        self.assertEqual(b.counts["titan_embeddings_total"], 4)
+        self.assertLessEqual(b.snapshot()["titan_embeddings_total"],
+                             LIMITS["titan_embeddings_total"])
+
+    def test_group_route_is_not_cache_eligible_so_costs_no_probe_embedding(self):
+        st, _, b = run(scope=S.multi(["a", "b"]),
+                       provider=FakeProvider(router=ROUTER_COMPOUND,
+                                             decomposition=DECOMP_THREE))
+        self.assertEqual(b.counts["semcache_titan_embeddings"], 0)
+        self.assertEqual(b.counts["retrieval_titan_embeddings"], 3)
+        self.assertEqual(b.counts["titan_embeddings_total"], 3)
+
+    def test_total_is_an_enforced_bound_not_a_derived_report(self):
+        b = RequestBudget()
+        b.spend_semcache_embedding()
+        for _ in range(3):
+            b.spend_retrieval()
+        self.assertEqual(b.counts["titan_embeddings_total"], 4)
+        with self.assertRaises(BudgetExceeded):
+            b.spend_retrieval()          # would be the 5th Titan call
+
+    def test_second_semcache_probe_is_refused(self):
+        b = RequestBudget()
+        b.spend_semcache_embedding()
+        with self.assertRaises(BudgetExceeded) as cm:
+            b.spend_semcache_embedding()
+        self.assertEqual(cm.exception.resource, "semcache_titan_embeddings")
+
+    def test_rejected_probe_leaves_no_residue_in_the_total(self):
+        b = RequestBudget()
+        b.spend_semcache_embedding()
+        try:
+            b.spend_semcache_embedding()
+        except BudgetExceeded:
+            pass
+        self.assertEqual(b.counts["titan_embeddings_total"], 1)
+
+    def test_snapshot_exposes_all_three_titan_figures(self):
+        _, _, b = run(provider=FakeProvider(router=ROUTER_COMPOUND,
+                                            decomposition=DECOMP_THREE))
+        snap = b.snapshot()
+        for k in ("semcache_titan_embeddings", "retrieval_titan_embeddings",
+                  "titan_embeddings_total"):
+            self.assertIn(k, snap, k)
+        self.assertEqual(snap["titan_embeddings_total"],
+                         snap["semcache_titan_embeddings"]
+                         + snap["retrieval_titan_embeddings"])
+
+    def test_probe_vector_is_actually_passed_to_retrieval(self):
+        """Cheaper AND correct: the reused vector must reach the retriever."""
+        seen = {}
+
+        def hs(q, tid, dense_vec=None):
+            seen["q"] = q
+            seen["dense"] = dense_vec
+            return points(3), 0.8
+        run(deps=make_deps(hybrid_search=hs),
+            provider=FakeProvider(router=ROUTER_SIMPLE))
+        self.assertIsNotNone(seen["dense"], "probe vector was not reused")
+        self.assertEqual(len(seen["dense"]), 1024)
+
+    def test_folded_followup_must_not_reuse_the_probe_vector(self):
+        """A folded follow-up retrieves on DIFFERENT text, so reusing the probe
+        embedding would search against the wrong query."""
+        seen = {}
+
+        def hs(q, tid, dense_vec=None):
+            seen["q"] = q
+            seen["dense"] = dense_vec
+            return points(3), 0.8
+        st, _, b = run(question="yes",
+                       history=[{"role": "user", "content": "tell me about roses"}],
+                       deps=make_deps(hybrid_search=hs),
+                       provider=FakeProvider(router=ROUTER_SIMPLE))
+        self.assertEqual(seen["q"], "tell me about roses yes")
+        self.assertIsNone(seen["dense"], "reused a vector for different text")
+        self.assertEqual(b.counts["retrieval_titan_embeddings"], 1)
+
+    def test_branches_never_reuse_the_probe_vector(self):
+        """Each branch retrieves on its own subquestion text."""
+        seen = []
+
+        def hs(q, tid, dense_vec=None):
+            seen.append((q, dense_vec))
+            return points(3), 0.8
+        run(deps=make_deps(hybrid_search=hs),
+            provider=FakeProvider(router=ROUTER_COMPOUND,
+                                  decomposition=DECOMP_THREE))
+        self.assertEqual(len(seen), 3)
+        for q, dv in seen:
+            self.assertIsNone(dv, f"branch {q!r} reused the probe vector")
+
+    def test_no_ambiguous_titan_counter_name_survives(self):
+        """A bare `titan_embeddings` key would be read as the request total."""
+        self.assertNotIn("titan_embeddings", LIMITS)
+        self.assertNotIn("titan_embeddings", RequestBudget().snapshot())
 
 
 if __name__ == "__main__":

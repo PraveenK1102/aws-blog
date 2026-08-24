@@ -15,17 +15,25 @@ real miss: it required a QUOTE after `=`, so an unquoted `.env` line
 """
 import collections, math, os, re, sys
 
-ROOT = sys.argv[1]
 CFG_EXT = {"", ".env", ".ini", ".cfg", ".conf", ".properties", ".sh", ".bash", ".zsh"}
 SKIP_DIR = (".venv", "__pycache__", ".git", "node_modules")
 
 PREFIX = re.compile(
-    r"(gsk_[A-Za-z0-9]{20,}"
-    r"|nvapi-[A-Za-z0-9_-]{20,}"
-    r"|lsv2_(?:pt|sk)_[A-Za-z0-9]{20,}"
-    r"|sk-[A-Za-z0-9]{32,}"
-    r"|AKIA[0-9A-Z]{16}"
-    r"|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.)")
+    r"(gsk_[A-Za-z0-9]{20,}"                       # Groq
+    r"|nvapi-[A-Za-z0-9_-]{20,}"                   # NVIDIA NIM
+    r"|lsv2_(?:pt|sk)_[A-Za-z0-9]{20,}"            # LangSmith
+    r"|sk-[A-Za-z0-9]{32,}"                        # OpenAI-style
+    r"|xox[baprs]-[A-Za-z0-9-]{10,}"               # Slack
+    r"|gh[pousr]_[A-Za-z0-9]{20,}"                 # GitHub
+    r"|(?:AKIA|ASIA|AIDA|AROA|ANPA|ANVA)[0-9A-Z]{16}"   # AWS access-key ids
+    r"|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.)")  # JWT (header.payload.)
+
+# Authorization headers, in code or captured output.
+AUTH_HEADER = re.compile(
+    # Tolerate dict/index syntax between the name and the separator, e.g.
+    # {"Authorization": "Bearer X"} and headers['Authorization'] = 'Basic X'.
+    r"(?i)\bauthorization\b[\"'\]]*\s*[:=]\s*[\"']?\s*"
+    r"(bearer|basic|token)\s+([A-Za-z0-9._\-+/=]{12,})")
 
 NAME = r"[A-Za-z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL|APIKEY)[A-Za-z0-9_]*"
 CFG_ASSIGN = re.compile(rf"(?i)^\s*(?:export\s+)?({NAME})\s*=\s*(\S+)\s*$")
@@ -50,6 +58,14 @@ PLACEHOLDER = re.compile(
     r"multitenant/.*|[a-z0-9-]+/[a-z0-9-]+)$")
 
 
+# Deliberate, auditable suppression for SYNTHETIC values in test fixtures.
+# Standard practice (detect-secrets uses the same marker). It is greppable, so
+# every suppression in the repo can be reviewed in one command:
+#     grep -rn "allowlist secret" .
+# A real leaked credential will not carry this marker.
+ALLOWLIST_PRAGMA = re.compile(r"(?i)#\s*pragma:\s*allowlist\s+secret")
+
+
 def entropy(s):
     if not s:
         return 0.0
@@ -67,48 +83,79 @@ def suspicious(val):
     return f"len={len(val)} H={entropy(val):.2f}"
 
 
-findings = []
-scanned = 0
-for dp, dns, fns in os.walk(ROOT):
-    dns[:] = [d for d in dns if d not in SKIP_DIR]
-    for fn in fns:
-        p = os.path.join(dp, fn)
-        ext = os.path.splitext(fn)[1].lower()
-        is_cfg = ext in CFG_EXT or fn.startswith(".env")
-        try:
-            text = open(p, encoding="utf-8", errors="ignore").read()
-        except Exception:
-            continue
-        scanned += 1
-        rel = os.path.relpath(p, ROOT)
-        for i, line in enumerate(text.splitlines(), 1):
-            if PREFIX.search(line):
-                findings.append((rel, i, "PROVIDER KEY SHAPE"))
-                continue
-            stripped = line.lstrip()
-            if stripped.startswith("#") or stripped.startswith("//"):
-                continue
-            # Both rules run on every file: bare NAME=VALUE (any extension) and
-            # quoted NAME="VALUE" for source/markup.
-            cand = []
-            mc = CFG_ASSIGN.match(line)
-            if mc and not CODEISH.search(mc.group(2)):
-                cand.append((mc.group(1), mc.group(2)))
-            ms = SRC_ASSIGN.search(line)
-            if ms:
-                cand.append((ms.group(1), ms.group(3)))
-            if not cand:
-                continue
-            name, val = cand[0]
-            if SAFE_NAMES.match(name):
-                continue
-            why = suspicious(val)
-            if why:
-                findings.append((rel, i, f"literal {name} {why}"))
+def scan_dir(root):
+    """Scan a directory tree for secret-looking content.
 
-print(f"  files scanned: {scanned}")
-for f in findings[:25]:
-    print(f"  [HIT] {f[0]}:{f[1]}  {f[2]}")
-print(f"  findings: {len(findings)}")
-print("  RESULT: CLEAN" if not findings else "  RESULT: *** DO NOT COMMIT ***")
-sys.exit(1 if findings else 0)
+    Returns (findings, files_scanned). A finding is
+    (relative_path, line_number, pattern_class) — the matched VALUE is never
+    included, because reporting a secret's value would re-disclose it.
+
+    This is the SECONDARY control. The primary control is `release_guard`, which
+    forbids credential-bearing FILES by path regardless of their content.
+    """
+    findings = []
+    scanned = 0
+    for dp, dns, fns in os.walk(root):
+        dns[:] = [d for d in dns if d not in SKIP_DIR]
+        for fn in fns:
+            path = os.path.join(dp, fn)
+            ext = os.path.splitext(fn)[1].lower()
+            is_cfg = ext in CFG_EXT or fn.startswith(".env")
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as fh:
+                    text = fh.read()
+            except Exception:
+                continue
+            scanned += 1
+            rel = os.path.relpath(path, root)
+            for i, line in enumerate(text.splitlines(), 1):
+                if ALLOWLIST_PRAGMA.search(line):
+                    continue
+                if PREFIX.search(line):
+                    findings.append((rel, i, "PROVIDER KEY SHAPE"))
+                    continue
+                ah = AUTH_HEADER.search(line)
+                if ah and not PLACEHOLDER.match(ah.group(2)):
+                    findings.append(
+                        (rel, i, f"AUTHORIZATION HEADER ({ah.group(1).lower()})"))
+                    continue
+                stripped = line.lstrip()
+                if stripped.startswith("#") or stripped.startswith("//"):
+                    continue
+                # Both rules run on every file: bare NAME=VALUE (any extension),
+                # and quoted NAME="VALUE" for source/markup. The bare rule is the
+                # one that was missing when a real .env slipped through.
+                cand = []
+                mc = CFG_ASSIGN.match(line)
+                if mc and not CODEISH.search(mc.group(2)):
+                    cand.append((mc.group(1), mc.group(2)))
+                ms = SRC_ASSIGN.search(line)
+                if ms:
+                    cand.append((ms.group(1), ms.group(3)))
+                if not cand:
+                    continue
+                name, val = cand[0]
+                if SAFE_NAMES.match(name):
+                    continue
+                why = suspicious(val)
+                if why:
+                    findings.append((rel, i, f"literal {name} {why}"))
+            # `is_cfg` is retained for readability of the rule split above; the
+            # bare-assignment rule intentionally applies to every file type.
+            del is_cfg
+    return findings, scanned
+
+
+def main(argv):
+    root = argv[1]
+    findings, scanned = scan_dir(root)
+    print(f"  files scanned: {scanned}")
+    for f in findings[:25]:
+        print(f"  [HIT] {f[0]}:{f[1]}  {f[2]}")
+    print(f"  findings: {len(findings)}")
+    print("  RESULT: CLEAN" if not findings else "  RESULT: *** DO NOT COMMIT ***")
+    return 1 if findings else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

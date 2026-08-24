@@ -749,7 +749,7 @@ from the frozen eval modules and compares byte-for-byte.
 | Hardening | Implementation |
 |---|---|
 | Models | Router + decomposition **Groq 20B**, generation **Groq 120B**. No NVIDIA, no second provider |
-| Request budget | `RequestBudget`: ≤1 router / ≤1 decomposition / ≤1 generation / ≤3 logical Groq / ≤3 branches / ≤3 Titan / ≤6 physical Qdrant / ≤5 context chunks. Checked **before** each call, thread-safe, no residue on reject |
+| Request budget | `RequestBudget`: ≤1 router / ≤1 decomposition / ≤1 generation / ≤3 logical Groq / ≤3 branches / **Titan ≤4 total (1 cache probe + ≤3 retrieval)** / ≤6 physical Qdrant / ≤5 context chunks. Checked **before** each call, thread-safe, no residue on reject |
 | Deadline | `REQUEST_DEADLINE_MS=24000`, `time.monotonic()` from entry; every call timeout is `min(ceiling, remaining − 1500 ms reserve)`; a branch that cannot finish is not started |
 | Timeouts | **Fixed two audit gaps**: Bedrock/DDB now `botocore.Config` (connect 3 s / read 8 s / 2 attempts), Qdrant now `timeout=8` (it had **none**). Groq 6/6/12 s, each clamped to remaining budget |
 | 429 policy | **No proactive pacing** — the 7 s experiment pacing was NOT carried over (`time.sleep` never called on the happy path, asserted). Retry only if the provider's own hint ≤2 s **and** the budget affords wait+call; ≤1 retry. Router/decomposition failure → fall back to normal RAG and still answer; generation failure → controlled error contract |
@@ -787,6 +787,63 @@ files out of the runtime image.
 open P0. `case-041` unchanged (backlog).
 
 Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (30 sections).
+
+## 9m. Titan budget accepted + release-security hardening (2026-08-25)
+
+**Titan accounting — ARCHITECT-ACCEPTED, option (a).** The per-request maximum is **4**, not 3:
+
+```
+  semcache_titan_embeddings    <= 1     semantic-cache probe
++ retrieval_titan_embeddings   <= 3     one per retrieval branch
+= titan_embeddings_total       <= 4     ENFORCED per-request ceiling
+```
+
+"3 Titan calls" is the **retrieval** bound alone. The maximum of 4 arises only for a
+cache-eligible request that probes, misses, routes compound and decomposes into 3 branches.
+Branches were **not** capped at 2, the probe was **not** moved after Router V2, and the
+semantic cache was **not** removed. The ambiguous `titan_embeddings` counter name was
+**removed outright** (asserted by a test) so it cannot be misread as the request total; all
+three figures appear in `budget.snapshot()` and the trace whitelist.
+
+Measured, each pinned by its own test: simple cache-eligible **1** · 2-branch compound
+**3** · 3-branch compound **4** · group route (never cache-eligible) **3**.
+
+**Real inefficiency found and fixed while pinning those numbers:** the routed simple path
+was re-embedding the question instead of reusing the semantic-cache probe vector — **2**
+Titan calls where the existing production path costs 1. `normal_retrieve` now passes the
+probe vector through, gated on the probe text being **exactly** the retrieval text (compared,
+not assumed), so folded follow-ups and every branch still embed their own text.
+
+**Release-security hardening — two independent fail-closed controls:**
+
+| Control | Type | Rule |
+|---|---|---|
+| `tools/release_guard.py` | **PRIMARY, path-based** | **No `.env` may enter a release archive at all** — any depth, any variant (`.env.*`, `*.env`), plus `*.pem/.key/.p12/.pfx/.keystore/.jks`, `id_rsa*`, `credentials*`, `.netrc`, `.pgpass`, `.npmrc`, `.kdbx`. Allowlist holds exactly **one** entry (`local/.env.example`) |
+| `tools/secret_scan.py` | SECONDARY, content | Runs on the **extracted** archive. Known prefixes (Groq/NVIDIA/LangSmith/OpenAI/GitHub/Slack), AWS key ids, JWTs, `Authorization: Bearer\|Basic\|Token` headers, and credential assignments by entropy — **unquoted `NAME=VALUE` in any file type** (the form originally missed) and quoted literals. Reports path/line/pattern-class only, **never the value** |
+
+`tools/build_release_archive.sh` runs both and **deletes the archive** if either trips —
+verified end-to-end with a planted secret. A bug in the guard was caught by its own tests:
+`lstrip("./")` strips *characters*, so a root-level `.env` became `env` and passed; fixed
+and pinned by a regression test. Deliberate suppressions use the greppable
+`# pragma: allowlist secret` marker (synthetic test fixtures only).
+
+**Archive verified by extraction** (not the source tree): 133 entries / 121 files,
+**0 `.env` files**, both controls CLEAN. A coarse 14-character prefix check initially
+appeared to match the old Qdrant key; that was a **false alarm** — Qdrant Cloud keys are
+JWTs, so the prefix was the universal `{"alg":"HS256","typ":"JWT"}` header shared with a
+synthetic test fixture. The key-specific 60-character slice and payload segment are both
+absent.
+
+**DEPLOYMENT GATE: BLOCKED.** No deployment until the user confirms the Qdrant Cloud API key
+is rotated **and the old key revoked**, and the local dev `JWT_SECRET` replaced. Production
+`multitenant/jwt` was **not** implicated and must not be modified. Git history is **not**
+being rewritten (no force push, no scrub) — rotation/revocation is the mitigation.
+
+**Tests: 281 passing** — 171 production routed-RAG (incl. 19 release/secret-scan) + 39
+pre-existing + 71 eval-side frozen. Provider calls: Groq 0, Titan 0, Qdrant data-plane 0,
+NVIDIA 0, RAGAS 0, DeepEval 0. AWS mutations 0. Production UNCHANGED.
+
+Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (31 sections).
 
 ## 10. Observability
 - **CloudWatch (deployed):** structured JSON logs (`common/logger.py`); per-query `relevance` lines; `usage-logs` DDB table; new logs "global search start/done" (request_id, result_count, latency_ms — never the query).
@@ -866,6 +923,28 @@ Details: **`PRODUCTION-ROUTED-RAG-HARDENING.md`** (30 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-25 — Titan budget accepted (total ≤4) + release-security hardening; DEPLOYMENT GATED
+- **Titan total ≤4 per request accepted** = 1 semantic-cache probe + ≤3 retrieval embeddings.
+  `titan_embeddings_total` is now an ENFORCED bound; ambiguous `titan_embeddings` name removed.
+  Scenarios pinned by tests: simple **1**, 2-branch compound **3**, 3-branch compound **4**,
+  group **3**.
+- **Fixed a real inefficiency**: the routed simple path re-embedded instead of reusing the cache
+  probe vector (2 Titan calls vs production's 1). Now reused, gated on exact text equality so
+  folded follow-ups and branches still embed their own text.
+- **Release security hardened, fail-closed, two controls**: `tools/release_guard.py` (PATH rule —
+  no `.env` may enter an archive at any depth; one-entry allowlist) and a hardened
+  `tools/secret_scan.py` (unquoted `NAME=VALUE` in any file type, Authorization headers, more AWS
+  and provider shapes, entropy; never prints values). `tools/build_release_archive.sh` deletes the
+  archive if either trips — verified with a planted secret.
+- Caught a bug in my own guard via its tests: `lstrip("./")` strips CHARACTERS, so root-level
+  `.env` became `env` and passed. Fixed + regression test.
+- Archive rebuilt and verified **by extraction**: 133 entries / 121 files, **0 `.env`**, both
+  controls CLEAN. An apparent old-key match was a false alarm (shared JWT header prefix).
+- **DEPLOYMENT BLOCKED** pending user confirmation of Qdrant key rotation+revocation and local dev
+  `JWT_SECRET` replacement. Production `multitenant/jwt` NOT implicated. No history rewrite.
+- **281 tests pass.** Groq/Titan/Qdrant/NVIDIA/RAGAS/DeepEval calls: 0. AWS mutations: 0.
+  Production unchanged (`LastModified 2026-08-22T18:27:50Z`, image `d5af30e`).
 
 ### 2026-08-24 — SECURITY: real `.env` was included in the committed release archive (rotate)
 - **`multitenant-rag-current.zip` in commit `60fe1e3` contains `multitenant-rag/local/.env`**, which

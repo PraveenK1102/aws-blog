@@ -47,18 +47,30 @@ LIMITS = {
     "generation_calls": 1,
     "groq_logical_calls": 3,          # router + decomposition + generation
     "retrieval_branches": 3,
-    "titan_embeddings": 3,
+    # --- Titan (Bedrock) embeddings: THREE separate bounds, deliberately ---
+    #
+    # READ THIS BEFORE QUOTING A NUMBER. "3 Titan calls" is the RETRIEVAL bound,
+    # NOT the per-request total. A request makes at most:
+    #
+    #     1 semantic-cache probe embedding      (semcache_titan_embeddings)
+    #   + 3 retrieval embeddings, one per branch (retrieval_titan_embeddings)
+    #   = 4 Titan embeddings per request         (titan_embeddings_total)
+    #
+    # The maximum of 4 occurs ONLY for a cache-eligible request that probes the
+    # cache, misses, routes compound, and decomposes into 3 branches. It was
+    # reviewed and ACCEPTED by the architect (2026-08-24) — branches are NOT
+    # capped at 2, the probe is NOT moved after the router, and the semantic
+    # cache is NOT removed.
+    #
+    # A simple cache-eligible request costs 1 (the probe vector is REUSED for
+    # retrieval, never re-embedded — see spend_retrieval(embed=False)).
+    "retrieval_titan_embeddings": 3,
+    "semcache_titan_embeddings": 1,
+    "titan_embeddings_total": 4,      # enforced, not merely reported
     "qdrant_dense_probes": 3,
     "qdrant_hybrid_queries": 3,
     "qdrant_physical_queries": 6,     # dense probe + hybrid, per logical retrieval
     "final_context_chunks": 5,
-    # The semantic-cache probe is ALSO a Titan embedding, but it is counted
-    # separately from the <=3 RETRIEVAL embeddings so the architectural retrieval
-    # bound stays exactly enforceable. See PRODUCTION-ROUTED-RAG-HARDENING.md
-    # "Remaining production gaps" — worst case per request is therefore 1 probe
-    # embed + 3 branch embeds = 4 Titan calls, which is flagged for architect
-    # review rather than silently folded into the retrieval counter.
-    "semcache_embeddings": 1,
     "semcache_queries": 1,
 }
 
@@ -151,12 +163,29 @@ class RequestBudget:
                     "qdrant_dense_probes": 1, "qdrant_hybrid_queries": 1,
                     "qdrant_physical_queries": 2}
             if embed:
-                need["titan_embeddings"] = 1
+                # A retrieval embedding consumes BOTH the retrieval bound and the
+                # per-request total, so the two can never disagree.
+                need["retrieval_titan_embeddings"] = 1
+                need["titan_embeddings_total"] = 1
             for res, n in need.items():
                 if self.counts[res] + n > LIMITS[res]:
                     raise BudgetExceeded(res, LIMITS[res])
             for res, n in need.items():
                 self.counts[res] += n
+
+    def spend_semcache_embedding(self) -> None:
+        """The semantic-cache probe embedding.
+
+        Consumes its own bound AND the per-request Titan total, so the total is a
+        genuinely enforced ceiling rather than a derived report. Checked before
+        mutating either counter, so a rejected spend leaves no residue.
+        """
+        with self._lock:
+            for res in ("semcache_titan_embeddings", "titan_embeddings_total"):
+                if self.counts[res] + 1 > LIMITS[res]:
+                    raise BudgetExceeded(res, LIMITS[res])
+            self.counts["semcache_titan_embeddings"] += 1
+            self.counts["titan_embeddings_total"] += 1
 
     def record_tokens(self, tin: int | None, tout: int | None) -> None:
         with self._lock:
@@ -184,11 +213,14 @@ class RequestBudget:
                 "generation_calls": self.counts["generation_calls"],
                 "groq_logical_calls": self.counts["groq_logical_calls"],
                 "retrieval_branches": self.counts["retrieval_branches"],
-                "titan_embeddings": self.counts["titan_embeddings"],
+                # All three Titan figures are exposed so no reader has to infer
+                # the total from the retrieval bound (see LIMITS for why).
+                "semcache_titan_embeddings": self.counts["semcache_titan_embeddings"],
+                "retrieval_titan_embeddings": self.counts["retrieval_titan_embeddings"],
+                "titan_embeddings_total": self.counts["titan_embeddings_total"],
                 "qdrant_dense_probes": self.counts["qdrant_dense_probes"],
                 "qdrant_hybrid_queries": self.counts["qdrant_hybrid_queries"],
                 "qdrant_physical_queries": self.counts["qdrant_physical_queries"],
-                "semcache_embeddings": self.counts["semcache_embeddings"],
                 "input_tokens": self.input_tokens,
                 "output_tokens": self.output_tokens,
                 "total_tokens": self.input_tokens + self.output_tokens,

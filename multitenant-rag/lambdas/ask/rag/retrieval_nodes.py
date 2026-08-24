@@ -27,12 +27,19 @@ log = get_logger("rag.retrieval")
 _retrieval_gate = threading.Semaphore(config.MAX_BRANCH_CONCURRENCY)
 
 
-def _retrieve(deps, question: str, scope: Scope):
-    """The EXISTING production hybrid retrieval, under bounded concurrency."""
+def _retrieve(deps, question: str, scope: Scope, dense_vec=None):
+    """The EXISTING production hybrid retrieval, under bounded concurrency.
+
+    `dense_vec` reuses an already-computed Titan embedding — the existing
+    production path does exactly this with the semantic-cache probe vector.
+    Passing it means Bedrock is NOT called again for the same text.
+    """
     with _retrieval_gate:
         if scope.kind == "single":
-            return deps.hybrid_search(question, scope.single_tenant)
-        return deps.hybrid_search_multi(question, list(scope.tenant_ids))
+            return deps.hybrid_search(question, scope.single_tenant,
+                                      dense_vec=dense_vec)
+        return deps.hybrid_search_multi(question, list(scope.tenant_ids),
+                                        dense_vec=dense_vec)
 
 
 def _eligible(deps, cands, top_dense: float):
@@ -45,8 +52,20 @@ def normal_retrieve(state, deps, budget):
     """One logical retrieval for the whole question. Preserves current semantics."""
     t0 = time.monotonic()
     scope: Scope = state["scope"]
+
+    # Reuse the semantic-cache probe embedding when it covers EXACTLY the text we
+    # are about to retrieve on — the same optimisation the existing production
+    # path performs. The probe embeds `question`; retrieval uses `retrieval_query`,
+    # which differs when a short follow-up was folded in. Cache eligibility already
+    # implies no history (so no folding), but the texts are compared rather than
+    # assumed, because reusing a vector for different text would silently retrieve
+    # against the wrong query.
+    reuse = (state.get("query_dense") is not None
+             and state.get("retrieval_query") == state.get("question"))
+    dense_vec = state.get("query_dense") if reuse else None
+
     try:
-        budget.spend_retrieval()
+        budget.spend_retrieval(embed=not reuse)
     except BudgetExceeded as e:
         return {"merged_context": [], "merged_context_map": [],
                 "answer_path": "simple", "top_dense": 0.0,
@@ -57,7 +76,7 @@ def normal_retrieve(state, deps, budget):
                 "node_latencies": {
                     "normal_retrieve_ms": round((time.monotonic() - t0) * 1000, 1)}}
     try:
-        cands, top = _retrieve(deps, state["retrieval_query"], scope)
+        cands, top = _retrieve(deps, state["retrieval_query"], scope, dense_vec)
     except Exception as e:
         log.error("normal retrieval failed", error_type=type(e).__name__)
         return {"merged_context": [], "merged_context_map": [],

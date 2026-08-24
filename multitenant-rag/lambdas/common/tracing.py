@@ -90,9 +90,13 @@ _ALLOWED_META = {
     "provider", "total_tokens",
     "request_deadline_ms", "remaining_budget_ms", "deadline_exceeded",
     "router_calls", "decomposition_calls", "generation_calls",
-    "groq_logical_calls", "retrieval_branches", "titan_embeddings",
+    "groq_logical_calls", "retrieval_branches",
+    # Titan: three distinct figures. "3" is the RETRIEVAL bound; the per-request
+    # total maximum is 4 (1 cache probe + 3 retrieval). Never conflate them.
+    "semcache_titan_embeddings", "retrieval_titan_embeddings",
+    "titan_embeddings_total",
     "qdrant_dense_probes", "qdrant_hybrid_queries", "qdrant_physical_queries",
-    "semcache_embeddings", "rate_limit_events",
+    "rate_limit_events",
     "answer_path", "feature_flag_enabled", "fallback_reason",
     "candidate_count", "evidence_missing", "top_dense_similarity",
 }

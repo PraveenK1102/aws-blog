@@ -3,6 +3,17 @@
 Audit 2026-08-23, grounded in code and read-only AWS describes. **Zero provider/inference calls.**
 No AWS mutation, nothing deployed.
 
+> **UPDATE 2026-08-25 — Titan budget accepted; release controls hardened; DEPLOYMENT GATED.**
+> Architect accepted Titan **total ≤ 4** per request = **1 semantic-cache probe + ≤3
+> retrieval** embeddings. `titan_embeddings_total` is now an *enforced* bound and the
+> ambiguous `titan_embeddings` counter name was removed. A real inefficiency was fixed in
+> passing: the routed simple path re-embedded instead of reusing the cache probe vector
+> (2 calls where production costs 1) — it now reuses it, gated on exact text equality.
+> Release tooling gained a **path-based** primary control (`tools/release_guard.py`:
+> no `.env` may enter an archive, at any depth) plus a hardened content scanner, both
+> fail-closed. **Deployment is BLOCKED until the user confirms the Qdrant key is rotated
+> and revoked, and the local dev JWT secret replaced.** 281 tests pass.
+>
 > **UPDATE 2026-08-24 — Phase 1 hardening landed (implemented + tested, NOT deployed).**
 > 8 of the 9 P0/P1 routing items below are now **CLOSED IN CODE** behind
 > `ROUTED_RAG_ENABLED` (default false): #1 Router V2, #2 LangGraph in the ask image,
@@ -64,6 +75,7 @@ Priority: **P0** blocks enabling routed RAG · **P1** needed soon after · **P2*
 | #7/#8 | per-request budgets + explicit timeouts | **closed in code** |
 | #11 | ingestion DLQ | **OPEN — top remaining P0** |
 | #19 | authenticated smoke | **ready, requires the user to run it** |
+| #27 | **credential rotation (new)** | **OPEN — BLOCKS DEPLOYMENT.** Qdrant key rotate+revoke; local dev `JWT_SECRET` replace. Production `multitenant/jwt` NOT implicated |
 
 Nothing here is deployed. The code ships disabled; enabling is the next architect-approved task.
 
@@ -121,3 +133,14 @@ Added 2026-08-24 (Phase 1 hardening, `PRODUCTION-ROUTED-RAG-HARDENING.md`):
 | Local container | builds, cold-imports in 901 ms, compiles the 14-node graph, serves `/health` |
 | Runtime isolation | no eval module, no eval source, no RAGAS/DeepEval, no top-level `langchain` in the image |
 | Frozen prompt parity | all three hashes byte-identical to the frozen eval modules |
+
+Added 2026-08-25 (Titan budget + release-control hardening):
+
+| Finding | Value |
+|---|---|
+| Titan per request | **≤4 total** = 1 cache probe + ≤3 retrieval; enforced, all three figures exposed |
+| Measured scenarios | simple 1 · 2-branch compound 3 · 3-branch compound 4 · group 3 |
+| Simple-path fix | probe vector now **reused** (was 2 Titan calls, now 1), gated on exact text equality |
+| Release controls | path-based guard (no `.env`, any depth) + content scan of the **extracted** archive, both fail-closed |
+| Archive verified | 133 entries / 121 files, **0 `.env`**, both controls CLEAN |
+| Tests | **281 passing** (171 production + 39 pre-existing + 71 eval-side; release suite included) |

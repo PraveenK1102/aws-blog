@@ -113,7 +113,7 @@ def semantic_cache_check(state, config=None):
 
     t0 = time.monotonic()
     try:
-        budget.spend("semcache_embeddings")
+        budget.spend_semcache_embedding()
         dense = deps.embed_dense(state["question"])
     except Exception as e:
         # Cache/embedding failure must never fail the request — fall through to

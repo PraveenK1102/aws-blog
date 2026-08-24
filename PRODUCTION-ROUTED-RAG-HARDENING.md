@@ -256,7 +256,9 @@ never happens mid-flight.
 | Generation calls | 1 | 1 |
 | Groq logical calls | 3 | 3 |
 | Retrieval branches | 3 | 3 |
-| Titan embeddings (retrieval) | 3 | 3 |
+| **Titan — retrieval embeddings** | **3** | 3 |
+| **Titan — semantic-cache probe** | **1** | 1 |
+| **Titan — TOTAL PER REQUEST** | **4** | 4 |
 | Qdrant dense probes | 3 | 3 |
 | Qdrant hybrid queries | 3 | 3 |
 | Qdrant physical `query_points` | 6 | 6 |
@@ -267,12 +269,47 @@ routers cannot masquerade as router+decomposition+generation. A rejected spend l
 residue. Exhaustion raises `BudgetExceeded` and the caller falls back deterministically; a
 pre-exhausted generation budget yields a controlled `generation_error`, not a crash.
 
-**One accounting decision, flagged in §26:** the semantic-cache probe is also a Titan
-embedding. It is counted under a separate `semcache_embeddings` bound (1) so the
-architectural retrieval bound of 3 stays exactly enforceable. Worst case per request is
-therefore **1 probe embed + 3 branch embeds = 4 Titan calls**, which exceeds a literal
-reading of "Titan embeddings ≤ 3". Reused embeddings are never double-counted
-(`spend_retrieval(embed=False)`).
+### Titan accounting — ARCHITECT-ACCEPTED (2026-08-24, option (a))
+
+**"3 Titan calls" is the RETRIEVAL bound, NOT the per-request total.** Read the three
+figures separately, always:
+
+```
+  semcache_titan_embeddings    <= 1     the semantic-cache probe
++ retrieval_titan_embeddings   <= 3     one per retrieval branch
+= titan_embeddings_total       <= 4     the per-request maximum
+```
+
+The maximum of 4 occurs **only** for a cache-eligible request that (1) probes the cache,
+(2) misses, (3) routes compound, and (4) decomposes into 3 branches. This was reviewed and
+**accepted**: branches are **not** capped at 2, the probe is **not** moved after Router V2,
+and the semantic cache is **not** removed.
+
+`titan_embeddings_total` is an **enforced ceiling**, not a derived report — both
+`spend_semcache_embedding()` and `spend_retrieval()` check it before mutating any counter,
+so a 5th Titan call raises `BudgetExceeded` regardless of which path requests it. All three
+figures appear in `budget.snapshot()` and in the trace metadata whitelist. The ambiguous
+name `titan_embeddings` was **removed outright** so no future reader can mistake the
+retrieval bound for the request total (asserted by a test).
+
+Measured per-scenario cost (each pinned by its own test):
+
+| Scenario | cache probe | retrieval | **total** |
+|---|---|---|---|
+| Simple, cache-eligible | 1 | 0 | **1** |
+| Compound, 2 branches, after cache miss | 1 | 2 | **3** |
+| Compound, 3 branches, after cache miss | 1 | 3 | **4** |
+| Group route (never cache-eligible), 3 branches | 0 | 3 | **3** |
+
+**A real inefficiency was found and fixed while pinning these numbers.** The routed simple
+path was re-embedding the question instead of reusing the semantic-cache probe vector, so a
+simple cache-eligible request cost **2** Titan calls where the existing production path
+costs 1. `normal_retrieve` now passes the probe vector through to retrieval —
+matching existing production behaviour — and spends `spend_retrieval(embed=False)` so a
+reused embedding is never double-counted. Reuse is gated on the probe text being **exactly**
+the retrieval text (it is compared, not assumed), so a folded follow-up and every branch
+still embed their own text. Three tests cover the correctness of the reuse, not just its
+cheapness.
 
 ---
 
@@ -447,17 +484,18 @@ containing a fake connection string is reduced to the class name only.
 
 ## 24. Test coverage
 
-**140 new tests, all passing. 39 pre-existing tests still passing (verified identical at
-HEAD). Total 179.**
+**171 new tests, all passing. 39 pre-existing still passing (verified identical at HEAD).
+71 eval-side frozen tests still passing. Total 281.**
 
 | File | Tests | Covers |
 |---|---|---|
 | `rag/test_frozen_parity.py` | 14 | Hash lock, drift detection, reason-code enum, schemas, byte-identity cross-check against the frozen eval modules |
 | `rag/test_graph.py` | 47 | Routing, router/decomposition fallbacks, `Send` payloads, 2- and 3-branch merge, scope safety, semantic cache, context/citation invariant, prompt selection, chat history |
-| `rag/test_budget_deadline.py` | 32 | Every hard bound, budget exhaustion, deadline clamping, 429 policy against a stubbed transport, partial branch failure |
+| `rag/test_budget_deadline.py` | 44 | Every hard bound, the three Titan scenarios (1/3/4) plus probe-reuse correctness, budget exhaustion, deadline clamping, 429 policy against a stubbed transport, partial branch failure |
 | `rag/test_dependency_boundary.py` | 11 | No eval imports, no LangChain application import, no RAGAS/DeepEval, pinned LangGraph, shipped file set |
 | `rag/test_flag_and_observability.py` | 22 | Flag on/off/per-request, no rollout knob, span hierarchy, privacy, tracing fail-open, performance regression |
 | `rag/test_endpoint_integration.py` | 14 | Flag off → old streaming path untouched; flag on → routed path through the real FastAPI app; group route; global search unchanged |
+| `tools/test_release_security.py` | 19 | CONTROL 1 path rules (`.env` at root/nested/variants, other credential files, single-entry allowlist), CONTROL 2 patterns (prefixes, AWS ids, JWT, Authorization headers, unquoted assignments), and false-positive fixtures |
 
 Every §26 item is covered. Performance (§27, no provider calls): orchestration < 150 ms per
 request with instant fakes, merge < 2 ms over 200 iterations, span emission < 5 ms,
@@ -467,6 +505,10 @@ Run:
 
 ```bash
 cd multitenant-rag && PYTHONPATH=lambdas:lambdas/ask .venv/bin/python -m unittest rag.test_frozen_parity rag.test_graph rag.test_budget_deadline rag.test_dependency_boundary rag.test_flag_and_observability rag.test_endpoint_integration
+```
+
+```bash
+cd multitenant-rag && PYTHONPATH=tools .venv/bin/python -m unittest test_release_security
 ```
 
 ---
@@ -479,7 +521,7 @@ Lambda was updated.**
 
 | Check | Result |
 |---|---|
-| Image builds | **PASS** — `multitenant-ask:routed-local`, 155,721,141 bytes |
+| Image builds | **PASS** — `multitenant-ask:routed-local`, 155,721,141 bytes (built 2026-08-24; unchanged by the 2026-08-25 budget rename, which touches only Python source already covered by the suite) |
 | `langgraph` imports | **PASS** — 1.2.11 |
 | Cold import succeeds | **PASS** — `import app` + `rag` package, **901 ms** total |
 | FastAPI app imports | **PASS** — 36 routes registered |
@@ -511,9 +553,9 @@ builds the x86_64 image in CI.
 
 ## 26. Remaining production gaps
 
-1. **Titan calls can reach 4 per request** (1 semantic-cache probe + 3 branch embeds),
-   above a literal reading of the ≤3 bound. Counted separately and observable; needs an
-   architect ruling — see the DECISION REQUIRED in the response.
+1. ~~Titan can reach 4 per request~~ — **RESOLVED 2026-08-24.** Architect accepted option
+   (a): total ≤ 4 = 1 cache probe + ≤3 retrieval. Now an enforced bound with all three
+   figures exposed; the ambiguous `titan_embeddings` name was removed (§14).
 2. **Response granularity on the routed path** is one `content` event, not per-token
    (§5). Invisible under LWA `buffered` mode, but it is a real difference from the
    streaming path.
@@ -627,6 +669,17 @@ which holds a **real Qdrant API key** and the **dev JWT signing secret**. The re
 therefore **remain in the public git history at `60fe1e3`**, and rotation is the only effective
 mitigation.
 
+### DEPLOYMENT GATE — BLOCKED UNTIL ROTATION IS CONFIRMED
+
+Per the architect (2026-08-24), the next deployment task is **BLOCKED** until the user
+confirms **both**: the Qdrant Cloud API key is rotated **and the old key revoked**, and the
+local dev `JWT_SECRET` is replaced. No deployment step may run before that confirmation.
+
+I will not request, print, log, inspect, store, or compare any secret value — before or
+after rotation. After the user confirms, verification may only be **behavioural**: that the
+current application/test client can authenticate with the configuration as it stands, and
+that no component still references the old credential. No value is ever displayed.
+
 ### USER ACTION REQUIRED — ROTATE TWO CREDENTIALS
 
 1. **Qdrant Cloud API key** — create a new key, update the `multitenant/qdrant` secret in AWS
@@ -638,9 +691,54 @@ mitigation.
 I did not rotate anything myself: both are outward-facing credential operations, and I never
 print or handle secret values.
 
-If you also want the values scrubbed from git history, that is a **history rewrite + force push**
-and needs your explicit approval as a separate task. Rotation makes the disclosed values useless
-and is the higher-value step regardless.
+**Git history is deliberately NOT being rewritten** (architect instruction, 2026-08-24): no
+rewrite, no force push, no repository history scrub in this task. The old credentials remain
+in public history at `60fe1e3` and must be rendered useless by **rotation and revocation**.
+History sanitisation may be treated as a separate, optional repository-hygiene task later.
+
+**Production `multitenant/jwt` was NOT implicated** by the audit and must not be modified.
+Only the *local development* `JWT_SECRET` is affected.
+
+### Hardened release controls — this class of failure cannot recur
+
+Two independent controls, and the release build fails closed if either trips.
+
+**CONTROL 1 — `tools/release_guard.py` (PRIMARY, path-based).** The strongest rule is not a
+regex over content, it is a rule over paths:
+
+> **NO `.env` FILE MAY ENTER THE RELEASE ARCHIVE AT ALL.**
+
+A path rule cannot be defeated by an unfamiliar key format, a new provider, a base64 blob,
+or an unquoted line — which is exactly how the original miss happened. It blocks `.env` at
+any depth, `.env.*` variants, `*.env`, `*.pem/.key/.p12/.pfx/.keystore/.jks/.asc/.ppk`,
+`id_rsa`/`id_ed25519`, `credentials*`, `.netrc`, `.pgpass`, `.npmrc`, `.pypirc`, `.kdbx`,
+`.ovpn`. The allowlist holds **exactly one** entry — `multitenant-rag/local/.env.example` —
+because an allowlist that accepts *patterns* is how `.env.production` sneaks back in.
+
+*A bug in this guard was caught by its own tests:* `_normalise` used `lstrip("./")`, which
+strips **characters**, so a root-level `.env` became `env` and passed. Fixed to strip only a
+literal leading `./`, and pinned by a regression test.
+
+**CONTROL 2 — `tools/secret_scan.py` (SECONDARY, content-based).** Runs on the **extracted**
+archive, not the source tree, so it sees exactly what would ship. Detects: known prefixes
+(Groq `gsk_`, NVIDIA `nvapi-`, LangSmith `lsv2_`, OpenAI `sk-`, GitHub `ghp_`, Slack `xox*`),
+AWS access-key ids (`AKIA/ASIA/AIDA/AROA/ANPA/ANVA`), JWTs, `Authorization: Bearer|Basic|Token`
+headers (including `{"Authorization": ...}` and `headers['Authorization'] = ...` forms), and
+credential-named assignments by entropy — **both unquoted `NAME=VALUE` in any file type**
+(the form that was missed) **and quoted literals** in source. Code expressions
+(`os.environ.get(...)`), placeholders, and comments are correctly ignored, and a
+safe-name allowlist suppresses `KeyConditionExpression`/`*_tokens`-style false positives.
+
+Findings report **path, line and pattern class only** — never the matched value, because
+printing it would re-disclose the secret.
+
+Deliberate suppression uses the greppable marker `# pragma: allowlist secret`, so every
+suppression in the repo is auditable with one command
+(`grep -rn "allowlist secret" .`). It is used for synthetic test fixtures only.
+
+**`tools/build_release_archive.sh`** runs both controls and **deletes the archive** if
+either fails. This was verified end-to-end: a planted secret and a synthetic test fixture
+each caused the archive to be deleted rather than shipped.
 
 ---
 
