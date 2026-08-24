@@ -1,0 +1,19 @@
+case_id,adjudicated,routed_answer_path,decomposition_fallback,fact_atoms,nvidia20b_atoms_present,groq120b_atoms_present,delta_groq_minus_nvidia,atoms_only_groq120b,atoms_only_nvidia20b,nvidia20b_refusal_marker,groq120b_refusal_marker,groq120b_output_tokens,groq120b_latency_ms
+case-002,simple,compound,False,7,6,5,-1,,identifies,False,False,647,1891.0
+case-003,simple,compound,False,9,5,6,1,originally,,False,False,243,1047.8
+case-004,simple,compound,False,18,10,9,-1,minute,active; lumenpack,False,False,519,1579.0
+case-005,ambiguous,compound,False,14,10,10,0,,,False,False,742,1744.5
+case-007,compound,compound,False,28,12,12,0,,,False,False,486,1474.9
+case-008,compound,compound,False,19,11,11,0,,,False,False,467,1552.3
+case-009,compound,compound,False,6,4,3,-1,,minutes,False,False,381,1284.7
+case-018,compound,compound,False,9,9,9,0,,,False,False,359,1243.2
+case-020,compound,compound,False,16,14,13,-1,,contents,False,False,584,1721.5
+case-022,compound,compound,False,10,6,7,1,neither,,False,False,409,1117.4
+case-023,compound,compound,False,10,6,8,2,clues; neither,,False,False,426,1584.0
+case-025,ambiguous,compound,False,13,11,11,0,,,False,False,375,1325.1
+case-030,compound,compound,False,2,2,2,0,,,False,False,407,1342.9
+case-041,compound,simple,True,13,6,6,0,ribbons,clapper,False,False,384,1283.4
+case-046,compound,compound,False,5,2,2,0,,,False,False,245,892.4
+case-047,compound,compound,False,8,5,6,1,detects,,False,False,465,1466.3
+case-056,simple,simple,True,2,2,2,0,,,False,False,416,1398.3
+case-059,simple,simple,True,24,15,17,2,standard; water,,False,False,872,2613.7
