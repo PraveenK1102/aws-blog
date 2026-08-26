@@ -880,37 +880,34 @@ attribution clear). It remains the **top open ingestion P0**.
 
 Details: **`PRODUCTION-ROUTED-RAG-DEPLOYMENT.md`** (20 sections).
 
-## 9o. Curated 25-user / 268-post seeded corpus (2026-08-26) — SYNTHETIC DEMO DATA
+## 9o. Curated 25-user / 268-post corpus — SEEDED FOR TESTING, LATER FULLY REMOVED
 
-**Data classification: curated seeded demo users. NOT real users, customers or organic
-traffic.** Realistic synthetic personas whose purpose is stable, heterogeneous content for
-hybrid-retrieval, tenant/scope, simple/compound-query, group-RAG, global-search, semantic-cache
-and noise-robustness testing, and for evaluation-dataset development.
+**Historical record. This corpus is NO LONGER IN PRODUCTION.**
 
-| | |
-|---|---|
-| Corpus | 25 personas / 268 posts; source sha256 `6e2f76b7…`, ingest-region sha256 `ed8ecb66…` |
-| Composition | 15 job-search (6 Full Stack, 4 ML, 5 GenAI), 1 Rameswaram travel (18), 1 Chennai food (28), 1 casual diary (10), 5 noise/test (6 each), 2 engineering notes (16 each) |
-| Ingestion | **268/268 created and indexed**, 0 conflicts, 0 failures |
-| Fidelity | `created_at` = corpus date @ 00:00 UTC **268/268**; tags exact **268/268**; S3 body SHA-256 matches corpus **268/268**; Qdrant points **268/268** |
-| Identity | `email = <corpus-username>@example.com`; passwords derived via HMAC-SHA256 from a master secret **in memory only** — never stored anywhere. No username schema field was added (deferred to the profile/UI task) |
-| Metadata | `tags` added as an optional DynamoDB list attribute; no key/GSI/LSI/IAM/API-GW/Qdrant schema change |
-| Smoke | 7/7 retrieval checks pass via the production hybrid path (Groq 0) |
+A curated 25-user / 268-post synthetic corpus (source sha256 `6e2f76b7…`, ingest-region
+sha256 `ed8ecb66…`) was temporarily seeded into production on 2026-08-26 to provide stable,
+heterogeneous content for retrieval testing, and was **fully removed the same day** once it
+was no longer wanted.
 
-**Legacy cleanup:** the `seed-20260822` demo population was removed — 6 users, 6 tenants,
-50 posts, 50 S3 objects, 12 group memberships, all its Qdrant points. Zero residue, zero
-errors, no protected record touched. Five accounts of unproven provenance were classified
-UNKNOWN_REVIEW and left **completely untouched** by explicit decision.
+**What it demonstrated while it existed** (retained because the evaluation history is
+useful): ingestion through the supported application path reached 268/268 indexed with
+0 conflicts and 0 failures; corpus dates were preserved as `created_at` at 00:00 UTC 268/268;
+tags exact 268/268; S3 body SHA-256 matched the corpus 268/268; Qdrant points 268/268; and
+7/7 retrieval smoke checks passed via the production hybrid path. Ingestion also surfaced a
+real operational signal: 8 Titan `ThrottlingException` events that all self-recovered via
+FIFO redelivery, with `RedrivePolicy` still null — **the ingestion DLQ remains the top open
+P0**.
 
-**Final population: 30 users / 30 tenants / 271 posts** — 25 corpus personas (268 posts)
-plus 5 retained accounts (3 posts). The system does *not* contain only 25 users.
+**Rollback (2026-08-26):** all 25 personas, 25 tenants, 268 posts, 268 S3 objects and 268
+Qdrant points removed, with 25 tenant-scoped semantic-cache invalidations. Zero identity
+drift, zero extra posts, zero residue. The five retained accounts and their 3 posts were
+untouched and are hard-blocked from the deletion set in code.
 
-**Operational note:** ingestion triggered 8 Titan `ThrottlingException` events that all
-self-recovered via FIFO redelivery (0 permanent failures, 0 poison messages). No queue
-configuration was changed. `RedrivePolicy` on `multitenant-ingestion.fifo` is still **null** —
-the ingestion DLQ remains the **top open P0**.
+**Tooling retained** as a reproducible synthetic test fixture — `corpus_25_manifest.json`,
+`corpus_parser.py`, `seed_curated_blog_corpus.py`, `cleanup_curated_corpus.py` — so the
+corpus can be re-seeded into a non-production environment on demand.
 
-Details: **`CURATED-CORPUS-INGESTION-AND-CLEANUP.md`**.
+Details: **`CURATED-CORPUS-ROLLBACK.md`** and `CURATED-CORPUS-INGESTION-AND-CLEANUP.md`.
 
 ## 9p. Full-width UI + writing workspace + profile identity + conversational chat (2026-08-26) — IMPLEMENTED, NOT DEPLOYED
 
@@ -1014,6 +1011,11 @@ Details: **`UI-UX-FULL-WIDTH-CHAT-WRITE-REFRESH.md`** (24 sections).
 
 ## 13. Deployment State
 
+> **Production data state (2026-08-26, after corpus rollback):** **5 users / 5 tenants /
+> 3 posts**, 6 Qdrant points, 3 S3 post objects. The curated 25-user corpus and the older
+> `seed-20260822` population have both been fully removed. Production carries only the five
+> retained accounts.
+
 > **2026-08-24:** `multitenant-ask` now runs image `sha256:3ada41fc…` (commit `4126661`) with
 > **`ROUTED_RAG_ENABLED=true`** — DEPLOYED / AWAITING MANUAL AUTHENTICATED SMOKE. Rollback:
 > flag→false (instant), then image `sha256:2791dfa4…` (`d5af30e`). See
@@ -1039,6 +1041,27 @@ Details: **`UI-UX-FULL-WIDTH-CHAT-WRITE-REFRESH.md`** (24 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-26 — Curated 25-user / 268-post corpus ROLLED BACK from production
+- Exact manifest-driven rollback of the corpus seeding operation. Removed 25 users, 25
+  tenants, 268 posts, 268 S3 objects and 268 Qdrant points; 25 tenant-scoped semantic-cache
+  invalidations. Follows/memberships/chats/usage rows: 0 (the personas were only ever
+  written to, never used).
+- Read-only reconciliation first: 25/25 personas matched by content hash, 268/268 posts,
+  **zero identity drift and zero extra posts**, so no account had been used beyond the seed
+  and no DECISION REQUIRED was triggered.
+- Deletion scoped to exact identifiers throughout — Qdrant filtered on tenant_id AND exact
+  post_id (never collection-wide), S3 by exact key (never a prefix), DynamoDB by exact
+  composite key. Retrieval residue removed before metadata; tenant row deleted last.
+- The five retained accounts (3 posts) are untouched and hard-blocked in code — a forged
+  manifest containing one still cannot delete it (tested).
+- Post-rollback production: **5 users / 5 tenants / 3 posts**, 6 Qdrant points, 3 S3 objects.
+  Zero corpus residue: 0 points by post_id or tenant_id, and 8 distinctive corpus phrases
+  return 0 matches backed by a deleted post.
+- Providers: Groq/NVIDIA/RAGAS/DeepEval/Titan **all 0** — residue was verified by scrolling
+  payloads, not by embedding anything.
+- No infrastructure change. New UI/profile work neither modified nor deployed.
+- Tooling retained as a test fixture. Report: `CURATED-CORPUS-ROLLBACK.md`.
 
 ### 2026-08-26 — Full-width desktop UI, writing workspace, profile identity, conversational chat
 - Fixed the narrow desktop shell at its root: `max-w-feed` (760px) removed from the header
