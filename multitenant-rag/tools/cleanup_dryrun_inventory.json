@@ -1,0 +1,110 @@
+{
+  "generated_for": "curated-25-corpus cleanup dry-run",
+  "mode": "DRY_RUN_NO_MUTATION",
+  "classifications": {},
+  "totals": {
+    "users_total": 11,
+    "posts_total": 53,
+    "by_classification": {
+      "LEGACY_MOCK_CONFIRMED": {
+        "users": 6,
+        "posts": 50
+      },
+      "UNKNOWN_REVIEW": {
+        "users": 5,
+        "posts": 3
+      }
+    },
+    "corpus_users_present_yet": 0
+  },
+  "users": [
+    {
+      "username_or_email": "testuserpk3@gmail.com",
+      "display_name": "Kian Rao (seed-20260822)",
+      "post_count": 10,
+      "classification": "LEGACY_MOCK_CONFIRMED",
+      "reason": "listed in SEED-MANIFEST.json (seed_prefix seed-20260822) by exact user_id AND tenant_id; display_name carries the literal '(seed-20260822)' suffix; sequential testuserpkN@gmail.com identity",
+      "posts_in_seed_manifest": 10
+    },
+    {
+      "username_or_email": "testuserpk2@gmail.com",
+      "display_name": "Dev Iyer (seed-20260822)",
+      "post_count": 8,
+      "classification": "LEGACY_MOCK_CONFIRMED",
+      "reason": "listed in SEED-MANIFEST.json (seed_prefix seed-20260822) by exact user_id AND tenant_id; display_name carries the literal '(seed-20260822)' suffix; sequential testuserpkN@gmail.com identity",
+      "posts_in_seed_manifest": 8
+    },
+    {
+      "username_or_email": "testuserpk5@gmail.com",
+      "display_name": "Nila Roy (seed-20260822)",
+      "post_count": 9,
+      "classification": "LEGACY_MOCK_CONFIRMED",
+      "reason": "listed in SEED-MANIFEST.json (seed_prefix seed-20260822) by exact user_id AND tenant_id; display_name carries the literal '(seed-20260822)' suffix; sequential testuserpkN@gmail.com identity",
+      "posts_in_seed_manifest": 9
+    },
+    {
+      "username_or_email": "testuserpk4@gmail.com",
+      "display_name": "Mira Sen (seed-20260822)",
+      "post_count": 9,
+      "classification": "LEGACY_MOCK_CONFIRMED",
+      "reason": "listed in SEED-MANIFEST.json (seed_prefix seed-20260822) by exact user_id AND tenant_id; display_name carries the literal '(seed-20260822)' suffix; sequential testuserpkN@gmail.com identity",
+      "posts_in_seed_manifest": 9
+    },
+    {
+      "username_or_email": "realuser@example.com",
+      "display_name": "Real User",
+      "post_count": 1,
+      "classification": "UNKNOWN_REVIEW",
+      "reason": "not in SEED-MANIFEST and not a corpus persona; provenance unproven \u2014 may be the owner/admin or a genuine account. Absence from the protected list is NOT evidence for deletion (\u00a721).",
+      "posts_in_seed_manifest": 0
+    },
+    {
+      "username_or_email": "testuserpk6@gmail.com",
+      "display_name": "Tara Moss (seed-20260822)",
+      "post_count": 6,
+      "classification": "LEGACY_MOCK_CONFIRMED",
+      "reason": "listed in SEED-MANIFEST.json (seed_prefix seed-20260822) by exact user_id AND tenant_id; display_name carries the literal '(seed-20260822)' suffix; sequential testuserpkN@gmail.com identity",
+      "posts_in_seed_manifest": 6
+    },
+    {
+      "username_or_email": "naresh_nagarjuna@gmail.com",
+      "display_name": "naresh_nagarjuna@gmail.com",
+      "post_count": 1,
+      "classification": "UNKNOWN_REVIEW",
+      "reason": "not in SEED-MANIFEST and not a corpus persona; provenance unproven \u2014 may be the owner/admin or a genuine account. Absence from the protected list is NOT evidence for deletion (\u00a721).",
+      "posts_in_seed_manifest": 0
+    },
+    {
+      "username_or_email": "testuserpk1@gmail.com",
+      "display_name": "Arjun Vale (seed-20260822)",
+      "post_count": 8,
+      "classification": "LEGACY_MOCK_CONFIRMED",
+      "reason": "listed in SEED-MANIFEST.json (seed_prefix seed-20260822) by exact user_id AND tenant_id; display_name carries the literal '(seed-20260822)' suffix; sequential testuserpkN@gmail.com identity",
+      "posts_in_seed_manifest": 8
+    },
+    {
+      "username_or_email": "snehasattai@gmail.com",
+      "display_name": "Sneha",
+      "post_count": 0,
+      "classification": "UNKNOWN_REVIEW",
+      "reason": "not in SEED-MANIFEST and not a corpus persona; provenance unproven \u2014 may be the owner/admin or a genuine account. Absence from the protected list is NOT evidence for deletion (\u00a721).",
+      "posts_in_seed_manifest": 0
+    },
+    {
+      "username_or_email": "pk1@gmail.com",
+      "display_name": "pk1",
+      "post_count": 1,
+      "classification": "UNKNOWN_REVIEW",
+      "reason": "not in SEED-MANIFEST and not a corpus persona; provenance unproven \u2014 may be the owner/admin or a genuine account. Absence from the protected list is NOT evidence for deletion (\u00a721).",
+      "posts_in_seed_manifest": 0
+    },
+    {
+      "username_or_email": "pk@gmail.com",
+      "display_name": "pk@gmail.com",
+      "post_count": 0,
+      "classification": "UNKNOWN_REVIEW",
+      "reason": "not in SEED-MANIFEST and not a corpus persona; provenance unproven \u2014 may be the owner/admin or a genuine account. Absence from the protected list is NOT evidence for deletion (\u00a721).",
+      "posts_in_seed_manifest": 0
+    }
+  ]
+}
