@@ -912,6 +912,50 @@ the ingestion DLQ remains the **top open P0**.
 
 Details: **`CURATED-CORPUS-INGESTION-AND-CLEANUP.md`**.
 
+## 9p. Full-width UI + writing workspace + profile identity + conversational chat (2026-08-26) — IMPLEMENTED, NOT DEPLOYED
+
+**Frontend + narrowly-scoped backend. Nothing deployed; username backfill NOT run.**
+
+**Root cause of the narrow desktop UI:** `Shell` applied `max-w-feed` (760px) to both the
+header and `<main>`, so every page rendered in a 760px column regardless of viewport. Now
+`w-full px-6 xl:px-8`. Reading width is still capped in the article `Reader` only.
+
+| Area | Change |
+|---|---|
+| Write | Main column + `w-[260px]` "Your Posts" rail; editor `min-h-[60vh]` with a 560px floor; single Publish at the bottom after tags |
+| Markdown | New `src/markdown.jsx` — H1–H3, paragraphs, bold, italic, underline, bullets, numbered lists, blockquote, inline code, fenced code, links, `hr` |
+| Safe underline | Renderer emits **React elements**, never `dangerouslySetInnerHTML`. Exactly one marker `<u>…</u>` is recognised; `<b>`/`<script>`/`<img onerror>` stay literal text; link hrefs allow-listed so `javascript:`/`data:` cannot become anchors. **Sanitisation strengthened, not weakened** |
+| Toolbar | `src/editor.jsx` — 14 selection-aware actions; Cmd/Ctrl+B/I/U/K; one `⌨ Shortcuts` popover |
+| Profile | New `username` (optional, mutable, public) + editable email. **No password UI** |
+| Chat | New `src/chat.jsx` shared by routed ask, group ask and saved chats — one implementation instead of three |
+| Routed Ask | Desktop 50/50 selector + conversation, viewport height, independent scroll |
+| Scope | Per-question snapshot stored on the user message; ≤5 names shown, >5 → first five `+N more` |
+
+**Username identity model.** `username` is a public profile attribute only — never a
+primary key, tenant identity, Qdrant scope, post ownership or JWT subject (`sub` is
+`user_id`). Uniqueness uses a **reservation item in the existing users table**
+(`user_id = "USERNAME#<normalized>"`) claimed by a conditional `PutItem` on
+`attribute_not_exists` — atomic, and needing **no new table, no new GSI, no key-schema
+change**. Rename claims the new name before releasing the old, so two users can never share
+one. Reservation rows carry no `tenant_id` and are already filtered out of `GET /api/users`.
+
+**Email change** keeps `user_id`/`tenant_id` and all content ownership, and issues a
+refreshed JWT so the `email` claim is not stale. *Known limitation:* signup creates no
+EMAIL# reservation, so a change racing a brand-new signup keeps today's window.
+
+**Backend touched only where required:** `common/profile.py` (new), four `/api/me/*`
+endpoints, and an optional `scope` argument on `chats.append_turn`. **RAG is untouched** —
+frozen prompt hashes still `763d12cd82245285` / `ae8185181e88f25f` / `8c30bb9b064e6784`.
+
+**Tests: 364 passing** — 99 new frontend (Vitest, newly introduced) + 24 new backend
+profile + 241 existing.
+
+**Backfill prepared, NOT run:** `tools/backfill_usernames.py`, dry-run by default,
+idempotent, conditional, and it stops rather than overwriting a claimed username. The five
+UNKNOWN_REVIEW accounts are never given an invented username.
+
+Details: **`UI-UX-FULL-WIDTH-CHAT-WRITE-REFRESH.md`** (24 sections).
+
 ## 10. Observability
 - **CloudWatch (deployed):** structured JSON logs (`common/logger.py`); per-query `relevance` lines; `usage-logs` DDB table; new logs "global search start/done" (request_id, result_count, latency_ms — never the query).
 - **LangSmith (deployed; backend delivery pending an authed query):** per-request traces for the three query flows (project `multitenant-rag-prod`), as in §7.
@@ -995,6 +1039,26 @@ Details: **`CURATED-CORPUS-INGESTION-AND-CLEANUP.md`**.
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-26 — Full-width desktop UI, writing workspace, profile identity, conversational chat
+- Fixed the narrow desktop shell at its root: `max-w-feed` (760px) removed from the header
+  and `<main>`; now full width with gutters.
+- Write page rebuilt: tall editor (`min-h-[60vh]`, 560px floor), 14-action Markdown toolbar,
+  Cmd/Ctrl shortcuts, one Publish at the end of the flow, secondary "Your Posts" rail, tags.
+- New safe Markdown renderer supporting the full element set. Underline via a single narrow
+  `<u>` marker with **no raw HTML enabled**; link schemes allow-listed — sanitisation
+  strengthened, not weakened.
+- Added optional public `username` + editable email. Uniqueness via atomic reservation
+  items in the existing users table — no new table/GSI/key change. `user_id`/`tenant_id`
+  never move; posts, chats, follows, groups, S3 paths and Qdrant points are unaffected.
+  No password UI in Profile.
+- Routed Ask is now a 50/50 desktop workspace; group ask reuses the same chat shell.
+  Per-question scope is snapshotted onto the user message so history never re-reads the
+  live selector; legacy messages without a snapshot still render.
+- **RAG untouched** (frozen prompt hashes verified). Backend changes limited to
+  profile + chat scope metadata.
+- 364 tests pass (99 new frontend via newly-added Vitest, 24 new backend, 241 existing).
+- **NOT DEPLOYED**; username backfill prepared but NOT run.
 
 ### 2026-08-26 — Curated 25-user / 268-post seeded corpus ingested; legacy seed-20260822 removed
 - Ingested the curated corpus through the supported application path: **25 personas, 268 posts,

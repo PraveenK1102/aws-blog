@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { renderMarkdown } from "./markdown.jsx";
+import { MarkdownEditor } from "./editor.jsx";
+import { ChatShell, ScopeSummary, buildScope } from "./chat.jsx";
 import {
   BrowserRouter, Routes, Route, NavLink, Link, useParams, useNavigate, Navigate, useSearchParams,
 } from "react-router-dom";
@@ -10,7 +13,10 @@ import {
   createGroup, listGroups, getGroup, addGroupMember, removeGroupMember,
   discoverGroups, subscribeGroup, unsubscribeGroup,
   globalSearch, askGroup,
-} from "./api";
+  getMyProfile,
+  checkUsername,
+  updateUsername,
+  updateEmail} from "./api";
 
 const INPUT = "w-full bg-white border border-line rounded-lg px-3.5 py-2.5 text-[15px] outline-none focus:border-accent";
 const DARK = "bg-ink text-white font-medium rounded-full hover:bg-black disabled:opacity-40 transition";
@@ -38,6 +44,7 @@ export default function App() {
           <Route path="/u/:userId" element={<ProfilePage />} />
           <Route path="/chats" element={<ChatsList />} />
           <Route path="/me" element={<MyBlog user={user} />} />
+          <Route path="/profile" element={<ProfileSettings user={user} onUser={setUser} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>
@@ -95,7 +102,7 @@ function Shell({ user, onLogout, children }) {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-line">
-        <div className="max-w-feed mx-auto px-5 h-14 flex items-center justify-between">
+        <div className="w-full px-6 xl:px-8 h-14 flex items-center justify-between">
           <Link to="/" className="text-lg font-bold tracking-tight">Inkwell</Link>
           <nav className="flex items-center gap-5">
             <NavLink to="/" end className={link}>Discover</NavLink>
@@ -108,10 +115,15 @@ function Shell({ user, onLogout, children }) {
             <span className="w-px h-5 bg-line" />
             <span className="text-faint text-sm hidden sm:block">{user.email}</span>
             <button onClick={onLogout} className="text-soft hover:text-ink text-sm">Sign out</button>
+            <NavLink to="/profile">Profile</NavLink>
           </nav>
         </div>
       </header>
-      <main className="flex-1 max-w-feed w-full mx-auto px-5 py-10">{children}</main>
+      {/* Full-width application shell (§3). The old `max-w-feed` (760px) cap on
+          BOTH the header and <main> is what made large desktops render a narrow
+          centred column. Width is now 100% with page gutters; individual reading
+          surfaces still constrain their own line length where that aids reading. */}
+      <main className="flex-1 w-full px-6 xl:px-8 py-8">{children}</main>
     </div>
   );
 }
@@ -386,87 +398,100 @@ function ChatsList() {
 function MyBlog({ user }) {
   const [posts, setPosts] = useState(null);
   const [title, setTitle] = useState(""); const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
   const [status, setStatus] = useState(null); const [reading, setReading] = useState(null);
+  const [showPosts, setShowPosts] = useState(false);
   const reload = () => listMyPosts().then(setPosts).catch(() => setPosts([]));
   useEffect(() => { reload(); }, []);
+
+  const canPublish = title.trim() && content.trim() && status?.kind !== "busy";
   async function submit(e) {
-    e.preventDefault(); setStatus({ kind: "busy", msg: "Publishing…" });
-    try { const r = await createPost(title, content); setStatus({ kind: "ok", msg: `Published. Indexing runs in the background — refresh in a few seconds.` }); setTitle(""); setContent(""); setTimeout(reload, 2000); }
-    catch (err) { setStatus({ kind: "err", msg: err.message }); }
+    e.preventDefault();
+    if (!canPublish) return;
+    setStatus({ kind: "busy", msg: "Publishing…" });
+    try {
+      const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      await createPost(title, content, tagList);
+      setStatus({ kind: "ok", msg: "Published. Indexing runs in the background — refresh in a few seconds." });
+      setTitle(""); setContent(""); setTags("");
+      setTimeout(reload, 2000);
+    } catch (err) { setStatus({ kind: "err", msg: err.message }); }
   }
   const tone = { ok: "text-ok", err: "text-err", busy: "text-faint" };
-  return (
-    <div className="max-w-article mx-auto">
-      <h1 className="text-3xl font-bold tracking-tight mb-6">Write a post</h1>
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <input className="w-full text-2xl font-bold tracking-tight outline-none placeholder:text-faint/60 py-1" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <textarea className="w-full outline-none resize-y text-[1.05rem] leading-8 placeholder:text-faint/60 min-h-[240px]" placeholder="Tell your story… (Markdown — use # headings)" value={content} onChange={(e) => setContent(e.target.value)} required />
-        <div className="flex items-center gap-3 border-t border-line pt-4">
-          <button type="submit" disabled={status?.kind === "busy"} className={`${DARK} px-5 py-2`}>Publish</button>
-          {status && <span className={`text-sm ${tone[status.kind]}`}>{status.msg}</span>}
-        </div>
-      </form>
-      <div className="mt-10">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold">Your posts</h2>
-          <button onClick={reload} className="text-faint hover:text-ink text-sm">↻ Refresh</button>
-        </div>
-        {posts === null ? <p className="text-faint">Loading…</p>
-          : posts.length === 0 ? <p className="text-faint">Nothing published yet.</p>
-          : <div className="divide-y divide-line border-t border-line">
-              {posts.map((p) => (
-                <button key={p.post_id} onClick={() => setReading(p.post_id)} className="w-full text-left py-4 flex items-center justify-between group">
-                  <span className="group-hover:text-accent">{p.title}</span>
-                  <span className={`text-xs ${p.status === "indexed" ? "text-ok" : "text-warn"}`}>{p.status === "indexed" ? "AI-searchable" : "indexing…"}</span>
+
+  const YourPostsRail = (
+    <aside className="shrink-0 w-full lg:w-[260px]" data-testid="your-posts-rail">
+      <div className="lg:sticky lg:top-20">
+        <h2 className="text-xs uppercase tracking-wide text-faint mb-2">Your Posts</h2>
+        <button type="button" onClick={() => setShowPosts((v) => !v)}
+          data-testid="view-your-posts"
+          className="w-full border border-line rounded-lg px-3 py-2 text-sm text-left hover:border-accent hover:text-accent transition">
+          View Your Posts
+          {posts ? <span className="text-faint"> · {posts.length}</span> : null}
+          <span className="float-right text-faint">{showPosts ? "▴" : "→"}</span>
+        </button>
+        {showPosts && (
+          <div className="mt-3 border border-line rounded-lg divide-y divide-line max-h-[45vh] overflow-y-auto">
+            {posts === null ? <p className="text-faint text-sm px-3 py-2">Loading…</p>
+              : posts.length === 0 ? <p className="text-faint text-sm px-3 py-2">Nothing published yet.</p>
+              : posts.map((p) => (
+                <button key={p.post_id} onClick={() => setReading(p.post_id)}
+                  className="w-full text-left px-3 py-2 hover:bg-cream group">
+                  <span className="block text-sm truncate group-hover:text-accent">{p.title}</span>
+                  <span className={`text-[11px] ${p.status === "indexed" ? "text-ok" : "text-warn"}`}>
+                    {p.status === "indexed" ? "AI-searchable" : "indexing…"}
+                  </span>
                 </button>
               ))}
-            </div>}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+
+  return (
+    <div className="w-full" data-testid="write-page">
+      <h1 className="text-3xl font-bold tracking-tight mb-6">Write</h1>
+      {/* Desktop workspace (§4): main column takes the space, the rail stays
+          secondary. `minmax(0,1fr) auto` avoids brittle fixed widths. */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <form onSubmit={submit} className="flex-1 min-w-0 flex flex-col gap-4 w-full">
+          <label className="sr-only" htmlFor="post-title">Title</label>
+          <input id="post-title" data-testid="post-title"
+            className="w-full text-3xl font-bold tracking-tight outline-none placeholder:text-faint/60 py-1"
+            placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+
+          {/* Editor is tall as well as wide (§5) — a long article should be
+              comfortable, not a small box surrounded by empty page. */}
+          <MarkdownEditor value={content} onChange={setContent}
+            placeholder="Tell your story… (Markdown supported)"
+            minHeightClass="min-h-[60vh] lg:min-h-[min(65vh,720px)] [min-height:560px]" />
+
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-faint mb-1.5" htmlFor="post-tags">
+              Tags
+            </label>
+            <input id="post-tags" data-testid="post-tags" className={INPUT}
+              placeholder="comma, separated, tags"
+              value={tags} onChange={(e) => setTags(e.target.value)} />
+          </div>
+
+          {/* Single Publish action, at the end of the writing flow (§6). */}
+          <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
+            {status && <span className={`text-sm ${tone[status.kind]}`} role="status">{status.msg}</span>}
+            <button type="submit" disabled={!canPublish} data-testid="publish"
+              className={`${DARK} px-6 py-2.5`}>
+              {status?.kind === "busy" ? "Publishing…" : "Publish"}
+            </button>
+          </div>
+        </form>
+        {YourPostsRail}
       </div>
       {reading && <Reader tenantId={user.tenant_id} postId={reading} onClose={() => setReading(null)} />}
     </div>
   );
 }
 
-function renderMarkdown(md) {
-  const lines = (md || "").split("\n");
-  const out = []; let para = [], list = [];
-  const fp = () => { if (para.length) { out.push(<p key={out.length}>{para.join(" ")}</p>); para = []; } };
-  const fl = () => { if (list.length) { out.push(<ul key={out.length}>{list.map((li, i) => <li key={i}>{li}</li>)}</ul>); list = []; } };
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-    if (/^#\s+/.test(line)) { fp(); fl(); out.push(<h1 key={out.length}>{line.replace(/^#\s+/, "")}</h1>); }
-    else if (/^##\s+/.test(line)) { fp(); fl(); out.push(<h2 key={out.length}>{line.replace(/^##\s+/, "")}</h2>); }
-    else if (/^###\s+/.test(line)) { fp(); fl(); out.push(<h3 key={out.length}>{line.replace(/^###\s+/, "")}</h3>); }
-    else if (/^[-*]\s+/.test(line)) { fp(); list.push(line.replace(/^[-*]\s+/, "")); }
-    else if (line.trim() === "") { fp(); fl(); }
-    else { fl(); para.push(line); }
-  }
-  fp(); fl();
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Phase 1–3: follow button, Following, Groups, group chat, global search
-// ---------------------------------------------------------------------------
-function FollowButton({ userId, initialFollowing }) {
-  const [following, setFollowing] = useState(!!initialFollowing);
-  const [busy, setBusy] = useState(false);
-  async function toggle() {
-    setBusy(true);
-    try {
-      if (following) { await unfollowUser(userId); setFollowing(false); }
-      else { await followUser(userId); setFollowing(true); }
-    } catch (e) { alert(e.message); } finally { setBusy(false); }
-  }
-  return (
-    <button onClick={toggle} disabled={busy}
-      className={following
-        ? "ml-auto shrink-0 border border-line rounded-full px-4 py-1.5 text-sm text-soft hover:text-ink"
-        : `${DARK} ml-auto shrink-0 px-4 py-1.5 text-sm`}>
-      {busy ? "…" : following ? "Following" : "Follow"}
-    </button>
-  );
-}
 
 function Following() {
   const [profiles, setProfiles] = useState(null);
@@ -597,60 +622,54 @@ function GroupDetail() {
       </div>
       {group.is_owner && <button onClick={() => setDirOpen((v) => !v)} className="text-accent text-sm mb-6">{dirOpen ? "Close" : "+ Add members"}</button>}
       {dirOpen && <MemberPicker existing={group.members.map((m) => m.user_id)} onAdd={add} />}
-      <GroupChatPanel target={{ groupId }} title={`Ask everyone in ${group.name}`} />
+      <GroupChatPanel target={{ groupId }} title={`Ask everyone in ${group.name}`}
+        groupName={group.name} memberCount={(group.members || []).length || undefined} />
     </div>
   );
 }
 
-function GroupChatPanel({ target, title }) {
+function GroupChatPanel({ target, title, groupName, memberCount }) {
+  // Group Ask uses the SAME conversational shell as routed ask (§32); only the
+  // scope label differs. Group retrieval semantics and authorization are
+  // untouched — the backend still resolves membership itself.
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const scrollRef = useRef(null);
-  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
-  async function send(e) {
-    e.preventDefault(); const q = input.trim(); if (!q || busy) return;
-    setInput(""); setBusy(true);
-    setMessages((m) => [...m, { role: "user", text: q }, { role: "ai", text: "", citations: null, pending: true }]);
-    const queue = []; let reading = true;
-    const timer = setInterval(() => {
-      if (queue.length) { const t = queue.shift(); setMessages((m) => { const c = [...m]; const l = c[c.length - 1]; c[c.length - 1] = { ...l, text: l.text + t }; return c; }); }
-      else if (!reading) clearInterval(timer);
-    }, 14);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function send() {
+    const question = input.trim();
+    if (!question) return;
+    const scope = target.groupId
+      ? { kind: "group", group_id: target.groupId, group_name: groupName,
+          member_count: memberCount }
+      : { kind: "users", tenant_ids: target.tenantIds || [],
+          count: (target.tenantIds || []).length };
+    setMessages((m) => [...m, { role: "user", text: question, scope }]);
+    setInput(""); setPending(true); setError(null);
     try {
-      const cites = await askGroup(target, q, (t) => queue.push(t));
-      reading = false;
-      setMessages((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], citations: cites, pending: false }; return c; });
-    } catch (ex) {
-      reading = false;
-      setMessages((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], text: `⚠️ ${ex.message}`, pending: false }; return c; });
-    } finally { setBusy(false); }
+      const res = await askGroup({
+        group_id: target.groupId, tenant_ids: target.tenantIds, question,
+      });
+      setMessages((m) => [...m, { role: "assistant", text: res.answer,
+                                  citations: res.citations }]);
+    } catch (e) {
+      setError(e.message || "Something went wrong.");
+    } finally { setPending(false); }
   }
+
   return (
-    <div className="border border-line rounded-2xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-line font-semibold text-sm">{title}</div>
-      <div ref={scrollRef} className="max-h-96 overflow-y-auto p-4 flex flex-col gap-3">
-        {messages.length === 0 && <div className="text-soft text-sm bg-cream rounded-xl p-4">Ask a question — it searches every member's posts and tells you who wrote what.</div>}
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : ""}`}>
-            <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap text-[14px] ${m.role === "user" ? "bg-ink text-white rounded-br-sm" : "bg-cream text-ink rounded-bl-sm"}`}>
-              {m.text || (m.pending ? <span className="text-faint tracking-widest">•••</span> : "")}
-              {m.citations && m.citations.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {m.citations.map((c, j) => <span key={j} title={`score ${c.score}`} className="text-[11px] text-accent bg-accent/10 px-2 py-px rounded-full">{c.writer}: {c.title}</span>)}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      <form onSubmit={send} className="p-3 border-t border-line flex gap-2">
-        <input className={`${INPUT} rounded-full py-2`} value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask the group…" disabled={busy} />
-        <button type="submit" disabled={busy || !input.trim()} className={`${DARK} px-4 shrink-0`}>{busy ? "…" : "↑"}</button>
-      </form>
+    <div className="border border-line rounded-xl overflow-hidden h-[min(70vh,640px)] flex flex-col"
+         data-testid="group-chat">
+      <ChatShell
+        header={<span className="font-semibold text-sm">{title}</span>}
+        messages={messages} pending={pending} error={error}
+        input={input} setInput={setInput} onSend={send}
+        placeholder="Ask this group anything…" />
     </div>
   );
 }
+
 
 function GlobalSearchPage() {
   const [q, setQ] = useState("");
@@ -687,37 +706,177 @@ function AskPeople() {
   const [profiles, setProfiles] = useState([]);
   const [selected, setSelected] = useState([]);
   const [q, setQ] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
+
   useEffect(() => { listProfiles().then(setProfiles).catch(() => setProfiles([])); }, []);
   const isSel = (p) => selected.some((x) => x.tenant_id === p.tenant_id);
-  const toggle = (p) => setSelected((s) => isSel(p) ? s.filter((x) => x.tenant_id !== p.tenant_id) : [...s, p]);
-  const filtered = profiles.filter((p) => !p.is_me && (!q.trim() || (p.display_name || "").toLowerCase().includes(q.toLowerCase())));
-  const tenantIds = selected.map((s) => s.tenant_id);
+  const toggle = (p) => setSelected((s) =>
+    isSel(p) ? s.filter((x) => x.tenant_id !== p.tenant_id) : [...s, p]);
+  const filtered = profiles.filter((p) =>
+    !p.is_me && (!q.trim() || (p.display_name || "").toLowerCase().includes(q.toLowerCase())));
+
+  async function send() {
+    const question = input.trim();
+    if (!question || selected.length === 0) return;
+    // Snapshot the scope for THIS question (§25). Later selector changes must
+    // never rewrite an existing turn, so the snapshot is stored on the message.
+    const scope = buildScope(selected);
+    setMessages((m) => [...m, { role: "user", text: question, scope }]);
+    setInput(""); setPending(true); setError(null);
+    try {
+      const res = await askGroup({
+        tenant_ids: scope.tenant_ids,
+        question,
+        scope_labels: scope.labels,
+      });
+      setMessages((m) => [...m, { role: "assistant", text: res.answer,
+                                  citations: res.citations }]);
+    } catch (e) {
+      setError(e.message || "Something went wrong.");
+    } finally { setPending(false); }
+  }
+
   return (
-    <div className="max-w-article mx-auto">
-      <h1 className="text-3xl font-bold tracking-tight mb-1">Ask a few people</h1>
-      <p className="text-soft mb-6">Pick any writers and ask them all at once — no group needed.</p>
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {selected.map((s) => (
-            <span key={s.tenant_id} className="inline-flex items-center gap-2 bg-cream border border-line rounded-full pl-3 pr-2 py-1 text-sm">
-              {s.display_name}<button onClick={() => toggle(s)} className="text-faint hover:text-err">✕</button>
-            </span>
-          ))}
+    <div className="w-full" data-testid="ask-people">
+      <h1 className="text-2xl font-bold tracking-tight mb-4">Ask a few people</h1>
+      {/* Desktop: selector and conversation side by side, ~50/50 (§22).
+          Height fills the viewport below the header so both panes are usable. */}
+      <div className="flex flex-col lg:flex-row gap-5 h-[calc(100vh-11rem)] min-h-[520px]"
+           data-testid="ask-workspace">
+        <section className="lg:w-1/2 flex flex-col min-h-0 border border-line rounded-xl bg-white"
+                 data-testid="user-scope-panel">
+          <div className="px-4 pt-4 pb-3 border-b border-line shrink-0">
+            <h2 className="text-xs uppercase tracking-wide text-faint mb-2">User scope</h2>
+            <label className="sr-only" htmlFor="writer-search">Search writers</label>
+            <input id="writer-search" className={INPUT} placeholder="Search writers…"
+              value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0" role="group" aria-label="Select writers">
+            {filtered.length === 0
+              ? <div className="px-4 py-3 text-faint text-sm">No writers.</div>
+              : filtered.map((p) => (
+                <label key={p.user_id}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-cream cursor-pointer">
+                  <input type="checkbox" checked={isSel(p)} onChange={() => toggle(p)}
+                    className="w-4 h-4 accent-accent shrink-0" />
+                  <span className="flex-1 truncate text-[15px]">
+                    {p.display_name}
+                    <span className="text-faint text-sm"> · {p.domain}</span>
+                  </span>
+                </label>
+              ))}
+          </div>
+          <div className="border-t border-line px-4 py-2.5 text-sm text-soft shrink-0"
+               data-testid="selected-count">
+            Selected: {selected.length}
+          </div>
+        </section>
+
+        <div className="lg:w-1/2 flex flex-col min-h-0 border border-line rounded-xl overflow-hidden">
+          {selected.length === 0 ? (
+            <div className="flex-1 grid place-items-center text-faint text-sm px-6 text-center">
+              Select at least one writer to start a conversation.
+            </div>
+          ) : (
+            <ChatShell messages={messages} pending={pending} error={error}
+              input={input} setInput={setInput} onSend={send}
+              placeholder="Ask anything…" />
+          )}
         </div>
-      )}
-      <input className={`${INPUT} mb-3`} placeholder="Search writers to add…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="border border-line rounded-xl divide-y divide-line mb-6 max-h-56 overflow-y-auto">
-        {filtered.length === 0 ? <div className="px-4 py-3 text-faint text-sm">No writers.</div>
-          : filtered.map((p) => (
-            <button key={p.user_id} onClick={() => toggle(p)} className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-cream">
-              <span className={`w-4 h-4 rounded border grid place-items-center text-white text-[10px] shrink-0 ${isSel(p) ? "bg-accent border-accent" : "border-line"}`}>{isSel(p) ? "✓" : ""}</span>
-              <span className="flex-1 truncate">{p.display_name} <span className="text-faint text-sm">· {p.domain}</span></span>
-            </button>
-          ))}
       </div>
-      {tenantIds.length === 0
-        ? <p className="text-faint">Select at least one writer to start.</p>
-        : <GroupChatPanel key={tenantIds.join(",")} target={{ tenantIds }} title={`Ask ${selected.length} writer${selected.length === 1 ? "" : "s"}`} />}
+    </div>
+  );
+}
+
+function ProfileSettings({ user, onUser }) {
+  const [profile, setProfile] = useState(null);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [uState, setUState] = useState(null);   // {kind, msg}
+  const [eState, setEState] = useState(null);
+  const [checking, setChecking] = useState(null);
+
+  useEffect(() => {
+    getMyProfile().then((p) => {
+      setProfile(p); setUsername(p.username || ""); setEmail(p.email || "");
+    }).catch(() => setProfile({}));
+  }, []);
+
+  // Availability probe is advisory only — the backend claim is authoritative.
+  useEffect(() => {
+    const v = username.trim();
+    if (!v || v === (profile?.username || "")) { setChecking(null); return; }
+    const t = setTimeout(() => {
+      checkUsername(v)
+        .then((r) => setChecking(r.valid === false
+          ? { kind: "err", msg: r.reason || "Invalid username" }
+          : r.available ? { kind: "ok", msg: "Available" }
+                        : { kind: "err", msg: "Already taken" }))
+        .catch(() => setChecking(null));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [username, profile]);
+
+  async function saveUsername(e) {
+    e.preventDefault();
+    setUState({ kind: "busy", msg: "Saving…" });
+    try {
+      const r = await updateUsername(username.trim());
+      setProfile((p) => ({ ...p, username: r.username }));
+      setUState({ kind: "ok", msg: "Username updated." });
+    } catch (err) { setUState({ kind: "err", msg: err.message }); }
+  }
+  async function saveEmail(e) {
+    e.preventDefault();
+    setEState({ kind: "busy", msg: "Saving…" });
+    try {
+      const r = await updateEmail(email.trim());
+      setProfile((p) => ({ ...p, email: r.email }));
+      setEState({ kind: "ok", msg: "Email updated." });
+      if (r.token && onUser) onUser({ ...user, email: r.email });
+    } catch (err) { setEState({ kind: "err", msg: err.message }); }
+  }
+  const tone = { ok: "text-ok", err: "text-err", busy: "text-faint" };
+
+  return (
+    <div className="max-w-[640px]" data-testid="profile-settings">
+      <h1 className="text-3xl font-bold tracking-tight mb-1">Profile</h1>
+      <p className="text-soft mb-8">Your public username and login email.</p>
+
+      <form onSubmit={saveUsername} className="mb-10">
+        <label className="block font-medium mb-1" htmlFor="username">Username</label>
+        <p className="text-sm text-faint mb-2">
+          Public. Letters, numbers, dots and underscores. Changing it never affects your posts.
+        </p>
+        <input id="username" data-testid="username-input" className={INPUT}
+          value={username} onChange={(e) => setUsername(e.target.value)}
+          placeholder={profile?.username ? "" : "choose a username"} autoComplete="off" />
+        <div className="flex items-center gap-3 mt-2">
+          <button type="submit" disabled={!username.trim() || uState?.kind === "busy"}
+            data-testid="save-username" className={`${DARK} px-5 py-2`}>Save username</button>
+          {checking && <span className={`text-sm ${tone[checking.kind]}`} data-testid="username-availability">{checking.msg}</span>}
+          {uState && <span className={`text-sm ${tone[uState.kind]}`} role="status">{uState.msg}</span>}
+        </div>
+      </form>
+
+      <form onSubmit={saveEmail} className="mb-10">
+        <label className="block font-medium mb-1" htmlFor="email">Email</label>
+        <p className="text-sm text-faint mb-2">Used to sign in.</p>
+        <input id="email" type="email" data-testid="email-input" className={INPUT}
+          value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+        <div className="flex items-center gap-3 mt-2">
+          <button type="submit" disabled={!email.trim() || eState?.kind === "busy"}
+            data-testid="save-email" className={`${DARK} px-5 py-2`}>Save email</button>
+          {eState && <span className={`text-sm ${tone[eState.kind]}`} role="status">{eState.msg}</span>}
+        </div>
+      </form>
+
+      <div className="border-t border-line pt-5 text-sm text-faint">
+        Your account identity does not change when you edit these fields.
+      </div>
     </div>
   );
 }

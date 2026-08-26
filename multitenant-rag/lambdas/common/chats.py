@@ -82,12 +82,28 @@ def create_chat(user_id: str, tenant_id: str, profile_name: str, profile_user_id
             "status": "active", "created_at": now, "updated_at": now}
 
 
-def append_turn(user_id: str, chat_id: str, user_text: str, assistant_text: str, citations: list) -> list | None:
+def append_turn(user_id: str, chat_id: str, user_text: str, assistant_text: str,
+                citations: list, scope: dict | None = None) -> list | None:
+    """Append one user+assistant turn.
+
+    `scope` is an OPTIONAL per-message snapshot of the retrieval scope that this
+    exact question was asked against, e.g.
+        {"kind": "users"|"group", "user_ids": [...], "labels": [...], "group_name": str}
+
+    It is stored on the USER message so historical turns never re-read the live
+    selector. It is additive and backward compatible: messages written before
+    this existed simply have no `scope` key, and the UI renders them unchanged.
+    Scope here is DISPLAY METADATA ONLY — retrieval authorization is unchanged
+    and remains entirely backend-enforced.
+    """
     chat = get_chat(user_id, chat_id)
     if not chat:
         return None
     msgs = chat["messages"]
-    msgs.append({"role": "user", "text": user_text})
+    user_msg = {"role": "user", "text": user_text}
+    if scope:
+        user_msg["scope"] = scope
+    msgs.append(user_msg)
     msgs.append({"role": "assistant", "text": assistant_text, "citations": citations})
     title = chat.get("title") or "New chat"
     if title in ("", "New chat"):

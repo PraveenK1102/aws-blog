@@ -49,8 +49,9 @@ export const getPost = (tenantId, postId) =>
   req(`/api/tenants/${encodeURIComponent(tenantId)}/posts/${encodeURIComponent(postId)}`);
 // My own posts (for the Write/manage view).
 export const listMyPosts = () => req("/api/posts").then((d) => d.posts || []);
-export const createPost = (title, content) =>
-  req("/api/posts", { method: "POST", body: { title, content } });
+export const createPost = (title, content, tags) =>
+  req("/api/posts", { method: "POST",
+    body: tags && tags.length ? { title, content, tags } : { title, content } });
 
 // Saved chats (conversation memory, up to 5)
 export const listChats = () => req("/api/chats").then((d) => d.chats || []);
@@ -118,30 +119,43 @@ export const globalSearch = (question) =>
   req("/api/search/global", { method: "POST", body: { question } }).then((d) => d.results || []);
 
 // Ask a GROUP (group_id) or an explicit set of profiles (tenantIds). Streams NDJSON like ask().
-export async function askGroup({ groupId, tenantIds }, question, onToken, chatId) {
+
+
+// --- Profile: mutable username / email. Stable user_id + tenant_id never move.
+export const getMyProfile = () => req("/api/me/profile");
+
+export const checkUsername = (username) =>
+  req(`/api/me/username-available?username=${encodeURIComponent(username)}`);
+
+export const updateUsername = (username) =>
+  req("/api/me/username", { method: "PUT", body: { username } });
+
+export const updateEmail = (email) =>
+  req("/api/me/email", { method: "PUT", body: { email } })
+    .then((r) => { if (r && r.token) setToken(r.token); return r; });
+
+/**
+ * Non-streaming group/multi-user ask used by the conversational surfaces.
+ * `scope_labels` is display metadata only — the backend ignores it for
+ * retrieval and re-resolves authorization itself.
+ */
+export async function askGroup({ tenant_ids, group_id, question, chat_id, scope_labels }) {
   const res = await fetch("/api/ask/group", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-    body: JSON.stringify({ question, group_id: groupId || undefined, tenant_ids: tenantIds || undefined, chat_id: chatId || undefined }),
+    body: JSON.stringify({
+      question, tenant_ids, group_id: group_id || undefined,
+      chat_id: chat_id || undefined, scope_labels: scope_labels || undefined,
+    }),
   });
-  if (!res.ok) { await res.text(); throw new Error(`ask failed (${res.status})`); }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "", citations = [];
-  const handleLine = (line) => {
-    line = line.trim(); if (!line) return;
-    let evt; try { evt = JSON.parse(line); } catch { return; }
-    if (evt.type === "content") onToken(evt.text);
-    else if (evt.type === "done") citations = evt.citations || [];
-  };
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop();
-    for (const line of lines) handleLine(line);
+  if (!res.ok) throw new Error(`Ask failed (${res.status})`);
+  const text = await res.text();
+  let answer = "", citations = [];
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    let ev; try { ev = JSON.parse(line); } catch { continue; }
+    if (ev.type === "content") answer += ev.text;
+    else if (ev.type === "done") citations = ev.citations || [];
   }
-  if (buffer) handleLine(buffer);
-  return citations;
+  return { answer, citations };
 }

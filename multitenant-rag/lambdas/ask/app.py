@@ -39,6 +39,8 @@ from common import semcache
 from common.context import ContextError, get_context_from_headers
 from common.logger import get_logger
 from common.posts import PostError, create_post as create_post_shared
+from common.profile import (ProfileError, get_profile, is_username_available,
+                            set_email, set_username, validate_username)
 from common.secrets import get_qdrant
 from common.tracing import get_tracer
 from llm import stream_answer, GROQ_MODEL, GROQ_MODEL_SMALL
@@ -794,7 +796,8 @@ ROUTED_UNAVAILABLE_TEXT = "\n\n[Error while generating response]"
 
 def _routed_stream(*, request_id: str, question: str, scope, history: list,
                    span, started_at: float, asker_id: str, chat_id: str | None,
-                   route_type: str, log_usage: bool):
+                   route_type: str, log_usage: bool,
+                   scope_snapshot: dict | None = None):
     """Run the routed graph and yield the SAME NDJSON event schema as the
     existing path: zero or more {"type":"content"} then one {"type":"done"}.
 
@@ -881,7 +884,8 @@ def _routed_stream(*, request_id: str, question: str, scope, history: list,
                    started_at)
     if chat_id:
         try:
-            chatstore.append_turn(asker_id, chat_id, question, answer, citations)
+            chatstore.append_turn(asker_id, chat_id, question, answer, citations,
+                                  scope=scope_snapshot)
         except Exception as e:
             log.error("chat append failed", error_type=type(e).__name__)
 
@@ -1107,6 +1111,14 @@ def _log_usage(tenant_id: str, user_id: str, request_id: str, query: str,
 # All new; the single-profile /api/ask flow above is unchanged.
 # ===========================================================================
 
+class UsernameRequest(BaseModel):
+    username: str
+
+
+class EmailRequest(BaseModel):
+    email: str
+
+
 class GroupCreateRequest(BaseModel):
     name: str
 
@@ -1116,6 +1128,11 @@ class AddMemberRequest(BaseModel):
 
 
 class GroupAskRequest(BaseModel):
+    # `scope_labels` is DISPLAY METADATA ONLY, snapshotted onto the stored user
+    # message so historical turns never re-read the live selector. It is NEVER
+    # used for retrieval or authorization — `tenant_ids`/`group_id` remain the
+    # only scope inputs, and the backend re-resolves group membership itself.
+    scope_labels: list[str] | None = None
     question: str
     group_id: str | None = None
     tenant_ids: list[str] | None = None
@@ -1143,6 +1160,68 @@ def _tenant_name(tenant_id: str) -> str:
 
 
 # --- Phase 1: follow / unfollow / following --------------------------------
+
+# --- Profile: mutable username / email. Stable user_id + tenant_id NEVER change.
+# Identity always comes from the authenticated JWT — a client-supplied user_id is
+# never trusted for a profile mutation.
+
+@app.get("/api/me/profile")
+def my_profile(request: Request):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        return get_profile(user_id)
+    except ProfileError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+
+
+@app.get("/api/me/username-available")
+def username_available(request: Request, username: str = ""):
+    try:
+        user_id, _, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        validate_username(username)
+    except ProfileError as e:
+        return {"available": False, "valid": False, "reason": e.message}
+    return {"available": is_username_available(username, for_user_id=user_id), "valid": True}
+
+
+@app.put("/api/me/username")
+def update_username(req: UsernameRequest, request: Request):
+    try:
+        user_id, tenant_id, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        res = set_username(user_id, req.username)
+    except ProfileError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    log.info("username updated", user_id=user_id)
+    # user_id / tenant_id are echoed to make it explicit they did not move.
+    return {"username": res["username"], "user_id": user_id, "tenant_id": tenant_id}
+
+
+@app.put("/api/me/email")
+def update_email(req: EmailRequest, request: Request):
+    try:
+        user_id, tenant_id, _ = _require_login(request)
+    except ContextError as e:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized", "detail": str(e)})
+    try:
+        res = set_email(user_id, req.email)
+    except ProfileError as e:
+        return JSONResponse(status_code=e.status, content={"error": e.message})
+    log.info("email updated", user_id=user_id)
+    # The JWT carries `email` as a claim (identity is `sub` = user_id), so a fresh
+    # token is issued to avoid a stale claim. user_id/tenant_id are unchanged, so
+    # every post, chat, follow, group and Qdrant point keeps its owner.
+    token = create_token(user_id, tenant_id, res["email"])
+    return {"email": res["email"], "user_id": user_id, "tenant_id": tenant_id, "token": token}
+
 
 @app.post("/api/users/{user_id}/follow")
 def follow_user(user_id: str, request: Request):
@@ -1446,7 +1525,8 @@ async def ask_group(req: GroupAskRequest, request: Request):
                     request_id=request_id, question=question, scope=gscope,
                     history=history, span=span, started_at=started_at,
                     asker_id=asker_id, chat_id=chat_id,
-                    route_type=gscope.kind, log_usage=False)
+                    route_type=gscope.kind, log_usage=False,
+                    scope_snapshot=_scope_snapshot(req, targets))
             finally:
                 span.finish(metadata={
                     "latency_ms": int((time.time() - started_at) * 1000)})
@@ -1524,7 +1604,8 @@ async def ask_group(req: GroupAskRequest, request: Request):
             latency = int((time.time() - started_at) * 1000)
             log.info("group query done", request_id=request_id, hits=len(citations), latency_ms=latency)
             if chat_id:
-                chatstore.append_turn(asker_id, chat_id, question, text, citations)
+                chatstore.append_turn(asker_id, chat_id, question, text, citations,
+                                      scope=_scope_snapshot(req, targets))
         except Exception as e:
             span.record_error(e)
             raise
@@ -1532,6 +1613,19 @@ async def ask_group(req: GroupAskRequest, request: Request):
             span.finish(metadata={"latency_ms": int((time.time() - started_at) * 1000)})
 
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
+
+
+def _scope_snapshot(req, targets: list[str]) -> dict:
+    """Per-message scope snapshot for display. Stable ids are authoritative for
+    reconstruction; labels are a convenience copy so old chats still read well if
+    a display name later changes. Never consulted by retrieval."""
+    snap = {"kind": "group" if req.group_id else "users",
+            "tenant_ids": list(targets), "count": len(targets)}
+    if req.group_id:
+        snap["group_id"] = req.group_id
+    if getattr(req, "scope_labels", None):
+        snap["labels"] = [str(x) for x in req.scope_labels][:50]
+    return snap
 
 
 # --- Phase 3: global discovery search (LLM-free, no tenant filter) ----------
