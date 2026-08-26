@@ -157,9 +157,154 @@ def main(argv=None):
     if not args.apply:
         print("\n  DRY RUN complete. Re-run with --apply to delete.")
         return 0
-    print("\n  APPLY not yet enabled in this build — deletion is gated pending "
-          "Phase A PASS. Re-run after the corpus is healthy.")
+    rep = execute(allow)
+    print("\n=== DELETION REPORT ===")
+    print(json.dumps(rep, indent=2, default=str))
+    out = os.path.join(HERE, "output", "cleanup_report.json")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    json.dump(rep, open(out, "w"), indent=2, default=str)
     return 0
+
+
+def execute(allow: dict) -> dict:
+    """DECISION 3A order. Stops the ENTIRE run on the first failure rather than
+    moving on to another user, so a partial state is always reportable."""
+    import boto3
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import (Filter, FieldCondition, MatchValue,
+                                      FilterSelector, MatchAny)
+    sys.path.insert(0, os.path.join(REPO, "multitenant-rag", "lambdas"))
+    from common.secrets import get_qdrant
+
+    ddb = boto3.client("dynamodb", region_name=REGION)
+    s3 = boto3.client("s3", region_name=REGION)
+    url, key = get_qdrant()
+    qc = QdrantClient(url=url, api_key=key, timeout=30)
+    bucket = os.environ["S3_CONTENT_BUCKET"]
+    COLL = os.environ.get("QDRANT_COLLECTION", "multitenant_chunks")
+
+    T = {"users": os.environ.get("USERS_TABLE", "multitenant-users"),
+         "tenants": os.environ.get("TENANTS_TABLE", "multitenant-tenants"),
+         "posts": os.environ.get("POSTS_TABLE", "multitenant-posts"),
+         "follows": os.environ.get("FOLLOWS_TABLE", "multitenant-follows"),
+         "members": os.environ.get("GROUP_MEMBERS_TABLE", "multitenant-group-members"),
+         "chats": os.environ.get("CHATS_TABLE", "multitenant-chats")}
+
+    rep = {"deactivated": [], "qdrant_points_deleted": 0, "semcache_invalidated": [],
+           "s3_deleted": 0, "post_rows_deleted": 0, "follows_deleted": 0,
+           "memberships_deleted": 0, "chats_deleted": 0,
+           "users_deleted": [], "tenants_deleted": [], "errors": [],
+           "residue": {}}
+
+    posts_by_tenant = {}
+    for p in allow["posts"]:
+        posts_by_tenant.setdefault(p["tenant_id"], []).append(p)
+
+    for u in allow["users"]:
+        uid, tid = u["user_id"], u["tenant_id"]
+        pids = [p["post_id"] for p in posts_by_tenant.get(tid, [])]
+        try:
+            # 1 — deactivate first: stops further use, and is reversible
+            ddb.update_item(TableName=T["users"], Key={"user_id": {"S": uid}},
+                            UpdateExpression="SET active = :f",
+                            ConditionExpression="attribute_exists(user_id)",
+                            ExpressionAttributeValues={":f": {"BOOL": False}})
+            rep["deactivated"].append(uid)
+
+            # 2 — Qdrant points for the EXACT legacy post ids (retrieval residue first)
+            if pids:
+                qc.delete(collection_name=COLL, points_selector=FilterSelector(
+                    filter=Filter(must=[FieldCondition(key="post_id",
+                                                       match=MatchAny(any=pids))])))
+                left = qc.count(collection_name=COLL, exact=True, count_filter=Filter(
+                    must=[FieldCondition(key="post_id", match=MatchAny(any=pids))])).count
+                if left:
+                    raise RuntimeError(f"{left} Qdrant points remain for {uid}")
+
+            # 3 — semantic cache for that tenant
+            from common import semcache
+            semcache.invalidate_tenant(tid)
+            rep["semcache_invalidated"].append(tid)
+
+            # 4 — S3 markdown objects
+            for p in posts_by_tenant.get(tid, []):
+                k = p.get("s3_key") or f"tenants/{tid}/posts/{p['post_id']}.md"
+                s3.delete_object(Bucket=bucket, Key=k)
+                rep["s3_deleted"] += 1
+
+            # 5 — DynamoDB post metadata
+            for pid in pids:
+                ddb.delete_item(TableName=T["posts"],
+                                Key={"tenant_id": {"S": tid}, "post_id": {"S": pid}})
+                rep["post_rows_deleted"] += 1
+
+            # 6 — user-owned relational records (proven key layouts only)
+            for it in _query_all(ddb, T["follows"], "follower_id = :f",
+                                 {":f": {"S": uid}}):
+                ddb.delete_item(TableName=T["follows"], Key={
+                    "follower_id": it["follower_id"], "followee_id": it["followee_id"]})
+                rep["follows_deleted"] += 1
+            for it in _query_all(ddb, T["follows"], "followee_id = :f",
+                                 {":f": {"S": uid}}, index="by_followee"):
+                ddb.delete_item(TableName=T["follows"], Key={
+                    "follower_id": it["follower_id"], "followee_id": it["followee_id"]})
+                rep["follows_deleted"] += 1
+            for it in _query_all(ddb, T["members"], "user_id = :u",
+                                 {":u": {"S": uid}}, index="by_member"):
+                ddb.delete_item(TableName=T["members"], Key={
+                    "group_id": it["group_id"], "user_id": it["user_id"]})
+                rep["memberships_deleted"] += 1
+            for it in _query_all(ddb, T["chats"], "user_id = :u", {":u": {"S": uid}}):
+                ddb.delete_item(TableName=T["chats"], Key={
+                    "user_id": it["user_id"], "chat_id": it["chat_id"]})
+                rep["chats_deleted"] += 1
+
+            # 7 — user record
+            ddb.delete_item(TableName=T["users"], Key={"user_id": {"S": uid}})
+            rep["users_deleted"].append(uid)
+
+            # 8 — tenant record, only once nothing legitimate remains
+            remaining = _query_all(ddb, T["posts"], "tenant_id = :t", {":t": {"S": tid}})
+            if remaining:
+                rep["errors"].append(
+                    f"{tid}: {len(remaining)} posts still present — tenant KEPT")
+            else:
+                ddb.delete_item(TableName=T["tenants"], Key={"tenant_id": {"S": tid}})
+                rep["tenants_deleted"].append(tid)
+        except Exception as e:
+            rep["errors"].append(f"{uid}: {type(e).__name__}: {e}")
+            rep["stopped_early"] = True
+            return rep      # STOP — never continue to another user
+
+    # 9 — residue verification
+    all_pids = list(allow["post_ids"])
+    rep["residue"]["qdrant_points"] = qc.count(
+        collection_name=COLL, exact=True, count_filter=Filter(
+            must=[FieldCondition(key="post_id", match=MatchAny(any=all_pids))])).count
+    rep["residue"]["post_rows"] = sum(
+        1 for p in allow["posts"]
+        if ddb.get_item(TableName=T["posts"], Key={"tenant_id": {"S": p["tenant_id"]},
+                                                    "post_id": {"S": p["post_id"]}}).get("Item"))
+    rep["residue"]["users"] = sum(
+        1 for u in allow["users"]
+        if ddb.get_item(TableName=T["users"], Key={"user_id": {"S": u["user_id"]}}).get("Item"))
+    return rep
+
+
+def _query_all(ddb, table, cond, values, index=None):
+    items, kw = [], {"TableName": table, "KeyConditionExpression": cond,
+                     "ExpressionAttributeValues": values}
+    if index:
+        kw["IndexName"] = index
+    while True:
+        try:
+            r = ddb.query(**kw)
+        except Exception:
+            return items
+        items += r.get("Items", [])
+        if "LastEvaluatedKey" not in r:
+            return items
+        kw["ExclusiveStartKey"] = r["LastEvaluatedKey"]
 
 
 if __name__ == "__main__":

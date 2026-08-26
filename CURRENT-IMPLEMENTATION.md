@@ -880,6 +880,38 @@ attribution clear). It remains the **top open ingestion P0**.
 
 Details: **`PRODUCTION-ROUTED-RAG-DEPLOYMENT.md`** (20 sections).
 
+## 9o. Curated 25-user / 268-post seeded corpus (2026-08-26) — SYNTHETIC DEMO DATA
+
+**Data classification: curated seeded demo users. NOT real users, customers or organic
+traffic.** Realistic synthetic personas whose purpose is stable, heterogeneous content for
+hybrid-retrieval, tenant/scope, simple/compound-query, group-RAG, global-search, semantic-cache
+and noise-robustness testing, and for evaluation-dataset development.
+
+| | |
+|---|---|
+| Corpus | 25 personas / 268 posts; source sha256 `6e2f76b7…`, ingest-region sha256 `ed8ecb66…` |
+| Composition | 15 job-search (6 Full Stack, 4 ML, 5 GenAI), 1 Rameswaram travel (18), 1 Chennai food (28), 1 casual diary (10), 5 noise/test (6 each), 2 engineering notes (16 each) |
+| Ingestion | **268/268 created and indexed**, 0 conflicts, 0 failures |
+| Fidelity | `created_at` = corpus date @ 00:00 UTC **268/268**; tags exact **268/268**; S3 body SHA-256 matches corpus **268/268**; Qdrant points **268/268** |
+| Identity | `email = <corpus-username>@example.com`; passwords derived via HMAC-SHA256 from a master secret **in memory only** — never stored anywhere. No username schema field was added (deferred to the profile/UI task) |
+| Metadata | `tags` added as an optional DynamoDB list attribute; no key/GSI/LSI/IAM/API-GW/Qdrant schema change |
+| Smoke | 7/7 retrieval checks pass via the production hybrid path (Groq 0) |
+
+**Legacy cleanup:** the `seed-20260822` demo population was removed — 6 users, 6 tenants,
+50 posts, 50 S3 objects, 12 group memberships, all its Qdrant points. Zero residue, zero
+errors, no protected record touched. Five accounts of unproven provenance were classified
+UNKNOWN_REVIEW and left **completely untouched** by explicit decision.
+
+**Final population: 30 users / 30 tenants / 271 posts** — 25 corpus personas (268 posts)
+plus 5 retained accounts (3 posts). The system does *not* contain only 25 users.
+
+**Operational note:** ingestion triggered 8 Titan `ThrottlingException` events that all
+self-recovered via FIFO redelivery (0 permanent failures, 0 poison messages). No queue
+configuration was changed. `RedrivePolicy` on `multitenant-ingestion.fifo` is still **null** —
+the ingestion DLQ remains the **top open P0**.
+
+Details: **`CURATED-CORPUS-INGESTION-AND-CLEANUP.md`**.
+
 ## 10. Observability
 - **CloudWatch (deployed):** structured JSON logs (`common/logger.py`); per-query `relevance` lines; `usage-logs` DDB table; new logs "global search start/done" (request_id, result_count, latency_ms — never the query).
 - **LangSmith (deployed; backend delivery pending an authed query):** per-request traces for the three query flows (project `multitenant-rag-prod`), as in §7.
@@ -963,6 +995,23 @@ Details: **`PRODUCTION-ROUTED-RAG-DEPLOYMENT.md`** (20 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-26 — Curated 25-user / 268-post seeded corpus ingested; legacy seed-20260822 removed
+- Ingested the curated corpus through the supported application path: **25 personas, 268 posts,
+  268/268 indexed**, 0 conflicts, 0 failures. Fidelity verified: corpus dates as `created_at`
+  @ 00:00 UTC 268/268, exact tags 268/268, S3 body SHA-256 268/268, Qdrant points 268/268.
+- Identity: `<corpus-username>@example.com` + HMAC-derived per-persona passwords held in memory
+  only. **No username schema field added** (profile/UI task). `tags` added as an optional
+  DynamoDB attribute — no key/GSI/LSI/IAM/API-GW/Qdrant change.
+- S3 markdown is the **exact** corpus body — no Date/Tags/marker injection.
+- Removed the legacy `seed-20260822` population on positive provenance: 6 users, 6 tenants,
+  50 posts, 50 S3 objects, 12 memberships, all Qdrant points. Zero residue, zero errors.
+- **5 UNKNOWN_REVIEW accounts left untouched** and hard-blocked from the delete set in code.
+- Titan throttled 8× during ingest and self-recovered; no queue config changed; **DLQ still
+  absent and still the top open P0**.
+- Tooling: `tools/{corpus_parser,corpus_identity,corpus_dates,seed_curated_blog_corpus,
+  cleanup_legacy_seed}.py` + 31 tests. Cleanup is dry-run by default.
+- These are **curated seeded demo users**, not real users.
 
 ### 2026-08-24 — Routed LangGraph RAG DEPLOYED to production (awaiting manual smoke)
 - Deployed x86_64 image `sha256:3ada41fc…` (tag/commit `4126661`, CI run `32764221478` on native
