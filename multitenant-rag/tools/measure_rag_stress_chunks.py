@@ -116,8 +116,14 @@ def main():
     u = s["chunks_by_user"]
     print(f"  by user min={u['min']} mean={u['mean']} p50={u['p50']} p95={u['p95']} max={u['max']}")
     print(f"  LINEAR PROJECTION (x4): {s['linear_projection_100_users']}")
-    lo, hi, tot = 1000, 1600, s["total_chunks"]
-    print(f"\n  GATE [1000-1600]: {'PASS' if lo <= tot <= hi else ('TOO LOW' if tot < lo else 'TOO HIGH')}  ({tot})")
+    # §17: the 1,000-1,600 gate is RETIRED by architect decision — higher chunk
+    # density is ACCEPTED as a legitimate property of header-rich prose. The
+    # range below is INFORMATIONAL ONLY and never fails the run.
+    INFO_LO, INFO_HI, tot = 1800, 2500, s["total_chunks"]
+    where = ("within" if INFO_LO <= tot <= INFO_HI
+             else "below" if tot < INFO_LO else "above")
+    print(f"  INFORMATIONAL RANGE [{INFO_LO}-{INFO_HI}]: {tot} ({where}) "
+          f"— informational only, NOT a gate")
 
 
 if __name__ == "__main__":

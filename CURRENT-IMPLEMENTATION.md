@@ -1003,7 +1003,7 @@ Details: **`INGESTION-DLQ-REDRIVE-PLAN.md`** (16 sections).
 | | |
 |---|---|
 | Stress Corpus V1 | **DESIGNED** (100 users / 1,800 posts / 7,270 facts / 240 golden cases) |
-| Cohort A | **GENERATED OFFLINE · VALIDATED · CHUNK-MEASURED · NOT INGESTED** |
+| Cohort A | **QUALITY-REGENERATED · VALIDATED · CHUNK-MEASURED · NOT INGESTED** |
 | Cohorts B/C/D | **NOT GENERATED** |
 | AWS | **UNCHANGED** |
 

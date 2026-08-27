@@ -122,6 +122,102 @@ eval applicable     742dbed14576d93039ca617458afa230
 Regeneration into a temp directory produced a **byte-identical** fingerprint. No generated
 file contains a timestamp.
 
-## 16. Status
-Cohort A: **GENERATED / VALIDATED / CHUNK-MEASURED / NOT INGESTED**.
+## 17. PROSE QUALITY REGENERATION (2026-08-27)
+
+The first Cohort A prose was rejected: a single opening fragment recurred up to
+**20x** inside one post. The generator was rebuilt around a context-aware,
+pattern-based sentence engine. Ground truth was NOT touched — same seed family,
+same post/fact assignments, same word-range classes, same fact values.
+
+### 17.1 What changed in the generator
+| Change | Reason |
+|---|---|
+| `PATTERNS` banks per category (30/30/27/28/23/28) | replaces a handful of reused fragments |
+| `ctx()` context slots (company, role, tech, place, month) | sentences vary with the post, not at random |
+| opening budgets shared across fact + filler sentences | repetition bounded over the WHOLE post |
+| two-pass fill, then on-demand top-up | word range is frozen, so running short is not an option |
+| sibling spacing (same template >= 8 sentences apart) | template siblings differ only by slot fill |
+| `t1`/`t2` sampled without replacement | fixed "depth in X and breadth across X" |
+| widened `measurement` fact bank (3 -> 8) | posts can carry more facts than a 3-way bank can open distinctly |
+| title qualifier on bank re-cycle | an author no longer reuses a title across 18 posts |
+
+### 17.2 Within-post repetition — FIXED
+| Metric | Before | After |
+|---|---|---|
+| worst 4-word opening repeat in a post | **20x** | **2x** |
+| mean worst-per-post | 2.44 | **1.04** |
+| substantial non-noise posts exceeding 2 | many | **0** |
+| duplicate titles within one author | 2 per author | **0** |
+| same-value contrast slots (`t1 == t2`) | present | **0** |
+
+Noise posts are exempt by design (SS11/SS27 specify low-signal, repetitive
+boilerplate); their worst opening repeat is **6x** and is reported, not gated.
+
+### 17.3 Cross-post duplication — NOT fixed, and worse than first reported
+An earlier figure in this workstream ("98 duplicate sentences") was measured
+per-post and was wrong as a corpus-wide statistic. Measured properly:
+
+| Metric | Value |
+|---|---|
+| sentences corpus-wide | 23,240 |
+| **distinct** sentences | **1,992** |
+| duplicate instances | 21,248 (**91.4%**) |
+| most-repeated single sentence | **177x** |
+| distinct sentences appearing under **more than one author** | **694 / 1,992 (34.8%)** |
+
+Per category: noise 99.1% dup, travel_food 95.9%, adversarial 94.8%,
+ai_ml_swe 89.9%, eng_notes 89.9%, job_search 88.8%.
+
+This is a property of a finite template bank spread over 450 posts. It is
+**material to RAG evaluation**: identical sentences under different authors
+produce near-duplicate chunks, which weakens cross-user attribution and
+high-overlap discrimination testing. It is raised as DECISION REQUIRED — the
+fix is a corpus-design change, not an implementation detail.
+
+### 17.4 Question quality pass
+Stem diversity (4-word), 240 cases:
+
+| Metric | Before | After |
+|---|---|---|
+| worst stem frequency | 35 (14.6%) | **11 (4.6%)** |
+| distinct 4-word stems | 116 | **138** |
+
+Defects found by manual review of 60 questions and fixed (wording only):
+- **`target_role` and other raw schema field names** reached retrieval in 7 questions.
+- **Double genitives** — "Arjun Balan's their manager's name" — across `unanswerable`.
+- **"Two things -"** used for questions carrying 3, 4 and 5 needs.
+- All 35 compound cases opened with the identical preamble "Could you tell me".
+
+Metadata drift vs frozen ground truth: **0 cases**. Rare exact tokens preserved: **0 violations**.
+
+Not fixed (DECISION REQUIRED): **7 question texts are duplicated with
+CONFLICTING ground truth** — the same wording maps to different expected facts,
+so an evaluator would mark a correct answer wrong.
+
+### 17.5 Chunk density rebaseline
+The 1,000-1,600 gate is **RETIRED**; 1,800-2,500 is now informational only.
+
+Total chunks **1,752** (below the informational range, not a failure).
+Heading counts were NOT reduced to chase a projection.
+
+| Headings | Posts | Mean chunks |
+|---|---|---|
+| 0 | 36 (8.0%) | 1.78 |
+| 3 | 36 (8.0%) | 3.39 |
+| 4 | 324 (72.0%) | 4.00 |
+| 5+ | 54 (12.0%) | 5.00 |
+
+Same-post concentration: **12.7% of posts reach 5 chunks**, **0% reach 6**, max
+**5** — so a top-5 retrieval can be filled entirely from one post, but no post
+can exceed the window on its own.
+
+### 17.6 Gates
+`validate_rag_stress_cohort.py`: **PASS** (0 problems) — now also gating
+paragraph-opening repetition and question-stem diversity/hygiene.
+`test_corpus_generator.py`: **25 passed**.
+Determinism: regeneration to a temp directory is **byte-identical**,
+fingerprint `8741890b4a25a4963930365fe544b90b`.
+
+## 18. Status
+Cohort A: **QUALITY-REGENERATED / VALIDATED / CHUNK-MEASURED / NOT INGESTED**.
 Cohorts B/C/D: **NOT GENERATED**. AWS: **UNCHANGED**.

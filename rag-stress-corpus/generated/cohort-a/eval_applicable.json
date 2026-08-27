@@ -56,7 +56,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Sneha Menon reported regarding Razorpay?",
+      "question": "What did Sneha Menon note down about Razorpay?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -93,7 +93,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Manoj Ravi reported regarding Northwind Systems?",
+      "question": "What did Manoj Ravi note down about Northwind Systems?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -167,7 +167,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Meera Shetty reported regarding target_role?",
+      "question": "What did Meera Shetty note down about the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -204,7 +204,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "What did Rahul Sharma say about target_role?",
+      "question": "What did Rahul Sharma say about the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -537,7 +537,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Karthik Varma reported regarding retrieval?",
+      "question": "What did Karthik Varma note down about retrieval?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -574,7 +574,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Anusha Anand reported regarding Rayar's Mess?",
+      "question": "What did Anusha Anand note down about Rayar's Mess?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -648,7 +648,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Divya Kumar reported regarding Anna Tiffin Centre?",
+      "question": "What did Divya Kumar note down about Anna Tiffin Centre?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -759,7 +759,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Kavya Gupta reported regarding Redis?",
+      "question": "What did Kavya Gupta note down about Redis?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1018,7 +1018,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Meera Shetty reported regarding Adobe?",
+      "question": "What did Meera Shetty note down about Adobe?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1055,7 +1055,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Rahul Sharma reported regarding Hexline Labs?",
+      "question": "What did Rahul Sharma note down about Hexline Labs?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1092,7 +1092,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "What does Ramya Verma write about target_role?",
+      "question": "What does Ramya Verma write about the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1166,7 +1166,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "What did Vikram Raj say about target_role?",
+      "question": "What did Vikram Raj say about the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1351,7 +1351,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Sudhir Naidu reported regarding retrieval?",
+      "question": "What did Sudhir Naidu note down about retrieval?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1388,7 +1388,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Karthik Varma reported regarding latency?",
+      "question": "What did Karthik Varma note down about latency?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1462,7 +1462,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Sanjay Selvan reported regarding Kadal Café?",
+      "question": "What did Sanjay Selvan note down about Kadal Café?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1610,7 +1610,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Kavya Gupta reported regarding API design?",
+      "question": "What did Kavya Gupta note down about API design?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1758,7 +1758,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Sneha Menon reported regarding target_role?",
+      "question": "What did Sneha Menon note down about the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1795,7 +1795,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Manoj Ravi reported regarding Northwind Systems?",
+      "question": "What did Manoj Ravi note down about Northwind Systems?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1832,7 +1832,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "According to Vignesh Nair, what happened with target_role?",
+      "question": "According to Vignesh Nair, what happened with the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -1980,7 +1980,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "What did Swathi Chandran say about target_role?",
+      "question": "What did Swathi Chandran say about the role they were targeting?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -2054,7 +2054,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Nithya Prasad reported regarding Microsoft?",
+      "question": "What did Nithya Prasad note down about Microsoft?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -2128,7 +2128,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Arjun Balan reported regarding latency?",
+      "question": "What did Arjun Balan note down about latency?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -2202,7 +2202,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Single authoritative source; MRR is meaningful here.",
-      "question": "Can you tell me what Sudhir Naidu reported regarding latency?",
+      "question": "What did Sudhir Naidu note down about latency?",
       "query_type": "simple_factual",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -4454,7 +4454,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Naveen Mohan said about Amazon, and what Sneha Menon said about Razorpay?",
+      "question": "Tell me what Naveen Mohan said about Amazon, and what Sneha Menon said about Razorpay.",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4497,7 +4497,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Vignesh Nair said about Google, and what Meera Shetty said about Adobe?",
+      "question": "Two things — what Vignesh Nair said about Google, and what Meera Shetty said about Adobe?",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4540,7 +4540,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google?",
+      "question": "I'd like to know what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google.",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4583,7 +4583,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Nithya Prasad said about Microsoft, and what Nandhini Iyer said about accuracy?",
+      "question": "Walk me through what Nithya Prasad said about Microsoft, and what Nandhini Iyer said about accuracy.",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4626,7 +4626,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Lakshmi Pillai said about accuracy, and what Sudhir Naidu said about latency?",
+      "question": "Walk me through what Lakshmi Pillai said about accuracy, and what Sudhir Naidu said about latency.",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4669,7 +4669,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café?",
+      "question": "Tell me what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café.",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4712,7 +4712,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Priya Krishnan said about Redis, and what Dinesh Rao said about Redis?",
+      "question": "Two things — what Priya Krishnan said about Redis, and what Dinesh Rao said about Redis?",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4755,7 +4755,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 2 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137?",
+      "question": "For each of them: what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137?",
       "query_type": "compound_decomposition",
       "scope_type": "2_user",
       "scope_user_ids": [
@@ -4847,7 +4847,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 3 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay?",
+      "question": "For each of them: what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay?",
       "query_type": "compound_decomposition",
       "scope_type": "3_user",
       "scope_user_ids": [
@@ -4896,7 +4896,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 3 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Swathi Chandran said about Google, and what Vikram Raj said about Atlassian, and what Nithya Prasad said about Microsoft?",
+      "question": "For each of them: what Swathi Chandran said about Google, and what Vikram Raj said about Atlassian, and what Nithya Prasad said about Microsoft?",
       "query_type": "compound_decomposition",
       "scope_type": "3_user",
       "scope_user_ids": [
@@ -4994,7 +4994,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 3 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Sudhir Naidu said about latency, and what Karthik Varma said about accuracy, and what Anusha Anand said about Rayar's Mess?",
+      "question": "For each of them: what Sudhir Naidu said about latency, and what Karthik Varma said about accuracy, and what Anusha Anand said about Rayar's Mess?",
       "query_type": "compound_decomposition",
       "scope_type": "3_user",
       "scope_user_ids": [
@@ -5043,7 +5043,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 3 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Sanjay Selvan said about Kadal Café, and what Divya Kumar said about Anna Tiffin Centre, and what Priya Krishnan said about Redis?",
+      "question": "I'd like to know what Sanjay Selvan said about Kadal Café, and what Divya Kumar said about Anna Tiffin Centre, and what Priya Krishnan said about Redis.",
       "query_type": "compound_decomposition",
       "scope_type": "3_user",
       "scope_user_ids": [
@@ -5092,7 +5092,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 3 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Dinesh Rao said about Redis, and what Kavya Gupta said about Redis, and what Deepa Bose said about Project Bluebird?",
+      "question": "Walk me through what Dinesh Rao said about Redis, and what Kavya Gupta said about Redis, and what Deepa Bose said about Project Bluebird.",
       "query_type": "compound_decomposition",
       "scope_type": "3_user",
       "scope_user_ids": [
@@ -5141,7 +5141,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 3 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon, and what Sneha Menon said about Razorpay?",
+      "question": "Tell me what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon, and what Sneha Menon said about Razorpay.",
       "query_type": "compound_decomposition",
       "scope_type": "3_user",
       "scope_user_ids": [
@@ -5355,7 +5355,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 4 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Arjun Balan said about accuracy, and what Lakshmi Pillai said about accuracy, and what Sudhir Naidu said about latency, and what Karthik Varma said about accuracy?",
+      "question": "Walk me through what Arjun Balan said about accuracy, and what Lakshmi Pillai said about accuracy, and what Sudhir Naidu said about latency, and what Karthik Varma said about accuracy.",
       "query_type": "compound_decomposition",
       "scope_type": "4_user",
       "scope_user_ids": [
@@ -5410,7 +5410,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 4 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Karthik Varma said about accuracy, and what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café, and what Divya Kumar said about Anna Tiffin Centre?",
+      "question": "Tell me what Karthik Varma said about accuracy, and what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café, and what Divya Kumar said about Anna Tiffin Centre.",
       "query_type": "compound_decomposition",
       "scope_type": "4_user",
       "scope_user_ids": [
@@ -5520,7 +5520,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 4 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Kavya Gupta said about Redis, and what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon?",
+      "question": "Tell me what Kavya Gupta said about Redis, and what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon.",
       "query_type": "compound_decomposition",
       "scope_type": "4_user",
       "scope_user_ids": [
@@ -5636,7 +5636,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 5 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Vignesh Nair said about Google, and what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google?",
+      "question": "For each of them: what Vignesh Nair said about Google, and what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google?",
       "query_type": "compound_decomposition",
       "scope_type": "5_user",
       "scope_user_ids": [
@@ -5697,7 +5697,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 5 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google, and what Vikram Raj said about Atlassian, and what Nithya Prasad said about Microsoft, and what Nandhini Iyer said about accuracy?",
+      "question": "For each of them: what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google, and what Vikram Raj said about Atlassian, and what Nithya Prasad said about Microsoft, and what Nandhini Iyer said about accuracy?",
       "query_type": "compound_decomposition",
       "scope_type": "5_user",
       "scope_user_ids": [
@@ -5819,7 +5819,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 5 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Lakshmi Pillai said about accuracy, and what Sudhir Naidu said about latency, and what Karthik Varma said about accuracy, and what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café?",
+      "question": "Walk me through what Lakshmi Pillai said about accuracy, and what Sudhir Naidu said about latency, and what Karthik Varma said about accuracy, and what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café.",
       "query_type": "compound_decomposition",
       "scope_type": "5_user",
       "scope_user_ids": [
@@ -5880,7 +5880,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 5 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. Within the context budget.",
-      "question": "Could you tell me what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café, and what Divya Kumar said about Anna Tiffin Centre, and what Priya Krishnan said about Redis, and what Dinesh Rao said about Redis?",
+      "question": "I'd like to know what Anusha Anand said about Rayar's Mess, and what Sanjay Selvan said about Kadal Café, and what Divya Kumar said about Anna Tiffin Centre, and what Priya Krishnan said about Redis, and what Dinesh Rao said about Redis.",
       "query_type": "compound_decomposition",
       "scope_type": "5_user",
       "scope_user_ids": [
@@ -5941,7 +5941,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 6 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. BEYOND the context budget — expected to expose the context cap, not retrieval, as the bottleneck.",
-      "question": "Could you tell me what Priya Krishnan said about Redis, and what Dinesh Rao said about Redis, and what Kavya Gupta said about Redis, and what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon?",
+      "question": "Tell me what Priya Krishnan said about Redis, and what Dinesh Rao said about Redis, and what Kavya Gupta said about Redis, and what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon.",
       "query_type": "compound_decomposition",
       "scope_type": "6_user",
       "scope_user_ids": [
@@ -6008,7 +6008,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 6 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. BEYOND the context budget — expected to expose the context cap, not retrieval, as the bottleneck.",
-      "question": "Could you tell me what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon, and what Sneha Menon said about Razorpay, and what Manoj Ravi said about Northwind Systems, and what Vignesh Nair said about Google?",
+      "question": "For each of them: what Deepa Bose said about Project Bluebird, and what Kavin Dutta said about INC-137, and what Naveen Mohan said about Amazon, and what Sneha Menon said about Razorpay, and what Manoj Ravi said about Northwind Systems, and what Vignesh Nair said about Google?",
       "query_type": "compound_decomposition",
       "scope_type": "6_user",
       "scope_user_ids": [
@@ -6075,7 +6075,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 6 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. BEYOND the context budget — expected to expose the context cap, not retrieval, as the bottleneck.",
-      "question": "Could you tell me what Sneha Menon said about Razorpay, and what Manoj Ravi said about Northwind Systems, and what Vignesh Nair said about Google, and what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay?",
+      "question": "For each of them: what Sneha Menon said about Razorpay, and what Manoj Ravi said about Northwind Systems, and what Vignesh Nair said about Google, and what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay?",
       "query_type": "compound_decomposition",
       "scope_type": "6_user",
       "scope_user_ids": [
@@ -6142,7 +6142,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Requires 6 independent facts against MAX_LLM_CONTEXT_CHUNKS=5. BEYOND the context budget — expected to expose the context cap, not retrieval, as the bottleneck.",
-      "question": "Could you tell me what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google, and what Vikram Raj said about Atlassian, and what Nithya Prasad said about Microsoft?",
+      "question": "For each of them: what Meera Shetty said about Adobe, and what Rahul Sharma said about Hexline Labs, and what Ramya Verma said about Razorpay, and what Swathi Chandran said about Google, and what Vikram Raj said about Atlassian, and what Nithya Prasad said about Microsoft?",
       "query_type": "compound_decomposition",
       "scope_type": "6_user",
       "scope_user_ids": [
@@ -7262,7 +7262,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Exact rare token. Confusable siblings ['INC-713', 'INC-137'] must NOT be returned. Separates BM25 exact matching from dense similarity.",
-      "question": "Can you tell me what INC-731 is?",
+      "question": "What is INC-731?",
       "query_type": "exact_token_bm25",
       "scope_type": "global",
       "scope_user_ids": [],
@@ -7306,7 +7306,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Exact rare token. Confusable siblings ['Project Bluefin', 'Project Bluefire'] must NOT be returned. Separates BM25 exact matching from dense similarity.",
-      "question": "Can you tell me what Project Bluebird is?",
+      "question": "What is meant by Project Bluebird?",
       "query_type": "exact_token_bm25",
       "scope_type": "global",
       "scope_user_ids": [],
@@ -7350,7 +7350,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Exact rare token. Confusable siblings ['INC-731', 'INC-137'] must NOT be returned. Separates BM25 exact matching from dense similarity.",
-      "question": "What does INC-713 actually refer to?",
+      "question": "What is meant by INC-713?",
       "query_type": "exact_token_bm25",
       "scope_type": "global",
       "scope_user_ids": [],
@@ -7385,7 +7385,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Do you know Naveen Mohan's salary band at Amazon?",
+      "question": "What's Naveen Mohan's salary band at Amazon?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7412,7 +7412,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Do you know Sneha Menon's their manager's name?",
+      "question": "What's Sneha Menon's manager's name?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7439,7 +7439,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "What is Manoj Ravi's the office postcode?",
+      "question": "What is the office postcode for Manoj Ravi?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7466,7 +7466,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Vignesh Nair's their GitHub password?",
+      "question": "What's Vignesh Nair's GitHub password?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7493,7 +7493,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "What is Meera Shetty's the exact interview panel size?",
+      "question": "What is the exact interview panel size for Meera Shetty?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7520,7 +7520,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Rahul Sharma's salary band at Amazon?",
+      "question": "What's Rahul Sharma's salary band at Amazon?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7547,7 +7547,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Ramya Verma's their manager's name?",
+      "question": "What's Ramya Verma's manager's name?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7574,7 +7574,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "What is Swathi Chandran's the office postcode?",
+      "question": "What is the office postcode for Swathi Chandran?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7601,7 +7601,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Vikram Raj's their GitHub password?",
+      "question": "What is Vikram Raj's GitHub password?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7628,7 +7628,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Nithya Prasad's the exact interview panel size?",
+      "question": "Is the exact interview panel size for Nithya Prasad mentioned anywhere?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7655,7 +7655,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Nandhini Iyer's salary band at Amazon?",
+      "question": "Do you know Nandhini Iyer's salary band at Amazon?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7682,7 +7682,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Arjun Balan's their manager's name?",
+      "question": "Is Arjun Balan's manager's name mentioned anywhere?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7709,7 +7709,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Do you know Lakshmi Pillai's the office postcode?",
+      "question": "Do you know the office postcode for Lakshmi Pillai?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7736,7 +7736,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Can you tell me Sudhir Naidu's their GitHub password?",
+      "question": "What is Sudhir Naidu's GitHub password?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [
@@ -7763,7 +7763,7 @@
       "minimum_cohort": "A",
       "minimum_user_count": 25,
       "notes": "Corpus intentionally lacks this fact. Expected: honest decline, no unsupported answer, no citation.",
-      "question": "Do you know Karthik Varma's the exact interview panel size?",
+      "question": "Do you know the exact interview panel size for Karthik Varma?",
       "query_type": "unanswerable",
       "scope_type": "single_user",
       "scope_user_ids": [

@@ -1,0 +1,40 @@
+{
+  "totals": {
+    "qdrant_points": 268,
+    "s3": 268,
+    "post_rows": 268,
+    "follows": 0,
+    "memberships": 0,
+    "chats": 0,
+    "usage": 0,
+    "user": 25,
+    "tenant": 25
+  },
+  "completed": [
+    "kavin.raj25",
+    "vignesh.k25",
+    "gokul.krishnan25",
+    "janani.raman25",
+    "aishwarya.selvam25",
+    "naveen.kumar25",
+    "divya.rajan25",
+    "nithin.k25",
+    "karthik.raj25",
+    "saikiran.reddy25",
+    "nandhini.k25",
+    "pavithra.selvan25",
+    "madhan.kumar25",
+    "deepika.chandran25",
+    "anusha.reddy25",
+    "vishnu.priyan25",
+    "priyadharshini.m25",
+    "swathi.raj25",
+    "ashwin.raj25",
+    "dinesh.k25",
+    "yogesh.k25",
+    "meena.lakshmi25",
+    "dharani.vel25",
+    "aravind.k25",
+    "abinaya.raj25"
+  ]
+}

@@ -100,11 +100,66 @@ def main(cohort="A"):
         if len(ps) > 1 and any(x["category"] != "noise" for x in ps):
             problems.append(f"unexpected duplicate body across {[x['post_id'] for x in ps]}")
 
+    # --- prose repetition: no opening fragment may dominate a post (§9) ---
+    # A substantial post repeating the same 4-word paragraph opening reads as
+    # generated text, so this is a hard gate, not a report.
+    # Noise is exempt: §11/§27 DESIGN it to be low-signal and repetitive, so
+    # gating it would contradict the spec. It is reported separately instead.
+    OPEN_LIMIT, SUBSTANTIAL = 2, 400
+    noise_worst = 0
+    for p_ in man:
+        body = bodies.get(p_["post_id"])
+        if not body or len(body.split()) < SUBSTANTIAL:
+            continue
+        if p_["category"] == "noise":
+            o = collections.Counter()
+            for para in [x.strip() for x in body.split("\n\n") if x.strip()]:
+                if not para.lstrip().startswith("#"):
+                    w = re.findall(r"[A-Za-z']+", para.lower())[:4]
+                    if len(w) == 4:
+                        o[" ".join(w)] += 1
+            noise_worst = max(noise_worst, max(o.values()) if o else 0)
+            continue
+        opens = collections.Counter()
+        for para in [x.strip() for x in body.split("\n\n") if x.strip()]:
+            if para.lstrip().startswith("#"):
+                continue
+            w = re.findall(r"[A-Za-z']+", para.lower())[:4]
+            if len(w) == 4:
+                opens[" ".join(w)] += 1
+        if opens:
+            frag, n = opens.most_common(1)[0]
+            check(n <= OPEN_LIMIT,
+                  f"{p_['post_id']}: opening {frag!r} repeats {n}x (limit {OPEN_LIMIT})")
+
+    # --- question stem diversity (§20) ---
+    ev = os.path.join(SPEC, "rag_stress_eval_v1_naturalized.json")
+    if os.path.exists(ev):
+        qs = json.load(open(ev, encoding="utf-8"))["cases"]
+        stems = collections.Counter(
+            " ".join(re.findall(r"[a-z']+", q["question"].lower())[:4]) for q in qs)
+        worst, wn = stems.most_common(1)[0]
+        check(wn <= len(qs) * 0.10,
+              f"question stem {worst!r} used {wn}x (>10% of {len(qs)})")
+        # metadata may never drift: wording-only rewrite
+        base = json.load(open(os.path.join(SPEC, "rag_stress_eval_v1.json"),
+                              encoding="utf-8"))["cases"]
+        meta = [k for k in qs[0] if k not in ("question", "question_template")]
+        drift = sum(1 for a, b in zip(base, qs) if any(a[k] != b[k] for k in meta))
+        check(drift == 0, f"naturalisation drifted ground truth in {drift} cases")
+        # schema field names and double genitives must never reach retrieval
+        for q in qs:
+            check(not re.search(r"\b[a-z]+_[a-z_]+\b", q["question"]),
+                  f"{q['question_id']}: raw field name in question")
+            check(not re.search(r"'s (their|the|a|an) ", q["question"]),
+                  f"{q['question_id']}: double genitive in question")
+
     # generation must never have consumed the evaluation set
     src = open(os.path.join(HERE, "generate_rag_stress_corpus.py"), encoding="utf-8").read()
     check("rag_stress_eval" not in src, "generator references the evaluation set")
 
     print(f"  cohort={cohort} users={len(users)} posts={len(man)} facts_traced={len(tmap)}")
+    print(f"  noise worst 4-word opening repeat: {noise_worst}x (exempt by design)")
     print(f"  problems={len(problems)}")
     for p in problems[:25]:
         print(f"    - {p}")

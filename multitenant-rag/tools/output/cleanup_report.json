@@ -1,0 +1,46 @@
+{
+  "deactivated": [
+    "user_seed20260822_01",
+    "user_seed20260822_02",
+    "user_seed20260822_03",
+    "user_seed20260822_04",
+    "user_seed20260822_05",
+    "user_seed20260822_06"
+  ],
+  "qdrant_points_deleted": 0,
+  "semcache_invalidated": [
+    "tenant_seed20260822_01",
+    "tenant_seed20260822_02",
+    "tenant_seed20260822_03",
+    "tenant_seed20260822_04",
+    "tenant_seed20260822_05",
+    "tenant_seed20260822_06"
+  ],
+  "s3_deleted": 50,
+  "post_rows_deleted": 50,
+  "follows_deleted": 0,
+  "memberships_deleted": 12,
+  "chats_deleted": 0,
+  "users_deleted": [
+    "user_seed20260822_01",
+    "user_seed20260822_02",
+    "user_seed20260822_03",
+    "user_seed20260822_04",
+    "user_seed20260822_05",
+    "user_seed20260822_06"
+  ],
+  "tenants_deleted": [
+    "tenant_seed20260822_01",
+    "tenant_seed20260822_02",
+    "tenant_seed20260822_03",
+    "tenant_seed20260822_04",
+    "tenant_seed20260822_05",
+    "tenant_seed20260822_06"
+  ],
+  "errors": [],
+  "residue": {
+    "qdrant_points": 0,
+    "post_rows": 0,
+    "users": 0
+  }
+}

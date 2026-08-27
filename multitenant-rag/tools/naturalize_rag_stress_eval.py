@@ -29,6 +29,34 @@ def names_from(q):
     return q
 
 
+# Schema field names are metadata and must never reach retrieval as-is (§28).
+FIELD_WORDING = {
+    "target_role": "the role they were targeting",
+    "current_role": "the role they are in now",
+    "company_name": "the company",
+}
+
+
+def humanize_field(x):
+    return FIELD_WORDING.get(x.strip(), x)
+
+
+def possessive(who, thing):
+    """Render `<who>` + `<thing>` without double genitives.
+
+    Fact labels arrive as fragments like "their manager's name" or "the office
+    postcode". Naively substituting them into "What is {who}'s {thing}?" yields
+    "Arjun Balan's their manager's name". Strip the leading determiner and pick
+    the form that stays grammatical.
+    """
+    t = thing.strip()
+    if t.lower().startswith("their "):
+        return f"{who}'s {t[6:]}", None
+    if t.lower().startswith(("the ", "a ", "an ")):
+        return None, f"{t} for {who}"
+    return f"{who}'s {t}", None
+
+
 def naturalize(c):
     r = rng(c["question_id"])
     q = PREFIX_RE.sub("", c["question"]).strip()
@@ -38,11 +66,12 @@ def naturalize(c):
         m = re.match(r"What did (.+?) report about (.+?)\?$", q)
         if m:
             who, what = m.groups()
+            whatw = humanize_field(what)
             return r.choice([
-                f"What did {who} say about {what}?",
-                f"According to {who}, what happened with {what}?",
-                f"What does {who} write about {what}?",
-                f"Can you tell me what {who} reported regarding {what}?",
+                f"What did {who} say about {whatw}?",
+                f"According to {who}, what happened with {whatw}?",
+                f"What does {who} write about {whatw}?",
+                f"What did {who} note down about {whatw}?",
             ])
     elif t == "high_overlap_discrimination":
         m = re.match(r"What was (.+?)'s outcome at (.+?)\?$", q)
@@ -72,7 +101,18 @@ def naturalize(c):
             cleaned.append(f"what {m.group(1)} said about {m.group(2)}" if m else p)
         if cleaned:
             # Every independent need is preserved — never collapsed into one.
-            return "Could you tell me " + ", and ".join(cleaned) + "?"
+            # The opener varies only in wording; the conjoined needs are
+            # identical, so should_decompose stays valid for every variant.
+            joined = ", and ".join(cleaned)
+            opts = [f"Could you tell me {joined}?",
+                    f"I'd like to know {joined}.",
+                    f"Tell me {joined}.",
+                    f"For each of them: {joined}?",
+                    f"Walk me through {joined}."]
+            # A counted opener must match the actual number of needs.
+            if len(cleaned) == 2:
+                opts.append(f"Two things — {joined}?")
+            return r.choice(opts)
     elif t == "scope_isolation":
         m = re.match(r"Within this selection, what was said about (.+?) interviews\?$", q)
         if m:
@@ -89,17 +129,22 @@ def naturalize(c):
             return r.choice([
                 f"What is {tok}?",
                 f"What does {tok} actually refer to?",
-                f"Can you tell me what {tok} is?",
+                f"What is meant by {tok}?",
+                f"Any idea what {tok} stands for?",
             ])
     elif t == "unanswerable":
         m = re.match(r"What is (.+?)'s (.+?)\?$", q)
         if m:
             who, thing = m.groups()
-            return r.choice([
-                f"What is {who}'s {thing}?",
-                f"Do you know {who}'s {thing}?",
-                f"Can you tell me {who}'s {thing}?",
-            ])
+            poss, of = possessive(who, thing)
+            opts = []
+            if poss:
+                opts += [f"What is {poss}?", f"Do you know {poss}?",
+                         f"What's {poss}?", f"Is {poss} mentioned anywhere?"]
+            if of:
+                opts += [f"What is {of}?", f"Do you know {of}?",
+                         f"Is {of} mentioned anywhere?"]
+            return r.choice(opts)
     elif t == "temporal_update":
         m = re.match(r"What is (.+?) targeting now\?$", q)
         if m:
