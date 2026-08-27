@@ -953,6 +953,45 @@ UNKNOWN_REVIEW accounts are never given an invented username.
 
 Details: **`UI-UX-FULL-WIDTH-CHAT-WRITE-REFRESH.md`** (24 sections).
 
+## 9q. Ingestion DLQ / redrive — PLANNED, NOT YET APPLIED (2026-08-27)
+
+**Zero AWS mutations. Read-only inspection only. Awaiting approval to apply.**
+
+Verified against AWS (not assumed): `multitenant-ingestion.fifo` is FIFO with
+`RedrivePolicy = null` — **no DLQ exists in the account**. Retention 4 days, visibility 300 s,
+`BatchSize 1`, `MaximumBatchingWindow 0`, `ScalingConfig null` (concurrency **unbounded**),
+`FunctionResponseTypes []`. Worker timeout 300 s.
+
+**Why this is P0 before the stress corpus:** with no DLQ a permanently failing message
+redelivers until source retention expires — ~1,150 attempts over 4 days — and because
+`MessageGroupId = tenant_id` it **blocks that tenant's whole group** for the duration while
+re-burning Titan quota. The 268-post corpus already produced 8 Titan `ThrottlingException`
+events that recovered only via SQS redelivery. The stress corpus is ~7× the posts and ~4× the
+tenant groups.
+
+Confirmed in code that redelivery is even possible: `ingest_worker/handler.py` logs and then
+`raise  # let SQS retry`, so the exception escapes and `ApproximateReceiveCount` increments —
+the precondition for any `maxReceiveCount` policy.
+
+| Planned | Value |
+|---|---|
+| DLQ | `multitenant-ingestion-dlq.fifo`, FIFO, 14-day retention (deliberately longer than the source's 4 days) |
+| `maxReceiveCount` | 5 → isolates a poison message in ~25 min instead of 4 days |
+| `RedriveAllowPolicy` | `byQueue`, exactly one source ARN, no wildcard |
+| `MaximumConcurrency` | **2** (architect decision) — bounds Titan fan-out across ~100 tenant groups while preserving same-tenant FIFO order |
+| Unchanged | `BatchSize 1`, no `ReportBatchItemFailures`, source retention, visibility, worker timeout, IAM, RAG |
+| Alarms | two defined, **not created**; `AlarmActions` empty pending approval |
+
+**Alert destination EXISTS** — `arn:aws:sns:ap-south-1:557690605487:blog-alarms` with 1
+confirmed email subscription (currently attached to two stale ALB alarms left over from the
+torn-down EC2/ALB stack). Not attached without approval.
+
+**Gate:** AWS ingestion of the 100-user / 1,800-post stress corpus is blocked until the DLQ,
+redrive policies and concurrency cap are applied. Cohort A prose generation is not blocked —
+it touches no AWS.
+
+Details: **`INGESTION-DLQ-REDRIVE-PLAN.md`** (16 sections).
+
 ## 10. Observability
 - **CloudWatch (deployed):** structured JSON logs (`common/logger.py`); per-query `relevance` lines; `usage-logs` DDB table; new logs "global search start/done" (request_id, result_count, latency_ms — never the query).
 - **LangSmith (deployed; backend delivery pending an authed query):** per-request traces for the three query flows (project `multitenant-rag-prod`), as in §7.
@@ -1041,6 +1080,25 @@ Details: **`UI-UX-FULL-WIDTH-CHAT-WRITE-REFRESH.md`** (24 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-27 — Ingestion DLQ / redrive plan (PLANNED, not applied) + stress corpus status
+- Read-only AWS inspection confirmed the source queue still has **no DLQ**
+  (`RedrivePolicy null`) and **unbounded** event-source concurrency (`ScalingConfig null`).
+- Produced the exact 5-step mutation plan (create FIFO DLQ → RedriveAllowPolicy →
+  source RedrivePolicy `maxReceiveCount 5` → `MaximumConcurrency 2` → 2 alarms), each step
+  with its reversal. **Nothing applied.**
+- Verified in code that the worker re-raises so SQS redelivery works — without that a DLQ
+  would never receive anything.
+- Documented FIFO redrive semantics honestly: a DLQ move unblocks the group, but AWS gives no
+  ordering guarantee across a redrive, and `ContentBasedDeduplication` means an immediate
+  re-redrive can be silently deduplicated inside the 5-minute window.
+- Found an existing SNS alert destination (`blog-alarms`, 1 confirmed email); left unattached
+  pending approval.
+- 26 config-validation tests pin the plan (DLQ FIFO + 14-day retention, maxReceiveCount 5,
+  single-source allowlist, concurrency 2, BatchSize/retention/visibility unchanged, alarm
+  actions empty, plan ordering, and that the plan module makes no AWS call).
+- **Stress corpus: DESIGNED / NOT GENERATED / NOT INGESTED.** AWS ingestion is gated on this
+  DLQ work; Cohort A prose generation is not.
 
 ### 2026-08-26 — Curated 25-user / 268-post corpus ROLLED BACK from production
 - Exact manifest-driven rollback of the corpus seeding operation. Removed 25 users, 25
