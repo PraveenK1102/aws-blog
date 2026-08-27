@@ -1,9 +1,10 @@
-"""Declarative, testable definition of the proposed ingestion DLQ / redrive change.
+"""Declarative, testable definition of the ingestion DLQ / redrive configuration.
 
-PLAN ONLY. This module contains NO mutating call and imports no AWS client at
-module scope. It exists so the intended configuration is asserted by tests and
-reviewable as code, and so the apply phase (a separate, explicitly approved task)
-has an unambiguous source of truth to execute.
+STATUS: APPLIED to production on 2026-08-27 and verified against AWS.
+
+This module still contains NO mutating call and imports no AWS client — it is the
+declarative source of truth that the tests assert against, so a future drift in
+the deployed configuration shows up as a failing test rather than a surprise.
 """
 
 ACCOUNT = "557690605487"
@@ -41,6 +42,8 @@ DLQ_REDRIVE_ALLOW_POLICY = {
 # --- event source mapping ---------------------------------------------------
 ESM_UUID = "60e4e50a-eb3b-4bae-b6db-91601c5e3730"
 PLANNED_MAXIMUM_CONCURRENCY = 2          # architect decision — exactly 2
+APPLIED = True                           # deployed + verified 2026-08-27
+DLQ_URL = f"https://sqs.{REGION}.amazonaws.com/{ACCOUNT}/{DLQ_NAME}"
 
 # Values that MUST NOT change in this task.
 UNCHANGED = {
@@ -68,7 +71,7 @@ ALARMS = [
         "Threshold": 1,
         "ComparisonOperator": "GreaterThanOrEqualToThreshold",
         "TreatMissingData": "notBreaching",
-        "AlarmActions": [],          # intentionally empty until approved
+        "AlarmActions": [EXISTING_SNS_TOPIC_ARN],   # attached 2026-08-27
     },
     {
         "AlarmName": "multitenant-ingestion-oldest-message-age",
@@ -82,7 +85,7 @@ ALARMS = [
         "Threshold": 900,            # seconds
         "ComparisonOperator": "GreaterThanThreshold",
         "TreatMissingData": "notBreaching",
-        "AlarmActions": [],
+        "AlarmActions": [EXISTING_SNS_TOPIC_ARN],
     },
 ]
 
@@ -101,8 +104,8 @@ def proposed_mutations() -> list[dict]:
         {"step": 4, "action": "lambda:UpdateEventSourceMapping", "target": ESM_UUID,
          "attributes": {"ScalingConfig": {"MaximumConcurrency": PLANNED_MAXIMUM_CONCURRENCY}},
          "reversible": "remove ScalingConfig to restore unset"},
-        {"step": 5, "action": "cloudwatch:PutMetricAlarm (x2, SEPARATE approval)",
+        {"step": 5, "action": "cloudwatch:PutMetricAlarm (x2)",
          "target": [a["AlarmName"] for a in ALARMS],
-         "attributes": {"AlarmActions": "empty until an alert destination is approved"},
+         "attributes": {"AlarmActions": [EXISTING_SNS_TOPIC_ARN]},
          "reversible": "delete alarms"},
     ]

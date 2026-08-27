@@ -100,10 +100,59 @@ class AlarmDefinitionTests(unittest.TestCase):
             self.assertEqual(a["Period"], 60)
             self.assertEqual(a["EvaluationPeriods"], 1)
 
-    def test_alarm_actions_are_empty_until_approved(self):
+    def test_alarm_actions_point_at_the_existing_sns_topic(self):
+        """Approved and attached 2026-08-27. No new topic was created."""
         for a in P.ALARMS:
-            self.assertEqual(a["AlarmActions"], [],
-                             "an alert destination must not be attached without approval")
+            self.assertEqual(a["AlarmActions"], [P.EXISTING_SNS_TOPIC_ARN])
+            self.assertTrue(a["AlarmActions"][0].endswith(":blog-alarms"))
+
+    def test_no_second_sns_topic_is_introduced(self):
+        arns = {a for al in P.ALARMS for a in al["AlarmActions"]}
+        self.assertEqual(len(arns), 1)
+
+
+class AppliedStateTests(unittest.TestCase):
+    def test_plan_is_marked_applied(self):
+        self.assertTrue(P.APPLIED)
+
+    def test_dlq_url_matches_the_dlq_name(self):
+        self.assertTrue(P.DLQ_URL.endswith("/" + P.DLQ_NAME))
+
+
+class RedriveDocumentationTests(unittest.TestCase):
+    """§5 correction: the earlier doc wrongly implied a mandatory wait."""
+
+    def setUp(self):
+        import os
+        repo = os.path.abspath(os.path.join(os.path.dirname(P.__file__), "..", ".."))
+        with open(os.path.join(repo, "INGESTION-DLQ-REDRIVE-PLAN.md"),
+                  encoding="utf-8") as fh:
+            self.doc = fh.read()
+        # Markdown emphasis markers must not decide whether an assertion passes.
+        self.plain = self.doc.replace("**", "").replace("*", "")
+
+    def test_no_mandatory_five_minute_wait_is_claimed(self):
+        """The earlier draft told operators to wait 5 minutes before redriving.
+        That was wrong; no variant of it may survive anywhere in the document."""
+        for bad in ("Wait out the 5-minute dedup window",
+                    "wait out the 5-minute", "wait out the window",
+                    "Always wait five minutes"):
+            self.assertNotIn(bad, self.plain)
+        self.assertIn("not a mandatory waiting period", self.plain)
+
+    def test_ordering_across_redrive_is_not_claimed(self):
+        self.assertIn("must NOT be claimed", self.plain)
+
+    def test_idempotency_justification_is_recorded(self):
+        self.assertIn("idempotent", self.plain)
+
+    def test_retry_layers_are_distinguished(self):
+        self.assertIn("SQS delivery budget", self.plain)
+        self.assertIn("SDK-internal", self.plain)
+
+    def test_age_alarm_is_not_described_as_proof_of_a_poison_message(self):
+        self.assertIn("does not by itself prove", self.plain)
+        self.assertIn("backlog by design", self.plain)
 
 
 class MutationPlanTests(unittest.TestCase):

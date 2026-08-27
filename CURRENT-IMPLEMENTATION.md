@@ -953,42 +953,46 @@ UNKNOWN_REVIEW accounts are never given an invented username.
 
 Details: **`UI-UX-FULL-WIDTH-CHAT-WRITE-REFRESH.md`** (24 sections).
 
-## 9q. Ingestion DLQ / redrive — PLANNED, NOT YET APPLIED (2026-08-27)
+## 9q. Ingestion DLQ / redrive — DEPLOYED / VERIFIED (2026-08-27)
 
-**Zero AWS mutations. Read-only inspection only. Awaiting approval to apply.**
+**Applied to production after explicit user approval of the AWS charges. All checks PASS.**
 
-Verified against AWS (not assumed): `multitenant-ingestion.fifo` is FIFO with
-`RedrivePolicy = null` — **no DLQ exists in the account**. Retention 4 days, visibility 300 s,
-`BatchSize 1`, `MaximumBatchingWindow 0`, `ScalingConfig null` (concurrency **unbounded**),
-`FunctionResponseTypes []`. Worker timeout 300 s.
-
-**Why this is P0 before the stress corpus:** with no DLQ a permanently failing message
-redelivers until source retention expires — ~1,150 attempts over 4 days — and because
-`MessageGroupId = tenant_id` it **blocks that tenant's whole group** for the duration while
-re-burning Titan quota. The 268-post corpus already produced 8 Titan `ThrottlingException`
-events that recovered only via SQS redelivery. The stress corpus is ~7× the posts and ~4× the
-tenant groups.
-
-Confirmed in code that redelivery is even possible: `ingest_worker/handler.py` logs and then
-`raise  # let SQS retry`, so the exception escapes and `ApproximateReceiveCount` increments —
-the precondition for any `maxReceiveCount` policy.
-
-| Planned | Value |
+| Component | Deployed state |
 |---|---|
-| DLQ | `multitenant-ingestion-dlq.fifo`, FIFO, 14-day retention (deliberately longer than the source's 4 days) |
-| `maxReceiveCount` | 5 → isolates a poison message in ~25 min instead of 4 days |
-| `RedriveAllowPolicy` | `byQueue`, exactly one source ARN, no wildcard |
-| `MaximumConcurrency` | **2** (architect decision) — bounds Titan fan-out across ~100 tenant groups while preserving same-tenant FIFO order |
-| Unchanged | `BatchSize 1`, no `ReportBatchItemFailures`, source retention, visibility, worker timeout, IAM, RAG |
-| Alarms | two defined, **not created**; `AlarmActions` empty pending approval |
+| DLQ | `multitenant-ingestion-dlq.fifo` — FIFO, content-based dedup, **14-day** retention (longer than the source's 4 days so evidence outlives the failure window) |
+| Source `RedrivePolicy` | `deadLetterTargetArn` → DLQ ARN, **`maxReceiveCount = 5`** |
+| DLQ `RedriveAllowPolicy` | `byQueue`, **exactly one** source ARN, no wildcard |
+| Event source `60e4e50a-…` | **`MaximumConcurrency = 2`**, State `Enabled` |
+| Alarms | `multitenant-ingestion-dlq-not-empty` (≥1) and `multitenant-ingestion-oldest-message-age` (>900 s), both → existing `blog-alarms` SNS topic |
+| Unchanged | `BatchSize 1`, batching window 0, `FunctionResponseTypes []`, source retention 345600, visibility 300, worker timeout 300 / memory 2048, IAM, RAG |
 
-**Alert destination EXISTS** — `arn:aws:sns:ap-south-1:557690605487:blog-alarms` with 1
-confirmed email subscription (currently attached to two stale ALB alarms left over from the
-torn-down EC2/ALB stack). Not attached without approval.
+**Effect:** a permanently failing message now isolates to the DLQ in **~25 minutes** (5 × 300 s)
+and raises an alarm, instead of redelivering ~1,150 times over 4 days while blocking its
+tenant's FIFO group and re-burning Titan quota.
 
-**Gate:** AWS ingestion of the 100-user / 1,800-post stress corpus is blocked until the DLQ,
-redrive policies and concurrency cap are applied. Cohort A prose generation is not blocked —
-it touches no AWS.
+**Alarm interpretation — the two are not equivalent.** Alarm A (DLQ non-empty) means a message
+was dead-lettered and needs operator attention. Alarm B (oldest-message age) means backlog or
+stall and does **not** by itself prove a poison message — `MaximumConcurrency = 2` can create
+backlog *by design* during a large seed. Diagnose with logs + queue state + `ingestion_status`.
+
+**Retry layers are distinct:** up to **5 SQS deliveries** (`maxReceiveCount`) versus
+**SDK-internal** botocore retries inside a single invocation (the observed log read *"reached
+max retries: 4"*). It is wrong to call the effective Titan budget "5 attempts". No
+application-level retry loop exists, none was added, and boto3 retry config was not changed.
+
+**Redrive:** native `StartMessageMoveTask`, operator-driven, never automatic. Ordering across a
+DLQ/redrive cycle is **not** claimed; acceptable because ingestion is idempotent by `post_id`.
+An earlier draft wrongly implied a mandatory 5-minute wait — retracted.
+
+**Cost impact ≈ $0/month.** CloudWatch billed $0 with 2 alarms and free tier covers 10, so 4
+remain free; SQS and SNS are not billed line items at this volume. Account run rate ~$2/month,
+dominated by Secrets Manager.
+
+**Stale ALB alarms** (`blog-backend-5xx-errors`, `blog-backend-unhealthy`) left untouched —
+**DEFERRED CLEANUP**, out of scope.
+
+**Gate lifted:** AWS ingestion of the stress corpus is no longer blocked on ingestion
+reliability. The corpus remains **DESIGNED / NOT GENERATED / NOT INGESTED**.
 
 Details: **`INGESTION-DLQ-REDRIVE-PLAN.md`** (16 sections).
 
@@ -1080,6 +1084,26 @@ Details: **`INGESTION-DLQ-REDRIVE-PLAN.md`** (16 sections).
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-08-27 — Ingestion DLQ + redrive + concurrency cap DEPLOYED to production
+- Applied after explicit user approval of AWS charges. Created `multitenant-ingestion-dlq.fifo`
+  (FIFO, 14-day retention), set source `RedrivePolicy` `maxReceiveCount 5`, set DLQ
+  `RedriveAllowPolicy` (byQueue, single source ARN, no wildcard), set event-source
+  `MaximumConcurrency = 2`, and created 2 CloudWatch alarms attached to the existing
+  `blog-alarms` SNS topic.
+- Every §10 verification check PASSED. `BatchSize 1`, batching window 0,
+  `FunctionResponseTypes []`, source retention/visibility and worker timeout/memory all
+  verified unchanged. SNS subscription unchanged at 1 confirmed. No new SNS topic.
+- Steps 2–3 initially failed on CLI shorthand parameter parsing (embedded JSON) — no API call
+  was made, source queue verifiably unchanged — then reapplied via JSON file input and
+  round-trip verified.
+- Corrected two documentation errors: the earlier "always wait 5 minutes before redrive" claim
+  is retracted (not a prerequisite), and the oldest-message-age alarm is documented as a
+  backlog signal, not proof of a poison message.
+- No poison message was injected; verification was structural only.
+- Cost impact ≈ $0/month (4 alarms still within the free-tier allowance of 10).
+- Providers: Titan/Groq/NVIDIA/RAGAS/DeepEval all 0. RAG untouched.
+- Stale ALB alarms left in place — DEFERRED CLEANUP.
 
 ### 2026-08-27 — Ingestion DLQ / redrive plan (PLANNED, not applied) + stress corpus status
 - Read-only AWS inspection confirmed the source queue still has **no DLQ**
