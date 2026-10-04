@@ -1,0 +1,554 @@
+{
+  "seed_prefix": "seed-20260822",
+  "created_at": 1787373758,
+  "region": "ap-south-1",
+  "tenants": [
+    {
+      "tenant_id": "tenant_seed20260822_01",
+      "display_name": "Arjun Vale (seed-20260822)"
+    },
+    {
+      "tenant_id": "tenant_seed20260822_02",
+      "display_name": "Dev Iyer (seed-20260822)"
+    },
+    {
+      "tenant_id": "tenant_seed20260822_03",
+      "display_name": "Kian Rao (seed-20260822)"
+    },
+    {
+      "tenant_id": "tenant_seed20260822_04",
+      "display_name": "Mira Sen (seed-20260822)"
+    },
+    {
+      "tenant_id": "tenant_seed20260822_05",
+      "display_name": "Nila Roy (seed-20260822)"
+    },
+    {
+      "tenant_id": "tenant_seed20260822_06",
+      "display_name": "Tara Moss (seed-20260822)"
+    }
+  ],
+  "users": [
+    {
+      "user_id": "user_seed20260822_01",
+      "email": "testuserpk1@gmail.com",
+      "tenant_id": "tenant_seed20260822_01"
+    },
+    {
+      "user_id": "user_seed20260822_02",
+      "email": "testuserpk2@gmail.com",
+      "tenant_id": "tenant_seed20260822_02"
+    },
+    {
+      "user_id": "user_seed20260822_03",
+      "email": "testuserpk3@gmail.com",
+      "tenant_id": "tenant_seed20260822_03"
+    },
+    {
+      "user_id": "user_seed20260822_04",
+      "email": "testuserpk4@gmail.com",
+      "tenant_id": "tenant_seed20260822_04"
+    },
+    {
+      "user_id": "user_seed20260822_05",
+      "email": "testuserpk5@gmail.com",
+      "tenant_id": "tenant_seed20260822_05"
+    },
+    {
+      "user_id": "user_seed20260822_06",
+      "email": "testuserpk6@gmail.com",
+      "tenant_id": "tenant_seed20260822_06"
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "grp_98092b7b0486",
+      "name": "Field Circle (seed-20260822)",
+      "owner_id": "user_seed20260822_05"
+    },
+    {
+      "group_id": "grp_b0b75689a975",
+      "name": "Harbor Guild (seed-20260822)",
+      "owner_id": "user_seed20260822_01"
+    },
+    {
+      "group_id": "grp_077c9b1a3fe6",
+      "name": "Helix Society (seed-20260822)",
+      "owner_id": "user_seed20260822_04"
+    },
+    {
+      "group_id": "grp_07b3f621b0da",
+      "name": "Orchid Lab (seed-20260822)",
+      "owner_id": "user_seed20260822_04"
+    }
+  ],
+  "group_members": [
+    {
+      "group_id": "grp_98092b7b0486",
+      "user_id": "user_seed20260822_05",
+      "tenant_id": "tenant_seed20260822_05",
+      "role": "owner"
+    },
+    {
+      "group_id": "grp_98092b7b0486",
+      "user_id": "user_seed20260822_06",
+      "tenant_id": "tenant_seed20260822_06"
+    },
+    {
+      "group_id": "grp_98092b7b0486",
+      "user_id": "user_seed20260822_03",
+      "tenant_id": "tenant_seed20260822_03"
+    },
+    {
+      "group_id": "grp_b0b75689a975",
+      "user_id": "user_seed20260822_01",
+      "tenant_id": "tenant_seed20260822_01",
+      "role": "owner"
+    },
+    {
+      "group_id": "grp_b0b75689a975",
+      "user_id": "user_seed20260822_02",
+      "tenant_id": "tenant_seed20260822_02"
+    },
+    {
+      "group_id": "grp_b0b75689a975",
+      "user_id": "user_seed20260822_06",
+      "tenant_id": "tenant_seed20260822_06"
+    },
+    {
+      "group_id": "grp_077c9b1a3fe6",
+      "user_id": "user_seed20260822_04",
+      "tenant_id": "tenant_seed20260822_04",
+      "role": "owner"
+    },
+    {
+      "group_id": "grp_077c9b1a3fe6",
+      "user_id": "user_seed20260822_02",
+      "tenant_id": "tenant_seed20260822_02"
+    },
+    {
+      "group_id": "grp_077c9b1a3fe6",
+      "user_id": "user_seed20260822_03",
+      "tenant_id": "tenant_seed20260822_03"
+    },
+    {
+      "group_id": "grp_07b3f621b0da",
+      "user_id": "user_seed20260822_04",
+      "tenant_id": "tenant_seed20260822_04",
+      "role": "owner"
+    },
+    {
+      "group_id": "grp_07b3f621b0da",
+      "user_id": "user_seed20260822_01",
+      "tenant_id": "tenant_seed20260822_01"
+    },
+    {
+      "group_id": "grp_07b3f621b0da",
+      "user_id": "user_seed20260822_05",
+      "tenant_id": "tenant_seed20260822_05"
+    }
+  ],
+  "posts": [
+    {
+      "post_id": "post_98282de4d3cd",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "The First Moonseed Trial",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_98282de4d3cd.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_c5ad22c58779",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "Why Pier Seven Was Closed",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_c5ad22c58779.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_ca834477d414",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "Mapping the Whisperglass Stations",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_ca834477d414.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_8862d0899770",
+      "tenant_id": "tenant_seed20260822_06",
+      "user_id": "user_seed20260822_06",
+      "title": "Ember Tea Version Three",
+      "s3_key": "tenants/tenant_seed20260822_06/posts/post_8862d0899770.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_1f38208b82df",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "The Lantern Loop Experiment",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_1f38208b82df.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_8e8f76e855e8",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "Restoring the Bluefin Archive",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_8e8f76e855e8.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_525465c8e928",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "Moonseed Germination Results",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_525465c8e928.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_cd7c13a8a259",
+      "tenant_id": "tenant_seed20260822_06",
+      "user_id": "user_seed20260822_06",
+      "title": "The Crates Marked Oriole",
+      "s3_key": "tenants/tenant_seed20260822_06/posts/post_cd7c13a8a259.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_790f835fd3f3",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "A Strange Reading at Orrin Bluff",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_790f835fd3f3.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_2b6c5a20fd47",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "Quill Cells and the Forty-Minute Rule",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_2b6c5a20fd47.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_038454e1081b",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "The Sable Library Bell",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_038454e1081b.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_6e6db3d3d0e8",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "Copper Orchard's Smallest Robot",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_6e6db3d3d0e8.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_2076a6d0e6b9",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "Moonseed Day Twenty",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_2076a6d0e6b9.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_152cc4ea55e0",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "Pier Seven Reopens",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_152cc4ea55e0.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_afd879520203",
+      "tenant_id": "tenant_seed20260822_06",
+      "user_id": "user_seed20260822_06",
+      "title": "The Ember Tea Mistake",
+      "s3_key": "tenants/tenant_seed20260822_06/posts/post_afd879520203.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_7de8b193d32d",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "Ternlink Outage at North Fen",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_7de8b193d32d.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_1f5e05608869",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "Quill Cell Revision QL-2C",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_1f5e05608869.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_1072c4ca1a79",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "What Happened to BF-233",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_1072c4ca1a79.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_b02f1021cc8c",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "Starting MS-E2",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_b02f1021cc8c.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_090ceb89e248",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "The Missing Lantern Cart",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_090ceb89e248.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_2fb7cdf11fed",
+      "tenant_id": "tenant_seed20260822_06",
+      "user_id": "user_seed20260822_06",
+      "title": "Sable Current Departure Report",
+      "s3_key": "tenants/tenant_seed20260822_06/posts/post_2fb7cdf11fed.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_033dfca9b979",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "The Lake Tressa Disagreement",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_033dfca9b979.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_78552b225b06",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "Pip-6 Learns the Blue Ribbon Problem",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_78552b225b06.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_a6095436affa",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "The Morrow Bell Exception",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_a6095436affa.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_d59fbcbe41dd",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "MS-E2 Final Results",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_d59fbcbe41dd.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_71c331bdcd09",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "The Red Compass Trail Rule",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_71c331bdcd09.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_50eecb10675a",
+      "tenant_id": "tenant_seed20260822_06",
+      "user_id": "user_seed20260822_06",
+      "title": "A Correction About the Seven-Breath Test",
+      "s3_key": "tenants/tenant_seed20260822_06/posts/post_50eecb10675a.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_4abec24fe113",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "Quill Cells in the Lantern Cart",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_4abec24fe113.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_99cf6f0ea6b7",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "Mica Returns to the Loop",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_99cf6f0ea6b7.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_0ad357c42d6b",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "WG-04 Confirms a Rillback",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_0ad357c42d6b.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_4a2b9d693793",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "The Bluefin Code T41",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_4a2b9d693793.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_f78c72900737",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "Kestrel Station Two Receives ORIOLE-K",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_f78c72900737.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_a53da459e150",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "A New Rule for Copper Orchard",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_a53da459e150.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_8b9836290db8",
+      "tenant_id": "tenant_seed20260822_06",
+      "user_id": "user_seed20260822_06",
+      "title": "Red Compass Marker RC-14 Replaced",
+      "s3_key": "tenants/tenant_seed20260822_06/posts/post_8b9836290db8.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_cfb3ecbd3666",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "Why Meral 12 Is Rare",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_cfb3ecbd3666.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_1bc627467f30",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "A Hollow Stair Expedition Is Approved",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_1bc627467f30.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_8960993185d1",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "The Strange Case of LumenPack 8",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_8960993185d1.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_517ff258d969",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "HS-Bluebird Finds the Western Marks",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_517ff258d969.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_f93541488311",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "The Third Lantern",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_f93541488311.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_f68e63330bc5",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "Zone South Changes the Picture",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_f68e63330bc5.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_773db8ffebe5",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "MS-E3 Will Test Light, Not Minerals",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_773db8ffebe5.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_9d5a39fad259",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "Sable Library Changes Its Closing Time",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_9d5a39fad259.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_b7475495d105",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "Pip-6 Passes Ninety Percent",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_b7475495d105.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_340ef209bcec",
+      "tenant_id": "tenant_seed20260822_02",
+      "user_id": "user_seed20260822_02",
+      "title": "QL-2D Drops the Forty-Minute Rule",
+      "s3_key": "tenants/tenant_seed20260822_02/posts/post_340ef209bcec.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_f06d10904244",
+      "tenant_id": "tenant_seed20260822_01",
+      "user_id": "user_seed20260822_01",
+      "title": "Lantern Loop Tests QL-2D",
+      "s3_key": "tenants/tenant_seed20260822_01/posts/post_f06d10904244.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_023867f697ff",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "The Pale Basin Clue",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_023867f697ff.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_866f809160ca",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "Whisperglass Gets a Sixth Station",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_866f809160ca.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_da14abfcf15c",
+      "tenant_id": "tenant_seed20260822_04",
+      "user_id": "user_seed20260822_04",
+      "title": "Quiet Bloom Gets Shorter",
+      "s3_key": "tenants/tenant_seed20260822_04/posts/post_da14abfcf15c.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_6b615286c090",
+      "tenant_id": "tenant_seed20260822_03",
+      "user_id": "user_seed20260822_03",
+      "title": "The Hollow Stair Status Finally Changes",
+      "s3_key": "tenants/tenant_seed20260822_03/posts/post_6b615286c090.md",
+      "status": "pending"
+    },
+    {
+      "post_id": "post_173b7afc11e9",
+      "tenant_id": "tenant_seed20260822_05",
+      "user_id": "user_seed20260822_05",
+      "title": "What We Learned From T41",
+      "s3_key": "tenants/tenant_seed20260822_05/posts/post_173b7afc11e9.md",
+      "status": "pending"
+    }
+  ],
+  "note": "email==password for all seeded users"
+}

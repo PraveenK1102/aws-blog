@@ -1,0 +1,486 @@
+{
+  "quality": {
+    "correctness": {
+      "N": 52,
+      "mean": 0.74,
+      "full": 38,
+      "partial": 1,
+      "fail": 13,
+      "full_pct": 73.1,
+      "partial_pct": 1.9,
+      "fail_pct": 25.0
+    },
+    "completeness": {
+      "N": 52,
+      "mean": 0.721,
+      "full": 35,
+      "partial": 5,
+      "fail": 12,
+      "full_pct": 67.3,
+      "partial_pct": 9.6,
+      "fail_pct": 23.1
+    },
+    "groundedness": {
+      "N": 52,
+      "mean": 0.798,
+      "full": 39,
+      "partial": 5,
+      "fail": 8,
+      "full_pct": 75.0,
+      "partial_pct": 9.6,
+      "fail_pct": 15.4
+    }
+  },
+  "by_route": {
+    "group": {
+      "n": 18,
+      "corr": 0.722,
+      "comp": 0.694,
+      "grnd": 0.917,
+      "refusals": 3
+    },
+    "multi": {
+      "n": 13,
+      "corr": 0.692,
+      "comp": 0.692,
+      "grnd": 0.731,
+      "refusals": 3
+    },
+    "single": {
+      "n": 21,
+      "corr": 0.786,
+      "comp": 0.762,
+      "grnd": 0.738,
+      "refusals": 2
+    }
+  },
+  "by_scenario": {
+    "compound multi-part": {
+      "n": 3,
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.5,
+      "refusals": 1
+    },
+    "cross-document synthesis": {
+      "n": 1,
+      "corr": 1.0,
+      "comp": 1.0,
+      "grnd": 1.0,
+      "refusals": 0
+    },
+    "exact fact / identifier": {
+      "n": 2,
+      "corr": 1.0,
+      "comp": 1.0,
+      "grnd": 1.0,
+      "refusals": 0
+    },
+    "group / cross-tenant": {
+      "n": 15,
+      "corr": 0.733,
+      "comp": 0.7,
+      "grnd": 0.9,
+      "refusals": 2
+    },
+    "multi-profile": {
+      "n": 8,
+      "corr": 0.75,
+      "comp": 0.75,
+      "grnd": 0.75,
+      "refusals": 1
+    },
+    "negative / scope isolation": {
+      "n": 3,
+      "corr": 1.0,
+      "comp": 1.0,
+      "grnd": 0.667,
+      "refusals": 3
+    },
+    "single-profile factual": {
+      "n": 18,
+      "corr": 0.778,
+      "comp": 0.722,
+      "grnd": 0.778,
+      "refusals": 1
+    },
+    "temporal / latest-state": {
+      "n": 2,
+      "corr": 0.75,
+      "comp": 1.0,
+      "grnd": 0.75,
+      "refusals": 0
+    }
+  },
+  "app_lat": {
+    "N": 52,
+    "mean": 3384.9,
+    "p50": 2409.9,
+    "p95": 8947.0,
+    "p99": 9544.7,
+    "max": 9957.9
+  },
+  "judge_lat": {
+    "N": 52,
+    "mean": 40447.6,
+    "p50": 19399.0,
+    "p95": 135373.6,
+    "p99": 146077.3,
+    "max": 149505.3
+  },
+  "app_tok": {
+    "N": 52,
+    "in_mean": 2103.8,
+    "out_mean": 290.0,
+    "in_total": 109400,
+    "out_total": 15078,
+    "total": 124478
+  },
+  "judge_tok": {
+    "N": 52,
+    "in_mean": 1500.1,
+    "out_mean": 425.5,
+    "in_total": 78004,
+    "out_total": 22127,
+    "total": 100131
+  },
+  "counts": {
+    "total": 60,
+    "generative": 52,
+    "global": 8,
+    "no_llm_generative": 0,
+    "scored": 52,
+    "failures": 21
+  },
+  "failures": [
+    {
+      "case_id": "case-003",
+      "route": "single",
+      "scenario": "temporal / latest-state",
+      "corr": 0.5,
+      "comp": 1.0,
+      "grnd": 0.5,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 1,
+      "posts_cand": 1,
+      "refusal": false
+    },
+    {
+      "case_id": "case-005",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 1.0,
+      "comp": 0.5,
+      "grnd": 1.0,
+      "tags": [
+        "partial answer \u2014 missing expected detail"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 2,
+      "posts_cand": 4,
+      "refusal": false
+    },
+    {
+      "case_id": "case-008",
+      "route": "multi",
+      "scenario": "multi-profile",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.0,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": false
+    },
+    {
+      "case_id": "case-014",
+      "route": "single",
+      "scenario": "negative / scope isolation",
+      "corr": 1.0,
+      "comp": 1.0,
+      "grnd": 0.0,
+      "tags": [
+        "refusal despite retrieved evidence",
+        "unsupported/weakly-supported claim vs top5 context"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": true
+    },
+    {
+      "case_id": "case-018",
+      "route": "multi",
+      "scenario": "compound multi-part",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.5,
+      "tags": [
+        "refusal despite retrieved evidence",
+        "unsupported/weakly-supported claim vs top5 context"
+      ],
+      "diag": "NO \u2014 3 reference token(s) absent from top5 AND from 6\u201310 snippets",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": true
+    },
+    {
+      "case_id": "case-020",
+      "route": "multi",
+      "scenario": "compound multi-part",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.0,
+      "tags": [
+        "cross-document source-diversity problem (top5 = 1 post)",
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 1,
+      "posts_cand": 3,
+      "refusal": false
+    },
+    {
+      "case_id": "case-022",
+      "route": "group",
+      "scenario": "compound multi-part",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 1.0,
+      "tags": [
+        "factual mismatch vs reference"
+      ],
+      "diag": "NO \u2014 4 reference token(s) absent from top5 AND from 6\u201310 snippets",
+      "posts5": 3,
+      "posts_cand": 3,
+      "refusal": false
+    },
+    {
+      "case_id": "case-023",
+      "route": "multi",
+      "scenario": "multi-profile",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.0,
+      "tags": [
+        "refusal despite retrieved evidence",
+        "unsupported/weakly-supported claim vs top5 context"
+      ],
+      "diag": "NO \u2014 4 reference token(s) absent from top5 AND from 6\u201310 snippets",
+      "posts5": 3,
+      "posts_cand": 3,
+      "refusal": true
+    },
+    {
+      "case_id": "case-024",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.5,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": false
+    },
+    {
+      "case_id": "case-026",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.5,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 1,
+      "posts_cand": 1,
+      "refusal": false
+    },
+    {
+      "case_id": "case-030",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 1.0,
+      "tags": [
+        "factual mismatch vs reference"
+      ],
+      "diag": "UNCLEAR (no distinctive tokens in reference)",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": false
+    },
+    {
+      "case_id": "case-032",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.0,
+      "tags": [
+        "refusal despite retrieved evidence",
+        "unsupported/weakly-supported claim vs top5 context"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": true
+    },
+    {
+      "case_id": "case-033",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 0.0,
+      "comp": 0.5,
+      "grnd": 1.0,
+      "tags": [
+        "factual mismatch vs reference"
+      ],
+      "diag": "YES \u2014 2/7 reference token(s) absent from top5 but present in 6\u201310 (e.g. Kestrel Station, Two)",
+      "posts5": 2,
+      "posts_cand": 3,
+      "refusal": false
+    },
+    {
+      "case_id": "case-039",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 1.0,
+      "comp": 0.5,
+      "grnd": 1.0,
+      "tags": [
+        "partial answer \u2014 missing expected detail"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": false
+    },
+    {
+      "case_id": "case-040",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 1.0,
+      "comp": 0.5,
+      "grnd": 1.0,
+      "tags": [
+        "partial answer \u2014 missing expected detail"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": false
+    },
+    {
+      "case_id": "case-043",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.0,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 1,
+      "posts_cand": 1,
+      "refusal": false
+    },
+    {
+      "case_id": "case-045",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 0.0,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context",
+        "factual mismatch vs reference"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 1,
+      "posts_cand": 1,
+      "refusal": false
+    },
+    {
+      "case_id": "case-052",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 0.0,
+      "comp": 0.0,
+      "grnd": 1.0,
+      "tags": [
+        "cross-document source-diversity problem (top5 = 1 post)",
+        "factual mismatch vs reference"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 1,
+      "posts_cand": 1,
+      "refusal": false
+    },
+    {
+      "case_id": "case-054",
+      "route": "single",
+      "scenario": "single-profile factual",
+      "corr": 1.0,
+      "comp": 1.0,
+      "grnd": 0.0,
+      "tags": [
+        "refusal despite retrieved evidence",
+        "unsupported/weakly-supported claim vs top5 context"
+      ],
+      "diag": "n/a (single route)",
+      "posts5": 2,
+      "posts_cand": 2,
+      "refusal": true
+    },
+    {
+      "case_id": "case-058",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 1.0,
+      "comp": 1.0,
+      "grnd": 0.5,
+      "tags": [
+        "unsupported/weakly-supported claim vs top5 context"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 3,
+      "posts_cand": 3,
+      "refusal": false
+    },
+    {
+      "case_id": "case-059",
+      "route": "group",
+      "scenario": "group / cross-tenant",
+      "corr": 1.0,
+      "comp": 0.5,
+      "grnd": 1.0,
+      "tags": [
+        "partial answer \u2014 missing expected detail"
+      ],
+      "diag": "NO \u2014 all reference tokens already present in top5",
+      "posts5": 4,
+      "posts_cand": 4,
+      "refusal": false
+    }
+  ]
+}

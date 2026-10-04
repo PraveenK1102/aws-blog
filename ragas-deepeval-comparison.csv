@@ -1,0 +1,25 @@
+record_id,deterministic_expectation,ragas_metric,ragas_score,deepeval_metric,deepeval_score,absolute_disagreement,comparable
+case-018::baseline,"weak (ans 1/4, ctx 1/6)",ragas_faithfulness,nan,deepeval_faithfulness,1.0,,no
+case-018::baseline,"weak (ans 1/4, ctx 1/6)",ragas_answer_relevancy,0.6595,deepeval_answer_relevancy,1.0,0.3405,yes
+case-018::baseline,"weak (ans 1/4, ctx 1/6)",ragas_context_precision,0.0,deepeval_contextual_precision,1.0,1.0,yes
+case-018::baseline,"weak (ans 1/4, ctx 1/6)",ragas_context_recall,,deepeval_contextual_recall,0.0,,no
+case-018::routed,"strong (ans 4/4, ctx 6/6)",ragas_faithfulness,,deepeval_faithfulness,1.0,,no
+case-018::routed,"strong (ans 4/4, ctx 6/6)",ragas_answer_relevancy,0.5923,deepeval_answer_relevancy,1.0,0.4077,yes
+case-018::routed,"strong (ans 4/4, ctx 6/6)",ragas_context_precision,,deepeval_contextual_precision,1.0,,no
+case-018::routed,"strong (ans 4/4, ctx 6/6)",ragas_context_recall,nan,deepeval_contextual_recall,1.0,,no
+case-007::routed,unchanged (ceiling 4/4),ragas_faithfulness,,deepeval_faithfulness,1.0,,no
+case-007::routed,unchanged (ceiling 4/4),ragas_answer_relevancy,0.9186,deepeval_answer_relevancy,0.5,0.4186,yes
+case-007::routed,unchanged (ceiling 4/4),ragas_context_precision,0.8056,deepeval_contextual_precision,1.0,0.1944,yes
+case-007::routed,unchanged (ceiling 4/4),ragas_context_recall,,deepeval_contextual_recall,1.0,,no
+case-002::routed,refusal reference,ragas_faithfulness,,deepeval_faithfulness,1.0,,no
+case-002::routed,refusal reference,ragas_answer_relevancy,0.5761,deepeval_answer_relevancy,1.0,0.4239,yes
+case-002::routed,refusal reference,ragas_context_precision,0.7,deepeval_contextual_precision,0.8333,0.1333,yes
+case-002::routed,refusal reference,ragas_context_recall,nan,deepeval_contextual_recall,0.0,,no
+case-056::routed,refusal reference + fallback path,ragas_faithfulness,nan,deepeval_faithfulness,1.0,,no
+case-056::routed,refusal reference + fallback path,ragas_answer_relevancy,0.6414,deepeval_answer_relevancy,1.0,0.3586,yes
+case-056::routed,refusal reference + fallback path,ragas_context_precision,0.7,deepeval_contextual_precision,0.8042,0.1042,yes
+case-056::routed,refusal reference + fallback path,ragas_context_recall,,deepeval_contextual_recall,1.0,,no
+case-041::routed,"partial (ctx 2/3, not decomposed)",ragas_faithfulness,,deepeval_faithfulness,1.0,,no
+case-041::routed,"partial (ctx 2/3, not decomposed)",ragas_answer_relevancy,0.6119,deepeval_answer_relevancy,1.0,0.3881,yes
+case-041::routed,"partial (ctx 2/3, not decomposed)",ragas_context_precision,,deepeval_contextual_precision,1.0,,no
+case-041::routed,"partial (ctx 2/3, not decomposed)",ragas_context_recall,,deepeval_contextual_recall,1.0,,no

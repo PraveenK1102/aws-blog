@@ -1,0 +1,29 @@
+{
+  "experiment": "compound-router-cascade-v1",
+  "stage_a": "frozen router_v2",
+  "stage_b": "verifier_v1",
+  "verifier_model": "openai/gpt-oss-20b",
+  "verifier_temperature": 0.0,
+  "verifier_schema": "cascade-v1-verifier-1",
+  "verifier_prompt_sha": "7a4d3859f1285c62",
+  "verifier_reason_codes": [
+    "independent_evidence_neighborhoods",
+    "same_entity_state",
+    "same_event_or_record",
+    "same_series_synthesis",
+    "same_subject_temporal_comparison",
+    "same_subject_verification"
+  ],
+  "concurrency": 1,
+  "timeout_s": 120,
+  "max_tokens": 1200,
+  "repo_head": "95b97c1047862576570717f5d1fed8c6f495fe50",
+  "retrieval_performed": false,
+  "generation_performed": false,
+  "judging_performed": false,
+  "langgraph_used": false,
+  "stage_a_source": "persisted",
+  "stage_a_fingerprint": "cc6dfde4be4dd586",
+  "stage_a_prompt_sha": "763d12cd82245285",
+  "fingerprint_hash": "5f8fcff597261b61"
+}

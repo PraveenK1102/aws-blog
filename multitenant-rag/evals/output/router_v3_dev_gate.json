@@ -1,0 +1,25 @@
+{
+  "passed": false,
+  "precision": 0.9,
+  "recall": 0.8182,
+  "specificity": 0.9744,
+  "accuracy": 0.94,
+  "f1": 0.8572,
+  "thresholds": {
+    "recall": 0.9,
+    "specificity": 0.9,
+    "precision": 0.8
+  },
+  "TP": 9,
+  "FP": 1,
+  "TN": 38,
+  "FN": 2,
+  "FP_cases": [
+    "case-003"
+  ],
+  "FN_cases": [
+    "case-030",
+    "case-041"
+  ],
+  "fingerprint_hash": "a270bd5888461d60"
+}

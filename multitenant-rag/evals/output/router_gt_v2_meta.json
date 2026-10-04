@@ -1,0 +1,44 @@
+{
+  "annotation_policy_version": "independent-retrieval-needs-v1",
+  "manifest_sha256": "8b1111bce456a156cd0c580da548dafa41d867ecb3316248473f06c606616288",
+  "case_count": 52,
+  "unique_question_count": 48,
+  "duplicate_question_groups": {
+    "dup-01": [
+      "case-015",
+      "case-016"
+    ],
+    "dup-02": [
+      "case-054",
+      "case-055"
+    ],
+    "dup-03": [
+      "case-052",
+      "case-053"
+    ],
+    "dup-04": [
+      "case-022",
+      "case-023"
+    ]
+  },
+  "duplicate_group_count": 4,
+  "simple_count": 39,
+  "compound_count": 11,
+  "ambiguous_count": 2,
+  "excluded_global_search": [
+    "case-010",
+    "case-011",
+    "case-012",
+    "case-013",
+    "case-048",
+    "case-049",
+    "case-050",
+    "case-051"
+  ],
+  "annotation_inputs": "question text only; expected answers, router predictions, router reason codes, baseline/judge scores and the previous crude labels were NOT inputs",
+  "route_used_for_labels": false,
+  "supersedes": {
+    "manifest_fingerprint": "e9702a562a635c68",
+    "policy": "case-018/020/022 compound, all other 49 simple (assumed, not adjudicated)"
+  }
+}

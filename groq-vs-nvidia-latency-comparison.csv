@@ -1,0 +1,21 @@
+metric,nvidia,groq,note
+router mean ms,4567.9,864.9,"NVIDIA 20B vs Groq 20B, same frozen prompt"
+router p50 ms,2840.9,789.1,
+router p95 ms,13624.2,1338.6,
+router max ms,16010.4,2260.4,
+decomposition mean ms,7329.2,662.8,same frozen analyzer prompt
+decomposition p95 ms,n/a,863.0,
+generation mean ms,8361.6,1210.8,NVIDIA 20B vs Groq 120B — MODEL DIFFERS
+generation p95 ms,n/a,1742.8,MODEL DIFFERS
+merge mean ms,0.1,0.4,identical implementation
+titan embedding mean ms,not separately measured,160.5,NVIDIA OBSERVABILITY GAP
+bm25 encode mean ms,not separately measured,12.0,NVIDIA OBSERVABILITY GAP
+qdrant dense probe mean ms,not separately measured,526.3,NVIDIA OBSERVABILITY GAP
+qdrant hybrid rrf mean ms,not separately measured,168.9,NVIDIA OBSERVABILITY GAP
+retrieval branch mean ms,not separately measured,885.3,NVIDIA OBSERVABILITY GAP
+end-to-end mean ms,18764.0,12099.8,Groq incl. 429 backoff
+end-to-end p50 ms,17152.2,11349.1,
+end-to-end p95 ms,32019.1,23849.1,
+end-to-end max ms,39273.9,25334.8,
+compound e2e mean ms,n/a,18432.4,Groq compound only
+simple e2e mean ms,n/a,5767.2,Groq simple only

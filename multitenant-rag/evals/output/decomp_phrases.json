@@ -1,0 +1,177 @@
+{
+  "case-018": {
+    "phrases": [
+      {
+        "phrase": "meral index",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      },
+      {
+        "phrase": "11.4",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "wg-03",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "north fen",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "16 january",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "below 70",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      }
+    ],
+    "ctx": [
+      6,
+      6
+    ],
+    "ctx_base": 1,
+    "ans": [
+      6,
+      6
+    ],
+    "ans_base": 2
+  },
+  "case-020": {
+    "phrases": [
+      {
+        "phrase": "lantern bracket",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "mineral line",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "west",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "t41",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      },
+      {
+        "phrase": "compass ring",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      },
+      {
+        "phrase": "waterproof cloth",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      },
+      {
+        "phrase": "v-31",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      }
+    ],
+    "ctx": [
+      7,
+      7
+    ],
+    "ctx_base": 4,
+    "ans": [
+      7,
+      7
+    ],
+    "ans_base": 4
+  },
+  "case-022": {
+    "phrases": [
+      {
+        "phrase": "11.4",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "wg-03",
+        "base_ctx": false,
+        "new_ctx": true,
+        "base_ans": false,
+        "new_ans": true
+      },
+      {
+        "phrase": "zone north",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": false
+      },
+      {
+        "phrase": "zone south",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      },
+      {
+        "phrase": "unverified",
+        "base_ctx": true,
+        "new_ctx": true,
+        "base_ans": true,
+        "new_ans": true
+      },
+      {
+        "phrase": "not conclusive",
+        "base_ctx": false,
+        "new_ctx": false,
+        "base_ans": false,
+        "new_ans": false
+      }
+    ],
+    "ctx": [
+      5,
+      6
+    ],
+    "ctx_base": 3,
+    "ans": [
+      4,
+      6
+    ],
+    "ans_base": 3
+  }
+}

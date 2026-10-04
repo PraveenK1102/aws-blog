@@ -1,0 +1,105 @@
+{
+  "experiment": "compound-router-v2-rescored",
+  "annotation_policy_version": "independent-retrieval-needs-v1",
+  "manifest_sha256": "8b1111bce456a156cd0c580da548dafa41d867ecb3316248473f06c606616288",
+  "router_prediction_fingerprint": "cc6dfde4be4dd586",
+  "provider_calls": {
+    "nvidia_20b": 0,
+    "nvidia_120b": 0,
+    "groq": 0,
+    "retrieval": 0,
+    "langgraph": 0
+  },
+  "scored_cases": 50,
+  "ambiguous_excluded": 2,
+  "positives": 11,
+  "negatives": 39,
+  "TP": 11,
+  "FP": 5,
+  "TN": 34,
+  "FN": 0,
+  "TP_cases": [
+    "case-007",
+    "case-008",
+    "case-009",
+    "case-018",
+    "case-020",
+    "case-022",
+    "case-023",
+    "case-030",
+    "case-041",
+    "case-046",
+    "case-047"
+  ],
+  "FP_cases": [
+    "case-002",
+    "case-003",
+    "case-004",
+    "case-056",
+    "case-059"
+  ],
+  "FN_cases": [],
+  "compound_precision": 0.6875,
+  "compound_recall": 1.0,
+  "compound_f1": 0.8148,
+  "simple_specificity": 0.8718,
+  "routing_accuracy": 0.9,
+  "false_positive_decomposition_rate": 0.1282,
+  "false_negative_compound_rate": 0.0,
+  "diagnostic_thresholds": {
+    "recall": 0.9,
+    "specificity": 0.9,
+    "precision": 0.8
+  },
+  "threshold_results": {
+    "recall": true,
+    "specificity": false,
+    "precision": false
+  },
+  "verdict": "NOT ACCEPTED",
+  "original_scoring_superseded": {
+    "positives": 3,
+    "negatives": 49,
+    "ambiguous": 0,
+    "precision": 0.1667,
+    "recall": 1.0,
+    "specificity": 0.6939,
+    "accuracy": 0.7115,
+    "TP": 3,
+    "FP": 15,
+    "TN": 34,
+    "FN": 0
+  },
+  "original_15_false_positive_disposition": {
+    "A_label_was_wrong": {
+      "count": 8,
+      "cases": [
+        "case-007",
+        "case-008",
+        "case-009",
+        "case-023",
+        "case-030",
+        "case-041",
+        "case-046",
+        "case-047"
+      ]
+    },
+    "B_router_really_wrong": {
+      "count": 5,
+      "cases": [
+        "case-002",
+        "case-003",
+        "case-004",
+        "case-056",
+        "case-059"
+      ]
+    },
+    "C_ambiguous": {
+      "count": 2,
+      "cases": [
+        "case-005",
+        "case-025"
+      ]
+    }
+  }
+}

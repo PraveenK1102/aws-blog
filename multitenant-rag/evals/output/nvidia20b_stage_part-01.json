@@ -1,0 +1,29 @@
+{
+  "fingerprint": {
+    "git_sha": "03fda30acf1360233147fb799c09a67512677e44",
+    "dataset_id": "d426fe19-3757-4442-b893-99a6cf031b68",
+    "dataset_version": "baseline-v1",
+    "application_provider": "nvidia",
+    "application_model": "openai/gpt-oss-20b",
+    "judge_provider": "nvidia",
+    "judge_model": "openai/gpt-oss-120b",
+    "embedding_model": "titan-text-v2",
+    "sparse_model": "fastembed-bm25",
+    "retrieval": "hybrid-rrf",
+    "top_k": 5,
+    "retrieval_floor": 0.15,
+    "prompt_version": "production-app.py@03fda30",
+    "fingerprint_hash": "bb568d38b82b05a6"
+  },
+  "stats": {
+    "requests": 7,
+    "successes": 6,
+    "http_429": 0,
+    "http_5xx": 0,
+    "timeouts": 1,
+    "retries": 1,
+    "circuit_breaker_events": 0,
+    "pacing_wait_seconds": 7.96132493019104
+  },
+  "experiment": "rag-model-eval-nvidia20b-v1-part-01-20bad83c"
+}

@@ -1,0 +1,7 @@
+case_id,type,route,runtime_is_compound,analyzer_correct_routing,baseline_correctness,new_correctness,baseline_completeness,new_completeness,baseline_groundedness,new_groundedness,judge_status,phrase_ctx_base,phrase_ctx_new,phrase_ans_base,phrase_ans_new,phrase_total,evidence_absent_from_all10_single_query,analyzer_ms,analyzer_tokens_in,analyzer_tokens_out,gen_ms,gen_tokens_in,gen_tokens_out,graph_total_ms,failure_classification
+case-018,compound,multi,True,YES,0.0,,0.0,,0.5,,not_scored_provider_outage,1,6,2,6,6,YES,3904.2,236,236,2118.6,2124,255,8273.8,SUCCESS
+case-020,compound,multi,True,YES,0.0,,0.0,,0.0,,not_scored_provider_outage,4,7,4,7,7,NO (present at ranks 6-10),2139.4,228,197,9343.4,1805,508,15505.3,SUCCESS
+case-022,compound,group,True,YES,0.0,,0.0,,1.0,,not_scored_provider_outage,3,5,3,4,6,YES,1278.6,232,215,5187.2,2065,458,11301.5,PARTIAL / residual C. RETRIEVAL FAILURE
+case-002,control,single,True,NO (over-decomposed),1.0,,1.0,,1.0,,not_scored_provider_outage,,,,,,n/a (control),2054.1,228,203,6920.2,2080,478,13741.5,A-prime ROUTING OVER-TRIGGER (no quality regression)
+case-004,control,multi,True,NO (over-decomposed),1.0,1.0,1.0,1.0,1.0,1.0,scored,,,,,,n/a (control),2663.5,235,236,5774.4,1652,529,11838.2,A-prime ROUTING OVER-TRIGGER (no quality regression)
+case-001,control,single,True,NO (over-decomposed),1.0,,1.0,,1.0,,not_scored_provider_outage,,,,,,n/a (control),3583.1,231,291,2158.6,1745,249,8329.6,A-prime ROUTING OVER-TRIGGER (no quality regression)

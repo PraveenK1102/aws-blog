@@ -1,0 +1,26 @@
+{
+  "experiment": "rag-routed-langgraph-v2-offline",
+  "stage": "live_compound",
+  "router_source": "persisted frozen V2 (0 router calls)",
+  "router_prompt_sha": "763d12cd82245285",
+  "stage_a_fingerprint": "cc6dfde4be4dd586",
+  "decomposition": "frozen decomp_graph v1 analyzer, unmodified",
+  "app_model": "openai/gpt-oss-20b",
+  "max_llm_context_chunks": 5,
+  "top_k": 5,
+  "retrieval_floor": 0.15,
+  "branch_concurrency": 2,
+  "bounds": {
+    "nvidia_decompose": 18,
+    "nvidia_final_gen": 18,
+    "nvidia_total": 36,
+    "titan_embed": 54,
+    "qdrant_logical_branches": 54,
+    "qdrant_physical": 108,
+    "groq": 0,
+    "nvidia_120b": 0,
+    "router_v2": 0
+  },
+  "repo_head": "9951ea100a61f38991150c72e15f95b22ac5a59b",
+  "fingerprint_hash": "90a7d26b3e6b88d6"
+}

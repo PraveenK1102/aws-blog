@@ -1,0 +1,17 @@
+span,phase,n,wall_mean_ms,wall_p50_ms,wall_p95_ms,wall_max_ms,provider_mean_ms,provider_p50_ms,provider_p95_ms,provider_max_ms,mean_input_tokens,mean_output_tokens,errors
+bm25_encode,A,9,12.0,0.5,62.9,104.3,,,,,,,0
+build_context,A,6,0.3,0.3,0.4,0.4,,,,,,,0
+decomposition,A,3,918.4,943.7,977.2,981.0,641.4,633.9,654.1,656.4,239,204,0
+decomposition,C_decomposition_only,18,6668.2,6994.0,7278.7,7329.4,662.8,642.9,863.0,890.8,240.9,224.8,0
+generation,A,6,9800.2,9085.8,21083.2,22580.0,1210.8,1258.2,1742.8,1823.6,2140.3,299,0
+merge_evidence,A,3,0.4,0.5,0.5,0.5,,,,,,,0
+qdrant_dense_probe,A,9,526.3,621.4,682.9,699.2,,,,,,,0
+qdrant_hybrid_rrf,A,9,168.9,168.6,184.3,185.3,,,,,,,0
+resolve_scope,A,6,25.0,0.3,111.5,148.5,,,,,,,0
+retrieval_branch,A,9,885.3,932.5,1201.1,1307.3,,,,,,,0
+routed_request,A,6,12099.8,11349.1,23849.1,25334.8,,,,,,,0
+routed_request,B_router_only,52,6890.3,6939.4,7658.4,8641.1,,,,,,,0
+routed_request,C_decomposition_only,18,6676.3,6994.6,7279.6,7330.3,,,,,,,0
+router_v2,A,6,884.5,759.7,1347.6,1440.3,766.6,758.0,971.3,980.2,523.3,268,0
+router_v2,B_router_only,52,6887.5,6938.5,7657.6,8640.2,864.9,789.1,1338.6,2260.4,523.3,331.5,0
+titan_embedding,A,9,160.5,135.7,283.3,286.0,,,,,,,0

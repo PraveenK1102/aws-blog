@@ -1,0 +1,13 @@
+case_id,type,branch_index,subquestion,candidate_count,kept_in_final_context,ranks_in_final_context,retrieval_ms,branch_evidence_missing
+case-018,compound,0,What is the highest Meral Index recorded in the network?,10,3,0;2;4,1459.3,False
+case-018,compound,1,What temperature rule applies to cloud honey in Ember Tea?,10,2,1;3,1386.3,False
+case-020,compound,0,What evidence made Zone North probable?,10,3,0;2;4,1264.7,False
+case-020,compound,1,What was later found inside T41?,10,2,1;3,1419.2,False
+case-022,compound,0,What was the highest Meral Index?,10,3,0;2;4,821.9,False
+case-022,compound,1,Why did Hollow Stair remain unverified after Zone South?,10,2,1;3,1029.4,False
+case-002,control,0,Does Pip-6 actually pollinate the flowers?,5,3,0;2;4,908.3,False
+case-002,control,1,What does Pip-6 really do?,5,2,1;3,842.7,False
+case-004,control,0,Why wasn't QL-2D approved for passenger service on the Lantern Loop?,10,3,0;2;4,948.8,False
+case-004,control,1,Was charging wait time the problem?,10,2,1;3,946.9,False
+case-001,control,0,What time does the Morrow Bell ring?,5,3,0;2;4,925.2,False
+case-001,control,1,What was the original purpose of ringing the Morrow Bell?,5,2,1;3,894.3,False

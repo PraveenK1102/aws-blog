@@ -1,0 +1,27 @@
+{
+  "concurrency": 2,
+  "model": "openai/gpt-oss-20b",
+  "requests": 4,
+  "wall_s": 1.93,
+  "latencies_ms": [
+    874.9,
+    821.9,
+    972.4,
+    842.0
+  ],
+  "http_429": 0,
+  "retries": 0,
+  "http_5xx": 0,
+  "in_tokens": 2097,
+  "out_tokens": 1705,
+  "healthy": true,
+  "headers": {
+    "x-ratelimit-limit-requests": "1000",
+    "x-ratelimit-remaining-requests": "919",
+    "x-ratelimit-reset-requests": "1h56m38.4s",
+    "x-ratelimit-limit-tokens": "8000",
+    "x-ratelimit-remaining-tokens": "5123",
+    "x-ratelimit-reset-tokens": "21.577s"
+  },
+  "120b_skipped_reason": "4 x ~2140 input tokens would exceed the 8000 TPM window by design (forbidden by \u00a79)"
+}

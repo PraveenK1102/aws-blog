@@ -1,0 +1,20 @@
+{
+  "experiment": "rag-model-eval-nvidia20b-top5-v1",
+  "repo_head": "e28029be4c3d0ce3b4d4853d531ad5d58f5d8f6f",
+  "deployed_ask_sha": "d5af30e",
+  "dataset_id": "d426fe19-3757-4442-b893-99a6cf031b68",
+  "dataset_version": "baseline-v1",
+  "application_provider": "nvidia",
+  "application_model": "openai/gpt-oss-20b",
+  "judge_provider": "nvidia",
+  "judge_model": "openai/gpt-oss-120b",
+  "embedding_model": "titan-text-v2",
+  "sparse_model": "fastembed-bm25",
+  "retrieval": "hybrid-rrf",
+  "top_k": 5,
+  "retrieval_floor": 0.15,
+  "max_llm_context_chunks": 5,
+  "chunk_max_tokens": 500,
+  "chunk_overlap_tokens": 50,
+  "fingerprint_hash": "856b2bf583419c93"
+}

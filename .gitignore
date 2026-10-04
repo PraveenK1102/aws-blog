@@ -9,3 +9,6 @@ uploads/*
 *.log
 .DS_Store
 .claude/
+
+# slim bundle for external upload (regenerable, not source of truth)
+multitenant-rag-slim.zip

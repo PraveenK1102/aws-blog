@@ -1,0 +1,70 @@
+{
+  "experiment": "compound-router-v2",
+  "fingerprint_hash": "cc6dfde4be4dd586",
+  "manifest_fingerprint": "e9702a562a635c68",
+  "prompt_sha": "763d12cd82245285",
+  "cases_classified": 52,
+  "positives": 3,
+  "negatives": 49,
+  "true_positives": 3,
+  "false_positives": 15,
+  "true_negatives": 34,
+  "false_negatives": 0,
+  "unscored_provider_error": 0,
+  "compound_precision": 0.16666666666666666,
+  "compound_recall": 1.0,
+  "compound_f1": 0.2857142857142857,
+  "simple_specificity": 0.6938775510204082,
+  "routing_accuracy": 0.7115384615384616,
+  "false_positive_decomposition_rate": 0.30612244897959184,
+  "false_negative_compound_rate": 0.0,
+  "parse_ok_count": 52,
+  "parse_failures": [],
+  "latency_ms": {
+    "mean": 4567.9,
+    "p50": 2840.9,
+    "p95": 13624.2,
+    "max": 16010.4
+  },
+  "tokens": {
+    "input_mean": 518.3,
+    "output_mean": 286.6,
+    "input_total": 26951,
+    "output_total": 14905
+  },
+  "reason_code_distribution": {
+    "multiple_independent_retrieval_needs": 18,
+    "single_entity_multi_attribute": 10,
+    "single_retrieval_need": 22,
+    "negative_or_scope_check": 1,
+    "single_event_multi_attribute": 1
+  },
+  "provider": {
+    "nvidia_20b_calls": 52,
+    "nvidia_120b_calls": 0,
+    "groq_calls": 0,
+    "errors": 0
+  },
+  "success_target": {
+    "required_recall": "3/3",
+    "required_specificity": ">=0.90",
+    "actual_recall": "3/3",
+    "actual_specificity": 0.6938775510204082,
+    "verdict": "FAIL"
+  },
+  "v1_comparison": {
+    "v1_behaviour": "all 6 preflight cases compound (3/3 controls over-decomposed)",
+    "v1_false_positive_rate_on_controls": 1.0,
+    "v2_false_positives_of_negatives": "15/49",
+    "unnecessary_decompositions_v1_would_cause": 49,
+    "unnecessary_decompositions_v2_causes": 15,
+    "unnecessary_decompositions_avoided": 34,
+    "v1_measured_overhead_per_unnecessary_decomposition": {
+      "latency_s": 2.6,
+      "tokens": 462
+    },
+    "estimated_latency_s_avoided": 88.4,
+    "estimated_tokens_avoided": 15708,
+    "note": "analyzer-call overhead only; excludes the +(N-1) retrieval operations each unnecessary decomposition would add"
+  }
+}

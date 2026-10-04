@@ -1,0 +1,8 @@
+{
+  "evaluator_calls": 150,
+  "ragas_calls": 108,
+  "deepeval_calls": 42,
+  "errors": 23,
+  "in_tokens": 191364,
+  "out_tokens": 116884
+}

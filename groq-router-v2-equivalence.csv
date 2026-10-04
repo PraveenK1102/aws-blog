@@ -1,0 +1,53 @@
+case_id,question,adjudicated,decision_rule,groq_predicted_compound,nvidia_predicted_compound,agree_with_nvidia,groq_reason_code,nvidia_reason_code,parse_ok,latency_ms,input_tokens,output_tokens,total_tokens,retry_count
+case-001,"What time does the Morrow Bell ring, and what was the original purpose of ringing it?",simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,994.7,525,451,976,0
+case-002,Does Pip-6 actually pollinate the flowers? What does it really do?,simple,R4,False,True,False,single_entity_multi_attribute,multiple_independent_retrieval_needs,True,868.8,522,392,914,0
+case-003,"What are the current Quiet Bloom hours, and were they always the same?",simple,R5,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,635.3,521,213,734,0
+case-004,Why wasn't QL-2D approved for passenger service on the Lantern Loop? Was charging wait time the problem?,simple,R4,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,967.7,529,387,916,0
+case-005,"Why was the Hollow Stair still considered unverified after Zone South was surveyed, and what evidence supported each candidate?",ambiguous,R2/R4,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,511.9,528,221,749,0
+case-006,"What is the current status and probable location of the Hollow Stair, and what new evidence caused the status to change?",simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,1338.6,529,826,1355,0
+case-007,"What was found inside the T41 box, and what evidence originally connected T41 to Elian Voss before discovery?",compound,R2,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,543.8,530,226,756,0
+case-008,"Compare QL-2C and QL-2D for Lantern Loop use. Why was QL-2C unsuitable, and why did QL-2D still fail passenger approval?",compound,R3,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,808.6,545,321,866,0
+case-009,What charging/stabilization rule applies to QL-2C and QL-2D respectively?,compound,R3,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,744.2,527,241,768,0
+case-014,What is the emergency shutdown procedure for the Silverpine reactor?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,927.4,518,185,703,0
+case-015,"What caused the Ternlink outage at North Fen, and how many records were recovered?",simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,978.8,524,497,1021,0
+case-016,"What caused the Ternlink outage at North Fen, and how many records were recovered?",simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,869.4,524,459,983,0
+case-017,"What was the highest Meral Index ever recorded, where and when?",simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,723.7,520,228,748,0
+case-018,"What is the highest Meral Index recorded in the network, and what temperature rule applies to cloud honey in Ember Tea?",compound,R1,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,767.8,530,215,745,0
+case-019,What is the highest Meral Index recorded in the Whisperglass network?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,936.4,520,306,826,0
+case-020,"What evidence made Zone North probable, and what was later found inside T41?",compound,R2,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,855.8,522,280,802,0
+case-021,What was found inside the T41 box after it was opened?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,757.7,519,213,732,0
+case-022,"What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",compound,R2,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,646.1,526,224,750,0
+case-023,"What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",compound,R2,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,652.2,526,198,724,0
+case-024,Does the Forty-Minute Rule still apply to the newest Quill Cell? Explain which versions require 40 minutes and which do not.,simple,R4,True,False,False,multiple_independent_retrieval_needs,single_entity_multi_attribute,True,1031.1,533,522,1055,0
+case-025,"Which battery is currently used by the Lantern Loop fleet, and why isn't QL-2D used despite its energy advantage?",ambiguous,R2/R4,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,760.7,531,259,790,0
+case-026,Should an eastbound hiker still follow Foxstep at Red Compass Trail?,simple,R6,False,False,True,single_retrieval_need,negative_or_scope_check,True,1276.4,521,575,1096,0
+case-027,Can the Seven-Breath Test be used for a three-liter kettle of Ember Tea?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,671.8,523,232,755,0
+case-028,How much coffee is used in ET-R3?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,883.1,516,417,933,0
+case-029,Are Hollow Steps and Hollow Stair now believed to be the same place?,simple,R6,False,False,True,negative_or_scope_check,single_retrieval_need,True,1338.7,520,837,1357,0
+case-030,"How many seeds per tray were used in MS-E1, MS-E2 and MS-E3?",compound,R3,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,774.5,526,313,839,0
+case-031,Can MS-E3 tell us whether Velin-4 performs better than plain water?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,945.3,523,498,1021,0
+case-032,Why did MS-E2 become the standard treatment instead of MS-E1?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,701.2,521,216,737,0
+case-033,"Trace MH-4408 from rerouting through arrival. Which pier did it actually leave from, on what vessel, and where did it arrive?",simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,621.6,535,385,920,0
+case-034,Was Pier Seven closed because a ship collided with it?,simple,R6,False,False,True,negative_or_scope_check,single_event_multi_attribute,True,932.1,517,474,991,0
+case-035,Is Harbor Shift Delta still active?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,647.7,513,193,706,0
+case-036,Did WG-03 stop measuring weather when Ternlink failed?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,803.7,519,329,848,0
+case-037,What three conditions define a Rillback in the current Orrin Bluff rule?,simple,R4,False,False,True,single_entity_multi_attribute,single_entity_multi_attribute,True,669.0,522,213,735,0
+case-038,Can Orrin Bluff Rillback thresholds automatically be applied to every Whisperglass station?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,855.1,523,296,819,0
+case-039,Has the network ever recorded Meral 12?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,642.5,516,164,680,0
+case-040,Does the 16:20 Morrow Bell tell visitors Sable Library is closing?,simple,R6,False,False,True,negative_or_scope_check,single_entity_multi_attribute,True,2244.5,523,452,975,0
+case-041,Why is a blue ribbon appropriate at Sable Library but inappropriate in Copper Orchard rover zones?,compound,R1,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,675.1,524,222,746,0
+case-042,How many flowers can Pip-6 pollinate per hour?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,606.9,518,196,714,0
+case-043,What changed between Pip-6's first trial and later 91% performance?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,933.9,522,422,944,0
+case-044,"Once BF-233 could be scanned, was it cleared for unrestricted handling?",simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,836.9,521,353,874,0
+case-045,Did opening T41 change Hollow Stair from probable to confirmed?,simple,R6,False,False,True,single_retrieval_need,single_retrieval_need,True,1145.6,518,583,1101,0
+case-046,"What pressure threshold sends a Quill Cell to isolation, and how much korra peel is used in one ET-R3 flask?",compound,R1,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,398.1,532,227,759,0
+case-047,"What is the current Quiet Bloom window, and what does Pip-6 actually do during it?",compound,R2,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,623.1,525,189,714,0
+case-052,How many ORIOLE-K crates reached Kestrel Station Two?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,2260.4,520,197,717,0
+case-053,How many ORIOLE-K crates reached Kestrel Station Two?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,770.3,520,197,717,0
+case-054,What did the T41 box contain?,simple,R4,False,False,True,single_retrieval_need,single_entity_multi_attribute,True,502.2,514,244,758,0
+case-055,What did the T41 box contain?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,766.2,514,282,796,0
+case-056,"If an old post says Quiet Bloom ends at 07:00, should I use 07:00 as current?",simple,R6,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,702.9,530,271,801,0
+case-057,Should Hollow Stair still be described as unverified?,simple,R6,False,False,True,negative_or_scope_check,single_retrieval_need,True,829.1,516,331,847,0
+case-058,How did evidence evolve from the 1984/1991 records to final probable Zone North classification?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,1161.4,526,496,1022,0
+case-059,"Summarize how MS-E1, MS-E2 and MS-E3 changed what the team was testing.",simple,R7,True,True,True,multiple_independent_retrieval_needs,multiple_independent_retrieval_needs,True,526.2,528,302,830,0
+case-060,What were the final results of MS-E4?,simple,R4,False,False,True,single_retrieval_need,single_retrieval_need,True,907.2,516,268,784,0

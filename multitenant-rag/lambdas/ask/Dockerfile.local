@@ -1,0 +1,34 @@
+# ask backend as a PLAIN HTTP container (no Lambda Web Adapter).
+#
+# Same FastAPI app + business logic as the Lambda image (ask/Dockerfile). The
+# ONLY difference: this image OMITS the Lambda Web Adapter extension and the
+# AWS_LWA_* env, so uvicorn serves HTTP directly on :8080. Used for local Docker
+# and, next, Kubernetes/EKS. The Lambda deployment path (ask/Dockerfile) is
+# unchanged — one shared application, two thin deployment-specific Dockerfiles.
+#
+# Build (context = multitenant-rag/lambdas):
+#   docker build -f ask/Dockerfile.local -t multitenant-ask:local .
+# Run (needs at least TENANTS_TABLE + USAGE_TABLE; /health needs nothing else):
+#   docker run --rm -p 8080:8080 -e TENANTS_TABLE=multitenant-tenants \
+#     -e USAGE_TABLE=multitenant-usage-logs multitenant-ask:local
+FROM public.ecr.aws/docker/library/python:3.12-slim
+
+WORKDIR /var/task
+
+COPY ask/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Pre-download the BM25 model into the image so the first request doesn't fetch
+# it (identical to the Lambda image, for parity).
+ENV FASTEMBED_CACHE_DIR=/opt/fastembed_cache
+RUN mkdir -p /opt/fastembed_cache && \
+    python -c "from fastembed import SparseTextEmbedding; SparseTextEmbedding('Qdrant/bm25', cache_dir='/opt/fastembed_cache')"
+
+COPY common/ ./common/
+COPY ask/app.py ask/llm.py ./
+# Routed RAG package (LangGraph) — same as the Lambda image; never imports evals/.
+COPY ask/rag/ ./rag/
+
+EXPOSE 8080
+# Same entrypoint as the Lambda image — just without the LWA proxy in front of it.
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]

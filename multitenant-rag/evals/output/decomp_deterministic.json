@@ -1,0 +1,164 @@
+{
+  "case-018": {
+    "tokens": [
+      "11.4",
+      "WG-03",
+      "16",
+      "70"
+    ],
+    "detail": {
+      "11.4": {
+        "base_ans": false,
+        "new_ans": true,
+        "base_ctx": false,
+        "new_ctx": true
+      },
+      "WG-03": {
+        "base_ans": false,
+        "new_ans": true,
+        "base_ctx": false,
+        "new_ctx": true
+      },
+      "16": {
+        "base_ans": false,
+        "new_ans": true,
+        "base_ctx": false,
+        "new_ctx": true
+      },
+      "70": {
+        "base_ans": true,
+        "new_ans": true,
+        "base_ctx": true,
+        "new_ctx": true
+      }
+    },
+    "base_ctx": 1,
+    "new_ctx": 4,
+    "base_ans": 1,
+    "new_ans": 4,
+    "n": 4
+  },
+  "case-020": {
+    "tokens": [
+      "T41",
+      "V-31"
+    ],
+    "detail": {
+      "T41": {
+        "base_ans": true,
+        "new_ans": true,
+        "base_ctx": true,
+        "new_ctx": true
+      },
+      "V-31": {
+        "base_ans": true,
+        "new_ans": true,
+        "base_ctx": true,
+        "new_ctx": true
+      }
+    },
+    "base_ctx": 2,
+    "new_ctx": 2,
+    "base_ans": 2,
+    "new_ans": 2,
+    "n": 2
+  },
+  "case-022": {
+    "tokens": [
+      "11.4",
+      "WG-03",
+      "16"
+    ],
+    "detail": {
+      "11.4": {
+        "base_ans": false,
+        "new_ans": true,
+        "base_ctx": false,
+        "new_ctx": true
+      },
+      "WG-03": {
+        "base_ans": false,
+        "new_ans": true,
+        "base_ctx": false,
+        "new_ctx": true
+      },
+      "16": {
+        "base_ans": false,
+        "new_ans": true,
+        "base_ctx": false,
+        "new_ctx": true
+      }
+    },
+    "base_ctx": 0,
+    "new_ctx": 3,
+    "base_ans": 0,
+    "new_ans": 3,
+    "n": 3
+  },
+  "case-002": {
+    "tokens": [],
+    "detail": {},
+    "base_ctx": 0,
+    "new_ctx": 0,
+    "base_ans": 0,
+    "new_ans": 0,
+    "n": 0
+  },
+  "case-004": {
+    "tokens": [
+      "QL-2D",
+      "12",
+      "11"
+    ],
+    "detail": {
+      "QL-2D": {
+        "base_ans": true,
+        "new_ans": true,
+        "base_ctx": true,
+        "new_ctx": true
+      },
+      "12": {
+        "base_ans": false,
+        "new_ans": false,
+        "base_ctx": false,
+        "new_ctx": false
+      },
+      "11": {
+        "base_ans": false,
+        "new_ans": false,
+        "base_ctx": false,
+        "new_ctx": false
+      }
+    },
+    "base_ctx": 1,
+    "new_ctx": 1,
+    "base_ans": 1,
+    "new_ans": 1,
+    "n": 3
+  },
+  "case-001": {
+    "tokens": [
+      "16",
+      "20"
+    ],
+    "detail": {
+      "16": {
+        "base_ans": true,
+        "new_ans": true,
+        "base_ctx": true,
+        "new_ctx": true
+      },
+      "20": {
+        "base_ans": true,
+        "new_ans": true,
+        "base_ctx": true,
+        "new_ctx": true
+      }
+    },
+    "base_ctx": 2,
+    "new_ctx": 2,
+    "base_ans": 2,
+    "new_ans": 2,
+    "n": 2
+  }
+}

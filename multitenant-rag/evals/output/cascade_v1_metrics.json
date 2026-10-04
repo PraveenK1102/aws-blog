@@ -1,0 +1,318 @@
+{
+  "experiment": "compound-router-cascade-v1",
+  "holdout_executed": false,
+  "provider": {
+    "groq_calls": 0,
+    "nvidia_120b_calls": 0
+  },
+  "development": {
+    "scored": 50,
+    "TP": 9,
+    "FP": 2,
+    "TN": 37,
+    "FN": 2,
+    "TP_cases": [
+      "case-008",
+      "case-009",
+      "case-018",
+      "case-020",
+      "case-022",
+      "case-023",
+      "case-030",
+      "case-041",
+      "case-046"
+    ],
+    "FP_cases": [
+      "case-056",
+      "case-059"
+    ],
+    "FN_cases": [
+      "case-007",
+      "case-047"
+    ],
+    "compound_precision": 0.8182,
+    "compound_recall": 0.8182,
+    "compound_f1": 0.8182,
+    "simple_specificity": 0.9487,
+    "routing_accuracy": 0.92,
+    "false_positive_decomposition_rate": 0.0513,
+    "false_negative_compound_rate": 0.1818,
+    "call_efficiency": {
+      "total_cases": 52,
+      "stage_a_calls": 0,
+      "stage_b_calls": 18,
+      "verifier_invocation_rate": 0.3462,
+      "mean_calls_per_question_measured": 0.3462,
+      "mean_calls_per_question_if_stage_a_live": 1.3462
+    },
+    "stage_b_latency_ms": {
+      "mean": 2126.0,
+      "p50": 1921.3,
+      "p95": 3202.4,
+      "max": 5150.8
+    },
+    "stage_b_tokens": {
+      "input_mean": 660.5,
+      "output_mean": 220.7,
+      "input_total": 11889,
+      "output_total": 3973
+    },
+    "stage_a_latency_ms": {
+      "mean": null,
+      "p50": null,
+      "p95": null,
+      "max": null
+    },
+    "verifier_reason_codes": {
+      "independent_evidence_neighborhoods": 12,
+      "same_entity_state": 2,
+      "same_event_or_record": 3,
+      "same_subject_temporal_comparison": 1
+    },
+    "by_category": {
+      "R4": {
+        "n": 21,
+        "gt": "simple",
+        "correct": 21,
+        "wrong": [],
+        "score": 1.0,
+        "metric": "specificity"
+      },
+      "R5": {
+        "n": 1,
+        "gt": "simple",
+        "correct": 1,
+        "wrong": [],
+        "score": 1.0,
+        "metric": "specificity"
+      },
+      "R2": {
+        "n": 5,
+        "gt": "compound",
+        "correct": 3,
+        "wrong": [
+          "case-007",
+          "case-047"
+        ],
+        "score": 0.6,
+        "metric": "recall"
+      },
+      "R3": {
+        "n": 3,
+        "gt": "compound",
+        "correct": 3,
+        "wrong": [],
+        "score": 1.0,
+        "metric": "recall"
+      },
+      "R1": {
+        "n": 3,
+        "gt": "compound",
+        "correct": 3,
+        "wrong": [],
+        "score": 1.0,
+        "metric": "recall"
+      },
+      "R6": {
+        "n": 16,
+        "gt": "simple",
+        "correct": 15,
+        "wrong": [
+          "case-056"
+        ],
+        "score": 0.9375,
+        "metric": "specificity"
+      },
+      "R7": {
+        "n": 1,
+        "gt": "simple",
+        "correct": 0,
+        "wrong": [
+          "case-059"
+        ],
+        "score": 0.0,
+        "metric": "specificity"
+      }
+    }
+  },
+  "development_gate": {
+    "passed": false,
+    "precision": 0.8182,
+    "recall": 0.8182,
+    "specificity": 0.9487,
+    "accuracy": 0.92,
+    "f1": 0.8182,
+    "thresholds": {
+      "recall": 0.9,
+      "specificity": 0.9,
+      "precision": 0.8
+    },
+    "TP": 9,
+    "FP": 2,
+    "TN": 37,
+    "FN": 2,
+    "FP_cases": [
+      "case-056",
+      "case-059"
+    ],
+    "FN_cases": [
+      "case-007",
+      "case-047"
+    ],
+    "fingerprint_hash": "5f8fcff597261b61"
+  },
+  "stage_b_decisions_on_v2_candidates": [
+    {
+      "id": "case-002",
+      "ground_truth": "simple",
+      "verifier": "reject",
+      "reason_code": "same_entity_state",
+      "correct": true
+    },
+    {
+      "id": "case-003",
+      "ground_truth": "simple",
+      "verifier": "reject",
+      "reason_code": "same_subject_temporal_comparison",
+      "correct": true
+    },
+    {
+      "id": "case-004",
+      "ground_truth": "simple",
+      "verifier": "reject",
+      "reason_code": "same_event_or_record",
+      "correct": true
+    },
+    {
+      "id": "case-005",
+      "ground_truth": "ambiguous",
+      "verifier": "reject",
+      "reason_code": "same_event_or_record",
+      "correct": null
+    },
+    {
+      "id": "case-007",
+      "ground_truth": "compound",
+      "verifier": "reject",
+      "reason_code": "same_entity_state",
+      "correct": false
+    },
+    {
+      "id": "case-008",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-009",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-018",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-020",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-022",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-023",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-025",
+      "ground_truth": "ambiguous",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": null
+    },
+    {
+      "id": "case-030",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-041",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-046",
+      "ground_truth": "compound",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": true
+    },
+    {
+      "id": "case-047",
+      "ground_truth": "compound",
+      "verifier": "reject",
+      "reason_code": "same_event_or_record",
+      "correct": false
+    },
+    {
+      "id": "case-056",
+      "ground_truth": "simple",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": false
+    },
+    {
+      "id": "case-059",
+      "ground_truth": "simple",
+      "verifier": "CONFIRM",
+      "reason_code": "independent_evidence_neighborhoods",
+      "correct": false
+    }
+  ],
+  "comparison": {
+    "v2_adjudicated": {
+      "precision": 0.6875,
+      "recall": 1.0,
+      "specificity": 0.8718,
+      "accuracy": 0.9
+    },
+    "v3_dev": {
+      "precision": 0.9,
+      "recall": 0.8182,
+      "specificity": 0.9744,
+      "accuracy": 0.94
+    },
+    "v4_dev_parseable": {
+      "precision": 0.75,
+      "recall": 0.8182,
+      "specificity": 0.9167,
+      "accuracy": 0.8936
+    },
+    "cascade_v1_dev": {
+      "precision": 0.8182,
+      "recall": 0.8182,
+      "specificity": 0.9487,
+      "accuracy": 0.92
+    }
+  }
+}

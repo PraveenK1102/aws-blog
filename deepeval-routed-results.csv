@@ -1,0 +1,7 @@
+record_id,case_id,variant,deterministic_expectation,stage,deepeval_answer_relevancy,deepeval_contextual_precision,deepeval_contextual_recall,deepeval_faithfulness,deepeval_answer_relevancy__error,deepeval_contextual_precision__error,deepeval_contextual_recall__error,deepeval_faithfulness__error
+case-018::baseline,case-018,baseline,"weak (ans 1/4, ctx 1/6)",calibration,1.0,1.0,0.0,1.0,,,,
+case-018::routed,case-018,routed,"strong (ans 4/4, ctx 6/6)",calibration,1.0,1.0,1.0,1.0,,,,
+case-007::routed,case-007,routed,unchanged (ceiling 4/4),calibration,0.5,1.0,1.0,1.0,,,,
+case-002::routed,case-002,routed,refusal reference,calibration,1.0,0.8333,0.0,1.0,,,,
+case-056::routed,case-056,routed,refusal reference + fallback path,calibration,1.0,0.8042,1.0,1.0,,,,
+case-041::routed,case-041,routed,"partial (ctx 2/3, not decomposed)",calibration,1.0,1.0,1.0,1.0,,,,

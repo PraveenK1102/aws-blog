@@ -1,0 +1,43 @@
+{
+  "holdout": "compound-router-holdout-v1",
+  "annotation_policy_version": "independent-retrieval-needs-v1",
+  "manifest_sha256": "0957b7bf8db137bad6e35f1495f5953e636e87969b5173b0fd9101a1dfd233b8",
+  "case_count": 40,
+  "simple_count": 20,
+  "compound_count": 20,
+  "ambiguous_count": 0,
+  "category_distribution": {
+    "simple_with_and": 4,
+    "single_entity_multi_attribute": 4,
+    "contrast_verification": 3,
+    "temporal_before_after": 3,
+    "negative_scope": 2,
+    "same_event_multi_consequence": 2,
+    "series_synthesis": 2,
+    "compound_without_and": 4,
+    "unrelated_domain": 4,
+    "different_entity": 4,
+    "different_event": 3,
+    "different_time": 3,
+    "single_clause_compound": 2
+  },
+  "cue_counts": {
+    "simple_with_and": 4,
+    "compound_without_and": 6,
+    "compound_with_and": 14,
+    "simple_without_and": 16,
+    "single_entity_multi_attribute": 4,
+    "contrast_verification": 3,
+    "multi_entity_compound": 4
+  },
+  "naive_and_detector_baseline": {
+    "precision": 0.7778,
+    "recall": 0.7,
+    "specificity": 0.8,
+    "accuracy": 0.75
+  },
+  "authored_before_any_router_v3_call": true,
+  "dev_set_exact_overlap": 0,
+  "near_duplicate_reject_threshold": 0.6,
+  "frozen": "labels fixed before any router-v3 call; must not be altered after seeing output"
+}

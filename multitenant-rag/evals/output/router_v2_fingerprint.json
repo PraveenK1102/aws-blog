@@ -1,0 +1,22 @@
+{
+  "experiment": "compound-router-v2",
+  "router_model": "openai/gpt-oss-20b",
+  "manifest_fingerprint": "e9702a562a635c68",
+  "prompt_sha": "763d12cd82245285",
+  "reason_codes": [
+    "multiple_independent_retrieval_needs",
+    "single_retrieval_need",
+    "single_entity_multi_attribute",
+    "single_event_multi_attribute",
+    "negative_or_scope_check"
+  ],
+  "concurrency": 1,
+  "timeout_s": 120,
+  "max_tokens": 1500,
+  "repo_head": "3564dfb8a7c5a2572f636212ae388ab7700e65c8",
+  "langgraph_used": false,
+  "retrieval_performed": false,
+  "generation_performed": false,
+  "judging_performed": false,
+  "fingerprint_hash": "cc6dfde4be4dd586"
+}

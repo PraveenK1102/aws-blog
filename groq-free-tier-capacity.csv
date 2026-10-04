@@ -1,0 +1,23 @@
+metric,value,note
+total_physical_groq_requests,93,ceiling 100
+total_logical_calls,89,
+requests_20b,83,
+requests_120b,10,
+total_input_tokens,50343,
+total_output_tokens,27004,
+total_tokens,77347,
+http_429_total,4,all in Phase A
+http_5xx_total,0,
+timeouts_total,0,
+retries_total,4,
+backoff_seconds_total,51.0,all in Phase A
+phaseA_pacing_s,1.0,429s occurred
+phaseB_C_pacing_s,7.0,zero 429s
+highest_tested_concurrency,2,"20B, 4 requests, healthy"
+concurrency2_wall_s,1.93,
+concurrency2_429,0,
+rate_limit_limit_requests,1000,per header
+rate_limit_remaining_requests,922,per header
+rate_limit_limit_tokens,8000,BINDING CONSTRAINT
+rate_limit_remaining_tokens,7223,per header
+rate_limit_reset_tokens,5.827s,per header

@@ -1,0 +1,7 @@
+{
+  "critical_path_mean_ms": 3529.8,
+  "critical_path_p95_ms": 4681.7,
+  "observed_with_backoff_mean_ms": 18432.4,
+  "api_gateway_hard_deadline_ms": 30000,
+  "internal_safety_deadline_ms": 24000
+}

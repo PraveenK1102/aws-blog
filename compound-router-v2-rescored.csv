@@ -1,0 +1,53 @@
+case_id,question,old_ground_truth,adjudicated_ground_truth,duplicate_group_id,predicted_compound,reason_code,outcome_old,outcome_adjudicated,independent_retrieval_need_count,decision_rule,label_reason
+case-001,"What time does the Morrow Bell ring, and what was the original purpose of ringing it?",simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R4,One entity (the bell); schedule and origin are attributes of the same subject.
+case-002,Does Pip-6 actually pollinate the flowers? What does it really do?,simple,simple,,True,multiple_independent_retrieval_needs,FP,FP,1,R4,One entity; the denial and the real function are the same localized fact.
+case-003,"What are the current Quiet Bloom hours, and were they always the same?",simple,simple,,True,multiple_independent_retrieval_needs,FP,FP,1,R5,Same entity and same attribute across time; one topical cluster.
+case-004,Why wasn't QL-2D approved for passenger service on the Lantern Loop? Was charging wait time the problem?,simple,simple,,True,multiple_independent_retrieval_needs,FP,FP,1,R4,One object's one approval decision; the second clause tests the same cause.
+case-005,"Why was the Hollow Stair still considered unverified after Zone South was surveyed, and what evidence supported each candidate?",simple,ambiguous,,True,multiple_independent_retrieval_needs,FP,EXCLUDED_AMBIGUOUS,2,R2/R4,"'Each candidate' may span two zones' evidence, or may be the same verification narrative."
+case-006,"What is the current status and probable location of the Hollow Stair, and what new evidence caused the status to change?",simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R4,"One state change; status, location and cause are attributes of it."
+case-007,"What was found inside the T41 box, and what evidence originally connected T41 to Elian Voss before discovery?",simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,2,R2,Post-opening contents and pre-discovery provenance are different evidence targets.
+case-008,"Compare QL-2C and QL-2D for Lantern Loop use. Why was QL-2C unsuitable, and why did QL-2D still fail passenger approval?",simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,2,R3,"Two sibling products, each requiring its own rejection explanation."
+case-009,What charging/stabilization rule applies to QL-2C and QL-2D respectively?,simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,2,R3,'Respectively' requires a separate value per product version.
+case-014,What is the emergency shutdown procedure for the Silverpine reactor?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,Single procedure lookup.
+case-015,"What caused the Ternlink outage at North Fen, and how many records were recovered?",simple,simple,dup-01,False,single_entity_multi_attribute,TN,TN,1,R4,One incident; cause and recovery count are attributes of that event.
+case-016,"What caused the Ternlink outage at North Fen, and how many records were recovered?",simple,simple,dup-01,False,single_entity_multi_attribute,TN,TN,1,R4,Duplicate of case-015; same label required.
+case-017,"What was the highest Meral Index ever recorded, where and when?",simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R4,"One measurement; value, place and time are its attributes."
+case-018,"What is the highest Meral Index recorded in the network, and what temperature rule applies to cloud honey in Ember Tea?",compound,compound,,True,multiple_independent_retrieval_needs,TP,TP,2,R1,Station measurement and a tea preparation rule are unrelated domains.
+case-019,What is the highest Meral Index recorded in the Whisperglass network?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,Single measurement lookup.
+case-020,"What evidence made Zone North probable, and what was later found inside T41?",compound,compound,,True,multiple_independent_retrieval_needs,TP,TP,2,R2,Site-probability reasoning and box contents are different evidence targets.
+case-021,What was found inside the T41 box after it was opened?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,Single contents lookup.
+case-022,"What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",compound,compound,dup-04,True,multiple_independent_retrieval_needs,TP,TP,2,R2,Measurement and verification reasoning target different evidence.
+case-023,"What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",simple,compound,dup-04,True,multiple_independent_retrieval_needs,FP,TP,2,R2,Duplicate of case-022; same label required. Route does not change need count.
+case-024,Does the Forty-Minute Rule still apply to the newest Quill Cell? Explain which versions require 40 minutes and which do not.,simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R4,One rule; the version breakdown is that rule's content.
+case-025,"Which battery is currently used by the Lantern Loop fleet, and why isn't QL-2D used despite its energy advantage?",simple,ambiguous,,True,multiple_independent_retrieval_needs,FP,EXCLUDED_AMBIGUOUS,2,R2/R4,"Arguably one battery-selection decision, arguably two separate lookups."
+case-026,Should an eastbound hiker still follow Foxstep at Red Compass Trail?,simple,simple,,False,negative_or_scope_check,TN,TN,1,R6,Single recency/applicability check.
+case-027,Can the Seven-Breath Test be used for a three-liter kettle of Ember Tea?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single applicability check.
+case-028,How much coffee is used in ET-R3?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single quantity lookup (likely a negative).
+case-029,Are Hollow Steps and Hollow Stair now believed to be the same place?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single identity check on one relationship.
+case-030,"How many seeds per tray were used in MS-E1, MS-E2 and MS-E3?",simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,3,R3,"Three sibling experiments, each contributing its own required value."
+case-031,Can MS-E3 tell us whether Velin-4 performs better than plain water?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single methodological check on one experiment.
+case-032,Why did MS-E2 become the standard treatment instead of MS-E1?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,One decision narrative.
+case-033,"Trace MH-4408 from rerouting through arrival. Which pier did it actually leave from, on what vessel, and where did it arrive?",simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R4,One shipment's single journey; the fields are attributes of that event chain.
+case-034,Was Pier Seven closed because a ship collided with it?,simple,simple,,False,single_event_multi_attribute,TN,TN,1,R6,Single causal/negative check.
+case-035,Is Harbor Shift Delta still active?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single status check.
+case-036,Did WG-03 stop measuring weather when Ternlink failed?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single negative check about one station and one event.
+case-037,What three conditions define a Rillback in the current Orrin Bluff rule?,simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R4,One definition; the three conditions are its parts.
+case-038,Can Orrin Bluff Rillback thresholds automatically be applied to every Whisperglass station?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single scope check.
+case-039,Has the network ever recorded Meral 12?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single negative check.
+case-040,Does the 16:20 Morrow Bell tell visitors Sable Library is closing?,simple,simple,,False,single_entity_multi_attribute,TN,TN,1,R6,Single interpretation check on one entity.
+case-041,Why is a blue ribbon appropriate at Sable Library but inappropriate in Copper Orchard rover zones?,simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,2,R1,Library convention and orchard rover safety are unrelated domains.
+case-042,How many flowers can Pip-6 pollinate per hour?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single quantity check (likely a negative).
+case-043,What changed between Pip-6's first trial and later 91% performance?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,"One entity's progression, one narrative."
+case-044,"Once BF-233 could be scanned, was it cleared for unrestricted handling?",simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single scope check on one object.
+case-045,Did opening T41 change Hollow Stair from probable to confirmed?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single status-change check.
+case-046,"What pressure threshold sends a Quill Cell to isolation, and how much korra peel is used in one ET-R3 flask?",simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,2,R1,Battery safety threshold and a tea recipe quantity are unrelated domains.
+case-047,"What is the current Quiet Bloom window, and what does Pip-6 actually do during it?",simple,compound,,True,multiple_independent_retrieval_needs,FP,TP,2,R2,A schedule and a robot's function are different entities and evidence targets.
+case-052,How many ORIOLE-K crates reached Kestrel Station Two?,simple,simple,dup-03,False,single_retrieval_need,TN,TN,1,R4,Single count lookup.
+case-053,How many ORIOLE-K crates reached Kestrel Station Two?,simple,simple,dup-03,False,single_retrieval_need,TN,TN,1,R4,Duplicate of case-052; same label required.
+case-054,What did the T41 box contain?,simple,simple,dup-02,False,single_entity_multi_attribute,TN,TN,1,R4,Single contents lookup.
+case-055,What did the T41 box contain?,simple,simple,dup-02,False,single_retrieval_need,TN,TN,1,R4,Duplicate of case-054; same label required.
+case-056,"If an old post says Quiet Bloom ends at 07:00, should I use 07:00 as current?",simple,simple,,True,multiple_independent_retrieval_needs,FP,FP,1,R6,Single recency check on one fact.
+case-057,Should Hollow Stair still be described as unverified?,simple,simple,,False,single_retrieval_need,TN,TN,1,R6,Single status check.
+case-058,How did evidence evolve from the 1984/1991 records to final probable Zone North classification?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,"One classification's evidence timeline; multiple dates, one narrative."
+case-059,"Summarize how MS-E1, MS-E2 and MS-E3 changed what the team was testing.",simple,simple,,True,multiple_independent_retrieval_needs,FP,FP,1,R7,"One synthesis output over a series, not N separate required values."
+case-060,What were the final results of MS-E4?,simple,simple,,False,single_retrieval_need,TN,TN,1,R4,Single results lookup.

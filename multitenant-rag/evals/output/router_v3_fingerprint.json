@@ -1,0 +1,28 @@
+{
+  "experiment": "compound-router-v3",
+  "stage_independent": true,
+  "router_model": "openai/gpt-oss-20b",
+  "temperature": 0.0,
+  "structured_output_version": "router-v3-retrieval-plan-1",
+  "prompt_sha": "e148925f8098d9e8",
+  "reason_codes": [
+    "multiple_independent_retrieval_targets",
+    "single_retrieval_target",
+    "single_entity_multi_attribute",
+    "single_event_multi_consequence",
+    "contrast_or_verification_one_subject",
+    "temporal_update_same_topic",
+    "synthesis_over_related_observations",
+    "scope_or_negative_check"
+  ],
+  "max_retrieval_queries": 3,
+  "concurrency": 1,
+  "timeout_s": 120,
+  "max_tokens": 1500,
+  "repo_head": "28330ca5eeb758bdd25e18173e062351547c96cb",
+  "retrieval_performed": false,
+  "generation_performed": false,
+  "judging_performed": false,
+  "langgraph_used": false,
+  "fingerprint_hash": "a270bd5888461d60"
+}

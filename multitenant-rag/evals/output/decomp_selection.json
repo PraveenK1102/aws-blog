@@ -1,0 +1,56 @@
+{
+  "compound": [
+    "case-018",
+    "case-020",
+    "case-022"
+  ],
+  "controls": [
+    "case-002",
+    "case-004",
+    "case-001"
+  ],
+  "baseline": {
+    "case-001": {
+      "corr": "1.0",
+      "comp": "1.0",
+      "grnd": "1.0",
+      "route": "single",
+      "scenario": "exact fact / identifier"
+    },
+    "case-002": {
+      "corr": "1.0",
+      "comp": "1.0",
+      "grnd": "1.0",
+      "route": "single",
+      "scenario": "single-profile factual"
+    },
+    "case-004": {
+      "corr": "1.0",
+      "comp": "1.0",
+      "grnd": "1.0",
+      "route": "multi",
+      "scenario": "cross-document synthesis"
+    },
+    "case-018": {
+      "corr": "0.0",
+      "comp": "0.0",
+      "grnd": "0.5",
+      "route": "multi",
+      "scenario": "compound multi-part"
+    },
+    "case-020": {
+      "corr": "0.0",
+      "comp": "0.0",
+      "grnd": "0.0",
+      "route": "multi",
+      "scenario": "compound multi-part"
+    },
+    "case-022": {
+      "corr": "0.0",
+      "comp": "0.0",
+      "grnd": "1.0",
+      "route": "group",
+      "scenario": "compound multi-part"
+    }
+  }
+}

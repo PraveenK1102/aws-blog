@@ -1,0 +1,17 @@
+record_id,case_id,variant,deterministic_expectation,stage,ragas_answer_relevancy,ragas_context_precision,ragas_context_recall,ragas_faithfulness,ragas_answer_relevancy__error,ragas_context_precision__error,ragas_context_recall__error,ragas_faithfulness__error
+case-018::baseline,case-018,baseline,"weak (ans 1/4, ctx 1/6)",calibration,0.6595,0.0,,nan,,,"InstructorRetryException: 1 validation error for ContextRecallOutput
+classifications
+  Field required [type=missing, input_value={'.clas",
+case-018::routed,case-018,routed,"strong (ans 4/4, ctx 6/6)",calibration,0.5923,,nan,,,"InstructorRetryException: 2 validation errors for ContextPrecisionOutput
+reason
+  Field required [type=missing, input_value={'. The cont",,"InstructorRetryException: 1 validation error for StatementGeneratorOutput
+statements
+  Field required [type=missing, input_value={'. The"
+case-007::routed,case-007,routed,unchanged (ceiling 4/4),calibration,0.9186,0.8056,,,,,IncompleteOutputException: ,IncompleteOutputException: 
+case-002::routed,case-002,routed,refusal reference,calibration,0.5761,0.7,nan,,,,,IncompleteOutputException: 
+case-056::routed,case-056,routed,refusal reference + fallback path,calibration,0.6414,0.7,,nan,,,"InstructorRetryException: 1 validation error for ContextRecallOutput
+classifications
+  Field required [type=missing, input_value={'.clas",
+case-041::routed,case-041,routed,"partial (ctx 2/3, not decomposed)",calibration,0.6119,,,,,"InstructorRetryException: 1 validation error for ContextPrecisionOutput
+reason
+  Field required [type=missing, input_value={"". The conte",IncompleteOutputException: ,IncompleteOutputException: 

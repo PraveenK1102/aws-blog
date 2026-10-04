@@ -1,0 +1,7 @@
+case_id,phase,route_decision,final_context_count,citation_count,nvidia20b_fact_coverage,groq120b_fact_coverage,fact_delta,fact_total,end_to_end_ms,groq_physical_delta,note
+case-001,A,simple,5,1,,,,,3515.8,2,Phase A only — Phase D 18-case generation test NOT run (budget)
+case-014,A,simple,5,2,,,,,1658.2,2,Phase A only — Phase D 18-case generation test NOT run (budget)
+case-021,A,simple,5,1,,,,,12127.9,3,Phase A only — Phase D 18-case generation test NOT run (budget)
+case-018,A,compound,5,4,4,4,0,4,25334.8,4,Phase A only — Phase D 18-case generation test NOT run (budget)
+case-020,A,compound,5,3,5,5,0,5,10570.6,4,Phase A only — Phase D 18-case generation test NOT run (budget)
+case-022,A,compound,5,5,3,3,0,3,19392.1,4,Phase A only — Phase D 18-case generation test NOT run (budget)

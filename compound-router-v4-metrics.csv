@@ -1,0 +1,25 @@
+metric,v2_adjudicated_dev,v3_dev,v4_dev,v4_holdout
+scored,50,50,50,
+TP,11,9,9,
+FP,5,1,3,
+TN,34,38,33,
+FN,0,2,2,
+compound_precision,0.6875,0.9,0.75,
+compound_recall,1.0,0.8182,0.8182,
+compound_f1,0.8148,0.8572,0.7826,
+simple_specificity,0.8718,0.9744,0.9167,
+routing_accuracy,0.9,0.94,0.8936,
+false_positive_decomposition_rate,,,0.0833,
+false_negative_compound_rate,,,0.1818,
+latency_mean_ms,,4567.9,6794.9,
+latency_p50_ms,,2840.9,4677.1,
+latency_p95_ms,,13624.2,19251.7,
+latency_max_ms,,16010.4,20415.8,
+tokens_input_mean,,,795.0,
+tokens_output_mean,,,428.6,
+tokens_input_total,,,39752,
+tokens_output_total,,,21430,
+groq_calls,0,0,0,0
+nvidia_120b_calls,0,0,0,0
+nvidia_20b_calls,,52,52,0
+verdict,NOT ACCEPTED,NOT ACCEPTED (dev gate),,HOLDOUT NOT RUN

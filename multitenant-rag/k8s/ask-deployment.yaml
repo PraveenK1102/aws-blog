@@ -1,0 +1,87 @@
+# Kubernetes Deployment for the Ask FastAPI backend.
+#
+# This runs the SAME container image as the local Docker path
+# (built from ask/Dockerfile.local — plain uvicorn on :8080, NO Lambda Web
+# Adapter). It does NOT touch the production Lambda deployment.
+#
+# Build the image first (context = multitenant-rag/lambdas):
+#   docker build -f ask/Dockerfile.local -t multitenant-ask:local .
+#
+# Then, on a LOCAL cluster (kind / minikube / Docker Desktop / colima-k8s):
+#   kubectl apply -f ask-deployment.yaml -f ask-service.yaml
+#
+# NOTE: imagePullPolicy is IfNotPresent so the cluster uses the locally-built
+# image instead of trying to pull from a remote registry. On kind you must first
+# `kind load docker-image multitenant-ask:local`; on minikube build inside its
+# docker-env or `minikube image load multitenant-ask:local`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ask
+  labels:
+    app: ask
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ask
+  template:
+    metadata:
+      labels:
+        app: ask
+    spec:
+      containers:
+        - name: ask
+          image: multitenant-ask:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # Only the two variables the app requires at import time. /health needs
+          # nothing else. Real queries would additionally need Groq/Qdrant/Bedrock/
+          # DynamoDB credentials + config — deliberately NOT provided here, so this
+          # manifest makes no external AWS/LLM/vector calls.
+          env:
+            - name: TENANTS_TABLE
+              value: "multitenant-tenants"
+            - name: USAGE_TABLE
+              value: "multitenant-usage-logs"
+          # Modest starting resources so the Pod schedules on a small local node.
+          # Tune later; not a production sizing.
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # Health probes. Both hit the existing GET /health on :8080.
+          #
+          # readinessProbe — "should this Pod receive traffic right now?" A
+          # failing readiness probe removes the Pod from the Service endpoints
+          # (no traffic) but does NOT restart the container.
+          #
+          # livenessProbe — "is the process healthy enough to stay running?" A
+          # failing liveness probe makes the kubelet restart the container.
+          #
+          # For this local learning step both use the same simple /health. In a
+          # more mature system they would use different endpoints/semantics — and
+          # crucially, liveness must NOT depend on optional downstream providers
+          # (Groq/Qdrant/Bedrock), or a provider outage would trigger restart
+          # storms. /health here is a local self-check only.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3

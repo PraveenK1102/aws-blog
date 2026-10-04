@@ -1,0 +1,61 @@
+case_id,route,scenario,request_success,answer_correctness,answer_completeness,answer_groundedness,app_generation_latency_ms,judge_latency_ms,app_input_tokens,app_output_tokens,judge_input_tokens,judge_output_tokens,app_status,judge_status
+case-001,single,exact fact / identifier,1,1.0,1.0,1.0,3585.5,9130.6,2412,165,1520,242,completed,scored
+case-002,single,single-profile factual,1,1.0,1.0,1.0,5130.7,15924.8,2383,288,1634,295,completed,scored
+case-003,single,temporal / latest-state,1,0.5,1.0,0.5,2911.8,149505.3,2471,189,1591,925,completed,scored
+case-004,multi,cross-document synthesis,1,1.0,1.0,1.0,2801.1,72814.9,1829,227,1454,345,completed,scored
+case-005,group,group / cross-tenant,1,1.0,0.5,1.0,2777.8,142783.8,2030,389,1629,927,completed,scored
+case-006,group,temporal / latest-state,1,1.0,1.0,1.0,6491.5,20187.9,1653,349,1326,306,completed,scored
+case-007,multi,multi-profile,1,1.0,1.0,1.0,4763.8,16190.4,2116,524,1681,896,completed,scored
+case-008,multi,multi-profile,1,0.0,0.0,0.0,9147.7,7555.7,1851,917,1548,508,completed,scored
+case-009,multi,exact fact / identifier,1,1.0,1.0,1.0,3650.4,7983.8,2294,192,1704,313,completed,scored
+case-010,global,global retrieval,0,,,,,,,,,,completed,
+case-011,global,global retrieval,0,,,,,,,,,,completed,
+case-012,global,global retrieval,0,,,,,,,,,,completed,
+case-013,global,global retrieval,0,,,,,,,,,,completed,
+case-014,single,negative / scope isolation,1,1.0,1.0,0.0,2129.3,109704.3,2377,100,1432,343,completed,scored
+case-015,group,negative / scope isolation,1,1.0,1.0,1.0,1056.4,30213.8,2060,115,1456,410,completed,scored
+case-016,group,group / cross-tenant,1,1.0,1.0,1.0,1563.7,2256.1,2101,200,1502,198,completed,scored
+case-017,multi,negative / scope isolation,1,1.0,1.0,1.0,1113.7,68757.8,2001,112,1457,458,completed,scored
+case-018,multi,compound multi-part,1,0.0,0.0,0.5,1818.4,137194.5,1995,230,1502,430,completed,scored
+case-019,multi,multi-profile,1,1.0,1.0,1.0,1908.4,18610.1,2021,201,1437,251,completed,scored
+case-020,multi,compound multi-part,1,0.0,0.0,0.0,4510.9,10746.9,2043,467,1621,435,completed,scored
+case-021,multi,multi-profile,1,1.0,1.0,1.0,1806.4,73566.6,2048,182,1526,323,completed,scored
+case-022,group,compound multi-part,1,0.0,0.0,1.0,6566.6,37529.3,2003,520,1595,408,completed,scored
+case-023,multi,multi-profile,1,0.0,0.0,0.0,1271.6,7048.5,2003,126,1453,264,completed,scored
+case-024,single,single-profile factual,1,0.0,0.0,0.5,2230.3,15115.5,2240,284,1524,635,completed,scored
+case-025,single,single-profile factual,1,1.0,1.0,1.0,2326.9,6564.5,2539,309,1690,213,completed,scored
+case-026,single,single-profile factual,1,0.0,0.0,0.5,6094.2,11540.4,2366,477,1527,683,completed,scored
+case-027,single,single-profile factual,1,1.0,1.0,1.0,3454.1,41772.6,2503,305,1569,318,completed,scored
+case-028,single,single-profile factual,1,1.0,1.0,1.0,1839.6,82938.7,2369,232,1520,453,completed,scored
+case-029,group,group / cross-tenant,1,1.0,1.0,1.0,3053.9,4275.1,1712,324,1384,396,completed,scored
+case-030,group,group / cross-tenant,1,0.0,0.0,1.0,2759.2,3695.4,2136,338,1578,300,completed,scored
+case-031,group,group / cross-tenant,1,1.0,1.0,1.0,1319.7,46307.9,2067,150,1526,400,completed,scored
+case-032,group,group / cross-tenant,1,0.0,0.0,0.0,2458.1,133883.7,1389,281,1107,342,completed,scored
+case-033,group,group / cross-tenant,1,0.0,0.5,1.0,9957.9,15164.4,2112,781,1601,368,completed,scored
+case-034,group,group / cross-tenant,1,1.0,1.0,1.0,1408.5,50723.2,1714,113,1294,578,completed,scored
+case-035,group,group / cross-tenant,1,1.0,1.0,1.0,3767.3,12559.3,2025,265,1468,399,completed,scored
+case-036,group,group / cross-tenant,1,1.0,1.0,1.0,1790.6,3257.4,2092,223,1536,333,completed,scored
+case-037,single,single-profile factual,1,1.0,1.0,1.0,2505.8,37866.9,2486,184,1586,225,completed,scored
+case-038,single,single-profile factual,1,1.0,1.0,1.0,4142.5,7485.5,2120,314,1353,441,completed,scored
+case-039,single,single-profile factual,1,1.0,0.5,1.0,1602.4,36069.3,2094,194,1355,441,completed,scored
+case-040,single,single-profile factual,1,1.0,0.5,1.0,1086.5,107427.9,2542,121,1588,614,completed,scored
+case-041,single,single-profile factual,1,1.0,1.0,1.0,5300.6,16068.4,2314,442,1535,713,completed,scored
+case-042,single,single-profile factual,1,1.0,1.0,1.0,1889.6,103356.2,2385,133,1523,373,completed,scored
+case-043,single,single-profile factual,1,0.0,0.0,0.0,7068.8,17713.4,2052,532,1353,342,completed,scored
+case-044,single,single-profile factual,1,1.0,1.0,1.0,2342.8,21342.7,2104,294,1400,321,completed,scored
+case-045,single,single-profile factual,1,0.0,0.0,0.0,9027.8,52916.7,2308,293,1442,332,completed,scored
+case-046,multi,multi-profile,1,1.0,1.0,1.0,2091.1,44674.5,2126,275,1578,312,completed,scored
+case-047,multi,multi-profile,1,1.0,1.0,1.0,5406.2,9514.9,2151,312,1620,340,completed,scored
+case-048,global,global retrieval,0,,,,,,,,,,completed,
+case-049,global,global retrieval,0,,,,,,,,,,completed,
+case-050,global,global retrieval,0,,,,,,,,,,completed,
+case-051,global,global retrieval,0,,,,,,,,,,completed,
+case-052,group,group / cross-tenant,1,0.0,0.0,1.0,2361.8,77035.7,2219,98,1598,384,completed,scored
+case-053,group,group / cross-tenant,1,1.0,1.0,1.0,913.6,80110.4,1852,95,1376,214,completed,scored
+case-054,single,single-profile factual,1,1.0,1.0,0.0,1190.8,17510.5,1992,105,1228,323,completed,scored
+case-055,multi,multi-profile,1,1.0,1.0,1.0,1303.9,20218.0,2091,156,1543,298,completed,scored
+case-056,single,single-profile factual,1,1.0,1.0,1.0,2101.4,6100.2,2115,291,1364,327,completed,scored
+case-057,single,single-profile factual,1,1.0,1.0,1.0,1479.7,8533.5,1997,163,1289,346,completed,scored
+case-058,group,group / cross-tenant,1,1.0,1.0,0.5,6823.3,12847.6,2008,558,1792,924,completed,scored
+case-059,group,group / cross-tenant,1,1.0,0.5,1.0,8880.9,43719.5,1787,871,1802,791,completed,scored
+case-060,group,group / cross-tenant,1,1.0,1.0,1.0,1031.2,17262.5,1702,72,1287,371,completed,scored

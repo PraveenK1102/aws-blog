@@ -1,0 +1,1062 @@
+[
+  {
+    "id": "case-001",
+    "question": "What time does the Morrow Bell ring, and what was the original purpose of ringing it?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What time does the Morrow Bell ring, and what was the original purpose of ringing it?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-002",
+    "question": "Does Pip-6 actually pollinate the flowers? What does it really do?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": true,
+    "a_needs": [
+      "Does Pip-6 actually pollinate the flowers?",
+      "What does Pip-6 really do?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": false,
+    "path": "A->B",
+    "b_code": "same_entity_state",
+    "b_rationale": "Both needs ask about attributes of the same entity, Pip-6.",
+    "b_latency": 2745.2,
+    "b_in": 651,
+    "b_out": 246,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-003",
+    "question": "What are the current Quiet Bloom hours, and were they always the same?",
+    "gt": "simple",
+    "category": "R5",
+    "a_compound": true,
+    "a_needs": [
+      "current Quiet Bloom hours",
+      "historical changes to Quiet Bloom hours"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": false,
+    "path": "A->B",
+    "b_code": "same_subject_temporal_comparison",
+    "b_rationale": "Both needs concern the same entity\u2019s hours over time.",
+    "b_latency": 1315.7,
+    "b_in": 644,
+    "b_out": 186,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-004",
+    "question": "Why wasn't QL-2D approved for passenger service on the Lantern Loop? Was charging wait time the problem?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": true,
+    "a_needs": [
+      "Why wasn't QL-2D approved for passenger service on the Lantern Loop?",
+      "Was charging wait time the problem?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": false,
+    "path": "A->B",
+    "b_code": "same_event_or_record",
+    "b_rationale": "Both facts concern the same approval decision and can be found in one source.",
+    "b_latency": 5150.8,
+    "b_in": 663,
+    "b_out": 585,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-005",
+    "question": "Why was the Hollow Stair still considered unverified after Zone South was surveyed, and what evidence supported each candidate?",
+    "gt": "ambiguous",
+    "category": "R2/R4",
+    "a_compound": true,
+    "a_needs": [
+      "Why was the Hollow Stair still considered unverified after Zone South was surveyed?",
+      "What evidence supported each candidate?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": false,
+    "path": "A->B",
+    "b_code": "same_event_or_record",
+    "b_rationale": "Both needs concern the same survey event and its outcome.",
+    "b_latency": 2167.0,
+    "b_in": 660,
+    "b_out": 243,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-006",
+    "question": "What is the current status and probable location of the Hollow Stair, and what new evidence caused the status to change?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What is the current status and probable location of the Hollow Stair, and what new evidence caused the status to change?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-007",
+    "question": "What was found inside the T41 box, and what evidence originally connected T41 to Elian Voss before discovery?",
+    "gt": "compound",
+    "category": "R2",
+    "a_compound": true,
+    "a_needs": [
+      "What was found inside the T41 box?",
+      "What evidence originally connected T41 to Elian Voss before discovery?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": false,
+    "path": "A->B",
+    "b_code": "same_entity_state",
+    "b_rationale": "Both facts describe attributes of the same T41 box.",
+    "b_latency": 1797.1,
+    "b_in": 664,
+    "b_out": 196,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-008",
+    "question": "Compare QL-2C and QL-2D for Lantern Loop use. Why was QL-2C unsuitable, and why did QL-2D still fail passenger approval?",
+    "gt": "compound",
+    "category": "R3",
+    "a_compound": true,
+    "a_needs": [
+      "Why was QL-2C unsuitable for Lantern Loop use?",
+      "Why did QL-2D fail passenger approval?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "QL-2C and QL-2D each have distinct reasons that are documented separately.",
+    "b_latency": 2045.6,
+    "b_in": 680,
+    "b_out": 221,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-009",
+    "question": "What charging/stabilization rule applies to QL-2C and QL-2D respectively?",
+    "gt": "compound",
+    "category": "R3",
+    "a_compound": true,
+    "a_needs": [
+      "charging/stabilization rule for QL-2C",
+      "charging/stabilization rule for QL-2D"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "QL-2C and QL-2D have distinct charging rules.",
+    "b_latency": 1262.2,
+    "b_in": 662,
+    "b_out": 170,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-014",
+    "question": "What is the emergency shutdown procedure for the Silverpine reactor?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "the emergency shutdown procedure for the Silverpine reactor"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-015",
+    "question": "What caused the Ternlink outage at North Fen, and how many records were recovered?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What caused the Ternlink outage at North Fen, and how many records were recovered?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-016",
+    "question": "What caused the Ternlink outage at North Fen, and how many records were recovered?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What caused the Ternlink outage at North Fen, and how many records were recovered?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-017",
+    "question": "What was the highest Meral Index ever recorded, where and when?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What was the highest Meral Index ever recorded, where and when?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-018",
+    "question": "What is the highest Meral Index recorded in the network, and what temperature rule applies to cloud honey in Ember Tea?",
+    "gt": "compound",
+    "category": "R1",
+    "a_compound": true,
+    "a_needs": [
+      "highest Meral Index recorded in the network",
+      "temperature rule that applies to cloud honey in Ember Tea"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "The two facts concern unrelated systems and rules.",
+    "b_latency": 1545.1,
+    "b_in": 661,
+    "b_out": 165,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-019",
+    "question": "What is the highest Meral Index recorded in the Whisperglass network?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What is the highest Meral Index recorded in the Whisperglass network?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-020",
+    "question": "What evidence made Zone North probable, and what was later found inside T41?",
+    "gt": "compound",
+    "category": "R2",
+    "a_compound": true,
+    "a_needs": [
+      "What evidence made Zone North probable",
+      "what was later found inside T41"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "Zone North and T41 are distinct items with separate evidence and findings.",
+    "b_latency": 2761.8,
+    "b_in": 648,
+    "b_out": 188,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-021",
+    "question": "What was found inside the T41 box after it was opened?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What was found inside the T41 box after it was opened?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-022",
+    "question": "What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",
+    "gt": "compound",
+    "category": "R2",
+    "a_compound": true,
+    "a_needs": [
+      "highest Meral Index",
+      "why Hollow Stair remain unverified after Zone South"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "Different entities require separate evidence.",
+    "b_latency": 1546.9,
+    "b_in": 652,
+    "b_out": 164,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-023",
+    "question": "What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",
+    "gt": "compound",
+    "category": "R2",
+    "a_compound": true,
+    "a_needs": [
+      "highest Meral Index",
+      "reason Hollow Stair remained unverified after Zone South"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "Meral Index and Hollow Stair are distinct topics.",
+    "b_latency": 1399.9,
+    "b_in": 652,
+    "b_out": 169,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-024",
+    "question": "Does the Forty-Minute Rule still apply to the newest Quill Cell? Explain which versions require 40 minutes and which do not.",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "Does the Forty-Minute Rule still apply to the newest Quill Cell? Explain which versions require 40 minutes and which do not."
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-025",
+    "question": "Which battery is currently used by the Lantern Loop fleet, and why isn't QL-2D used despite its energy advantage?",
+    "gt": "ambiguous",
+    "category": "R2/R4",
+    "a_compound": true,
+    "a_needs": [
+      "Which battery is currently used by the Lantern Loop fleet",
+      "Why isn't QL-2D used despite its energy advantage?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "Different facts about separate battery policies.",
+    "b_latency": 1477.8,
+    "b_in": 666,
+    "b_out": 174,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-026",
+    "question": "Should an eastbound hiker still follow Foxstep at Red Compass Trail?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Should an eastbound hiker still follow Foxstep at Red Compass Trail?"
+    ],
+    "a_code": "negative_or_scope_check",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-027",
+    "question": "Can the Seven-Breath Test be used for a three-liter kettle of Ember Tea?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Can the Seven-Breath Test be used for a three-liter kettle of Ember Tea?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-028",
+    "question": "How much coffee is used in ET-R3?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "How much coffee is used in ET-R3?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-029",
+    "question": "Are Hollow Steps and Hollow Stair now believed to be the same place?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Are Hollow Steps and Hollow Stair now believed to be the same place?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-030",
+    "question": "How many seeds per tray were used in MS-E1, MS-E2 and MS-E3?",
+    "gt": "compound",
+    "category": "R3",
+    "a_compound": true,
+    "a_needs": [
+      "How many seeds per tray were used in MS-E1?",
+      "How many seeds per tray were used in MS-E2?",
+      "How many seeds per tray were used in MS-E3?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "Each experiment has its own documented seed count.",
+    "b_latency": 2544.6,
+    "b_in": 675,
+    "b_out": 170,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-031",
+    "question": "Can MS-E3 tell us whether Velin-4 performs better than plain water?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Does MS-E3 provide information on whether Velin-4 performs better than plain water?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-032",
+    "question": "Why did MS-E2 become the standard treatment instead of MS-E1?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "Why did MS-E2 become the standard treatment instead of MS-E1?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-033",
+    "question": "Trace MH-4408 from rerouting through arrival. Which pier did it actually leave from, on what vessel, and where did it arrive?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "Trace MH-4408 from rerouting through arrival: which pier did it actually leave from, on what vessel, and where did it arrive?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-034",
+    "question": "Was Pier Seven closed because a ship collided with it?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Was Pier Seven closed because a ship collided with it?"
+    ],
+    "a_code": "single_event_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-035",
+    "question": "Is Harbor Shift Delta still active?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Is Harbor Shift Delta still active?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-036",
+    "question": "Did WG-03 stop measuring weather when Ternlink failed?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Did WG-03 stop measuring weather when Ternlink failed?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-037",
+    "question": "What three conditions define a Rillback in the current Orrin Bluff rule?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What three conditions define a Rillback in the current Orrin Bluff rule?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-038",
+    "question": "Can Orrin Bluff Rillback thresholds automatically be applied to every Whisperglass station?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Can Orrin Bluff Rillback thresholds automatically be applied to every Whisperglass station?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-039",
+    "question": "Has the network ever recorded Meral 12?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Has the network ever recorded Meral 12?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-040",
+    "question": "Does the 16:20 Morrow Bell tell visitors Sable Library is closing?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Does the 16:20 Morrow Bell tell visitors Sable Library is closing?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-041",
+    "question": "Why is a blue ribbon appropriate at Sable Library but inappropriate in Copper Orchard rover zones?",
+    "gt": "compound",
+    "category": "R1",
+    "a_compound": true,
+    "a_needs": [
+      "Why is a blue ribbon appropriate at Sable Library?",
+      "Why is a blue ribbon inappropriate in Copper Orchard rover zones?"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "different contexts require separate evidence.",
+    "b_latency": 2858.6,
+    "b_in": 658,
+    "b_out": 235,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-042",
+    "question": "How many flowers can Pip-6 pollinate per hour?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "How many flowers can Pip-6 pollinate per hour?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-043",
+    "question": "What changed between Pip-6's first trial and later 91% performance?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What changed between Pip-6's first trial and later 91% performance?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-044",
+    "question": "Once BF-233 could be scanned, was it cleared for unrestricted handling?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Was BF-233 cleared for unrestricted handling after it could be scanned?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-045",
+    "question": "Did opening T41 change Hollow Stair from probable to confirmed?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Did opening T41 change Hollow Stair from probable to confirmed?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-046",
+    "question": "What pressure threshold sends a Quill Cell to isolation, and how much korra peel is used in one ET-R3 flask?",
+    "gt": "compound",
+    "category": "R1",
+    "a_compound": true,
+    "a_needs": [
+      "pressure threshold sends a Quill Cell to isolation",
+      "amount of korra peel used in one ET-R3 flask"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "Different entities require separate evidence.",
+    "b_latency": 1652.3,
+    "b_in": 666,
+    "b_out": 174,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-047",
+    "question": "What is the current Quiet Bloom window, and what does Pip-6 actually do during it?",
+    "gt": "compound",
+    "category": "R2",
+    "a_compound": true,
+    "a_needs": [
+      "current Quiet Bloom window",
+      "what Pip-6 actually does during the Quiet Bloom window"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": false,
+    "path": "A->B",
+    "b_code": "same_event_or_record",
+    "b_rationale": "Both facts describe the same Quiet Bloom window event.",
+    "b_latency": 1662.1,
+    "b_in": 653,
+    "b_out": 194,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-052",
+    "question": "How many ORIOLE-K crates reached Kestrel Station Two?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "How many ORIOLE-K crates reached Kestrel Station Two?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-053",
+    "question": "How many ORIOLE-K crates reached Kestrel Station Two?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "How many ORIOLE-K crates reached Kestrel Station Two?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-054",
+    "question": "What did the T41 box contain?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What did the T41 box contain?"
+    ],
+    "a_code": "single_entity_multi_attribute",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-055",
+    "question": "What did the T41 box contain?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "What did the T41 box contain?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-056",
+    "question": "If an old post says Quiet Bloom ends at 07:00, should I use 07:00 as current?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": true,
+    "a_needs": [
+      "old post says Quiet Bloom ends at 07:00",
+      "current end time of Quiet Bloom"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "old post and current schedule are separate records",
+    "b_latency": 2255.7,
+    "b_in": 660,
+    "b_out": 253,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-057",
+    "question": "Should Hollow Stair still be described as unverified?",
+    "gt": "simple",
+    "category": "R6",
+    "a_compound": false,
+    "a_needs": [
+      "Should Hollow Stair still be described as unverified?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-058",
+    "question": "How did evidence evolve from the 1984/1991 records to final probable Zone North classification?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "How did evidence evolve from the 1984/1991 records to final probable Zone North classification?"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-059",
+    "question": "Summarize how MS-E1, MS-E2 and MS-E3 changed what the team was testing.",
+    "gt": "simple",
+    "category": "R7",
+    "a_compound": true,
+    "a_needs": [
+      "How MS-E1 changed what the team was testing",
+      "How MS-E2 changed what the team was testing",
+      "How MS-E3 changed what the team was testing"
+    ],
+    "a_code": "multiple_independent_retrieval_needs",
+    "final_compound": true,
+    "path": "A->B",
+    "b_code": "independent_evidence_neighborhoods",
+    "b_rationale": "each MS-Ex is a distinct change requiring separate evidence",
+    "b_latency": 2079.8,
+    "b_in": 674,
+    "b_out": 240,
+    "b_parse_ok": true,
+    "b_parse_error": null
+  },
+  {
+    "id": "case-060",
+    "question": "What were the final results of MS-E4?",
+    "gt": "simple",
+    "category": "R4",
+    "a_compound": false,
+    "a_needs": [
+      "final results of MS-E4"
+    ],
+    "a_code": "single_retrieval_need",
+    "final_compound": false,
+    "path": "A only",
+    "b_code": null,
+    "b_rationale": null,
+    "b_latency": null,
+    "b_in": null,
+    "b_out": null,
+    "b_parse_ok": null,
+    "b_parse_error": null
+  }
+]

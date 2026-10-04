@@ -1,0 +1,28 @@
+# Kubernetes Service for the Ask FastAPI backend.
+#
+# ClusterIP (the default) gives the Deployment a single, stable in-cluster
+# address + DNS name (ask.<namespace>.svc.cluster.local). It load-balances
+# across every Pod whose labels match the selector below.
+#
+# ClusterIP is reachable only from INSIDE the cluster. To reach it from your
+# laptop for local testing, port-forward:
+#   kubectl port-forward svc/ask 8080:8080
+#   curl http://localhost:8080/health   # -> {"ok":true}
+#
+# NO Ingress / no LoadBalancer / no ALB in this step (later learning steps).
+apiVersion: v1
+kind: Service
+metadata:
+  name: ask
+  labels:
+    app: ask
+spec:
+  type: ClusterIP
+  # Selects the Pods created by ask-deployment.yaml (matching label app: ask).
+  selector:
+    app: ask
+  ports:
+    - name: http
+      port: 8080          # port the Service exposes inside the cluster
+      targetPort: 8080    # containerPort on the Pod it forwards to
+      protocol: TCP

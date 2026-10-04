@@ -1,0 +1,20 @@
+metric,original_labels,adjudicated_labels
+positives,3,11
+negatives,49,39
+ambiguous_excluded,0,2
+scored_cases,52,50
+TP,3,11
+FP,15,5
+TN,34,34
+FN,0,0
+compound_precision,0.1667,0.6875
+compound_recall,1.0,1.0
+compound_f1,0.2857,0.8148
+simple_specificity,0.6939,0.8718
+routing_accuracy,0.7115,0.9
+false_positive_decomposition_rate,0.3061,0.1282
+false_negative_compound_rate,0.0,0.0
+verdict,FAIL,NOT ACCEPTED
+nvidia_20b_calls,58,0
+nvidia_120b_calls,0,0
+groq_calls,0,0

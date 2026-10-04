@@ -1,0 +1,239 @@
+{
+  "experiment": "compound-router-v4",
+  "fingerprint_hash": "978d0ae1f8a89462",
+  "prompt_sha": "e0439db6159e5d5b",
+  "model": "openai/gpt-oss-20b",
+  "temperature": 0.0,
+  "structured_output_version": "router-v4-atomic-evidence-units-1",
+  "provider": {
+    "groq_calls": 0,
+    "nvidia_120b_calls": 0,
+    "nvidia_20b_calls": 52
+  },
+  "holdout_executed": false,
+  "development": {
+    "scored": 50,
+    "unscorable": 3,
+    "unscorable_cases": [
+      {
+        "id": "case-002",
+        "parse_error": "unit_retrieval_query_empty"
+      },
+      {
+        "id": "case-038",
+        "parse_error": "unit_retrieval_query_empty"
+      },
+      {
+        "id": "case-040",
+        "parse_error": "unit_retrieval_query_empty"
+      }
+    ],
+    "confusion_matrix_covers_all": false,
+    "parseable_scored": 47,
+    "TP": 9,
+    "FP": 3,
+    "TN": 33,
+    "FN": 2,
+    "TP_cases": [
+      "case-008",
+      "case-009",
+      "case-018",
+      "case-020",
+      "case-022",
+      "case-023",
+      "case-030",
+      "case-041",
+      "case-046"
+    ],
+    "FP_cases": [
+      "case-056",
+      "case-058",
+      "case-059"
+    ],
+    "FN_cases": [
+      "case-007",
+      "case-047"
+    ],
+    "compound_precision": 0.75,
+    "compound_recall": 0.8182,
+    "compound_f1": 0.7826,
+    "simple_specificity": 0.9167,
+    "routing_accuracy": 0.8936,
+    "routing_accuracy_full_denominator": 0.84,
+    "false_positive_decomposition_rate": 0.0833,
+    "false_negative_compound_rate": 0.1818,
+    "parse_ok": 47,
+    "parse_errors": [
+      {
+        "id": "case-002",
+        "error": "unit_retrieval_query_empty"
+      },
+      {
+        "id": "case-038",
+        "error": "unit_retrieval_query_empty"
+      },
+      {
+        "id": "case-040",
+        "error": "unit_retrieval_query_empty"
+      }
+    ],
+    "latency_ms": {
+      "mean": 6794.9,
+      "p50": 4677.1,
+      "p95": 19251.7,
+      "max": 20415.8
+    },
+    "tokens": {
+      "input_mean": 795.0,
+      "output_mean": 428.6,
+      "input_total": 39752,
+      "output_total": 21430
+    },
+    "reason_code_distribution": {
+      "multiple_evidence_neighborhoods": 12,
+      "one_entity_multi_attribute": 2,
+      "one_event_multi_consequence": 1,
+      "single_evidence_neighborhood": 30,
+      "verification_same_subject": 2
+    },
+    "evidence_unit_count_distribution": {
+      "0": 3,
+      "1": 35,
+      "2": 10,
+      "3": 2
+    },
+    "by_category": {
+      "R4": {
+        "n": 21,
+        "gt": "simple",
+        "correct": 20,
+        "wrong_ids": [
+          "case-058"
+        ],
+        "score": 0.9524,
+        "metric_name": "specificity"
+      },
+      "R5": {
+        "n": 1,
+        "gt": "simple",
+        "correct": 1,
+        "wrong_ids": [],
+        "score": 1.0,
+        "metric_name": "specificity"
+      },
+      "R2": {
+        "n": 5,
+        "gt": "compound",
+        "correct": 3,
+        "wrong_ids": [
+          "case-007",
+          "case-047"
+        ],
+        "score": 0.6,
+        "metric_name": "recall"
+      },
+      "R3": {
+        "n": 3,
+        "gt": "compound",
+        "correct": 3,
+        "wrong_ids": [],
+        "score": 1.0,
+        "metric_name": "recall"
+      },
+      "R1": {
+        "n": 3,
+        "gt": "compound",
+        "correct": 3,
+        "wrong_ids": [],
+        "score": 1.0,
+        "metric_name": "recall"
+      },
+      "R6": {
+        "n": 16,
+        "gt": "simple",
+        "correct": 15,
+        "wrong_ids": [
+          "case-056"
+        ],
+        "score": 0.9375,
+        "metric_name": "specificity"
+      },
+      "R7": {
+        "n": 1,
+        "gt": "simple",
+        "correct": 0,
+        "wrong_ids": [
+          "case-059"
+        ],
+        "score": 0.0,
+        "metric_name": "specificity"
+      }
+    }
+  },
+  "diagnostic_cases": {
+    "case-030": {
+      "ground_truth": "compound",
+      "v4": "compound",
+      "units": 3,
+      "reason_code": "multiple_evidence_neighborhoods",
+      "parse_error": null,
+      "correct": true,
+      "status": "ok"
+    },
+    "case-041": {
+      "ground_truth": "compound",
+      "v4": "compound",
+      "units": 2,
+      "reason_code": "multiple_evidence_neighborhoods",
+      "parse_error": null,
+      "correct": true,
+      "status": "ok"
+    },
+    "case-002": {
+      "ground_truth": "simple",
+      "v4": "UNPARSED",
+      "units": 0,
+      "reason_code": null,
+      "parse_error": "unit_retrieval_query_empty",
+      "correct": null,
+      "status": "UNSCORABLE"
+    },
+    "case-004": {
+      "ground_truth": "simple",
+      "v4": "simple",
+      "units": 1,
+      "reason_code": "single_evidence_neighborhood",
+      "parse_error": null,
+      "correct": true,
+      "status": "ok"
+    },
+    "case-056": {
+      "ground_truth": "simple",
+      "v4": "compound",
+      "units": 2,
+      "reason_code": "multiple_evidence_neighborhoods",
+      "parse_error": null,
+      "correct": false,
+      "status": "MISS"
+    },
+    "case-059": {
+      "ground_truth": "simple",
+      "v4": "compound",
+      "units": 3,
+      "reason_code": "multiple_evidence_neighborhoods",
+      "parse_error": null,
+      "correct": false,
+      "status": "MISS"
+    },
+    "case-003": {
+      "ground_truth": "simple",
+      "v4": "simple",
+      "units": 1,
+      "reason_code": "single_evidence_neighborhood",
+      "parse_error": null,
+      "correct": true,
+      "status": "ok"
+    }
+  },
+  "development_gate": null
+}

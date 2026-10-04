@@ -1,0 +1,61 @@
+case_id,route,scenario,retrieval_candidate_count,llm_context_chunk_count,llm_context_estimated_tokens,distinct_posts_top5,distinct_tenants_top5,distinct_posts_candidates,distinct_tenants_candidates,score_top1,score_top5,score_top10,gap_top1_top5,gap_top5_top10,max_chunks_from_one_post_top5,only_one_source_post_top5,is_refusal,top_dense,answer_correctness,answer_completeness,answer_groundedness
+case-001,single,exact fact / identifier,5,5,2475,1,1,1,1,0.59091,0.30556,,0.28535,,5,True,False,0.5471,1.0,1.0,1.0
+case-002,single,single-profile factual,5,5,2428,2,1,2,1,0.57692,0.375,,0.20192,,3,False,False,0.4307,1.0,1.0,1.0
+case-003,single,temporal / latest-state,5,5,2474,1,1,1,1,0.625,0.34286,,0.28214,,5,True,False,0.626,0.5,1.0,0.5
+case-004,multi,cross-document synthesis,10,5,1965,1,1,1,1,1.0,0.27143,0.20667,0.72857,0.06476,5,True,False,0.5701,1.0,1.0,1.0
+case-005,group,group / cross-tenant,10,5,2462,2,1,4,2,0.55556,0.29348,0.2,0.26208,0.09348,4,False,False,0.587,1.0,0.5,1.0
+case-006,group,temporal / latest-state,10,5,1968,1,1,1,1,1.0,0.29,0.20115,0.71,0.08885,5,True,False,0.7566,1.0,1.0,1.0
+case-007,multi,multi-profile,10,5,2452,3,1,3,1,0.64286,0.33333,0.17692,0.30953,0.15641,3,False,False,0.5405,1.0,1.0,1.0
+case-008,multi,multi-profile,10,5,1919,2,2,2,2,0.66667,0.29762,0.2,0.36905,0.09762,3,False,False,0.6374,0.0,0.0,0.0
+case-009,multi,exact fact / identifier,10,5,2415,2,1,2,1,0.83333,0.28571,0.2,0.54762,0.08571,4,False,False,0.513,1.0,1.0,1.0
+case-010,global,global retrieval,10,,,,,1,,,,,,,,,,,,,
+case-011,global,global retrieval,10,,,,,2,,,,,,,,,,,,,
+case-012,global,global retrieval,10,,,,,2,,,,,,,,,,,,,
+case-013,global,global retrieval,10,,,,,1,,,,,,,,,,,,,
+case-014,single,negative / scope isolation,5,5,2466,2,1,2,1,0.55,0.325,,0.225,,3,False,True,0.1759,1.0,1.0,0.0
+case-015,group,negative / scope isolation,10,5,2431,1,1,3,2,0.54762,0.33333,0.16667,0.21429,0.16666,5,True,True,0.2662,1.0,1.0,1.0
+case-016,group,group / cross-tenant,10,5,2511,1,1,1,1,0.64286,0.35,0.25,0.29286,0.1,5,True,False,0.7891,1.0,1.0,1.0
+case-017,multi,negative / scope isolation,10,5,2412,2,1,3,2,0.5,0.25,0.16667,0.25,0.08333,3,False,True,0.1692,1.0,1.0,1.0
+case-018,multi,compound multi-part,10,5,2348,2,1,2,1,0.5,0.29545,0.20115,0.20455,0.0943,4,False,True,0.552,0.0,0.0,0.5
+case-019,multi,multi-profile,10,5,2488,1,1,1,1,1.0,0.31111,0.165,0.68889,0.14611,5,True,False,0.5981,1.0,1.0,1.0
+case-020,multi,compound multi-part,10,5,2428,1,1,3,2,1.0,0.25,0.15726,0.75,0.09274,5,True,False,0.5801,0.0,0.0,0.0
+case-021,multi,multi-profile,10,5,2436,1,1,1,1,0.64286,0.4,0.2,0.24286,0.2,5,True,False,0.6224,1.0,1.0,1.0
+case-022,group,compound multi-part,10,5,2431,3,2,3,2,0.5,0.25,0.16667,0.25,0.08333,2,False,False,0.5728,0.0,0.0,1.0
+case-023,multi,multi-profile,10,5,2431,3,2,3,2,0.5,0.25,0.16667,0.25,0.08333,2,False,True,0.5728,0.0,0.0,0.0
+case-024,single,single-profile factual,5,5,1967,2,1,2,1,0.66667,0.325,,0.34167,,4,False,False,0.7847,0.0,0.0,0.5
+case-025,single,single-profile factual,5,5,2465,1,1,1,1,1.0,0.27778,,0.72222,,5,True,False,0.5755,1.0,1.0,1.0
+case-026,single,single-profile factual,5,5,2435,1,1,1,1,1.0,0.39286,,0.60714,,5,True,False,0.6379,0.0,0.0,0.5
+case-027,single,single-profile factual,5,5,2516,1,1,1,1,1.0,0.36111,,0.63889,,5,True,False,0.6447,1.0,1.0,1.0
+case-028,single,single-profile factual,5,5,2442,1,1,1,1,0.58333,0.33333,,0.25,,5,True,False,0.3605,1.0,1.0,1.0
+case-029,group,group / cross-tenant,10,5,1943,3,2,3,2,0.5,0.30556,0.16667,0.19444,0.13889,2,False,False,0.6209,1.0,1.0,1.0
+case-030,group,group / cross-tenant,10,5,2460,2,2,2,2,0.7,0.28226,0.14559,0.41774,0.13667,3,False,False,0.6231,0.0,0.0,1.0
+case-031,group,group / cross-tenant,10,5,2393,1,1,1,1,0.83333,0.36667,0.17361,0.46666,0.19306,5,True,False,0.5035,1.0,1.0,1.0
+case-032,group,group / cross-tenant,10,5,1470,2,2,2,2,0.7,0.25,0.14286,0.45,0.10714,4,False,True,0.5219,0.0,0.0,0.0
+case-033,group,group / cross-tenant,10,5,2439,2,2,3,2,0.53846,0.25,0.19048,0.28846,0.05952,3,False,False,0.395,0.0,0.5,1.0
+case-034,group,group / cross-tenant,10,5,1989,1,1,1,1,0.83333,0.3125,0.19643,0.52083,0.11607,5,True,False,0.8092,1.0,1.0,1.0
+case-035,group,group / cross-tenant,10,5,2454,2,1,2,1,0.61111,0.33333,0.2,0.27778,0.13333,4,False,False,0.4671,1.0,1.0,1.0
+case-036,group,group / cross-tenant,10,5,2452,2,1,3,1,1.0,0.31111,0.22917,0.68889,0.08194,4,False,False,0.6444,1.0,1.0,1.0
+case-037,single,single-profile factual,5,5,2447,2,1,2,1,1.0,0.30882,,0.69118,,4,False,False,0.4855,1.0,1.0,1.0
+case-038,single,single-profile factual,5,5,1991,2,1,2,1,0.66667,0.30952,,0.35715,,4,False,False,0.4656,1.0,1.0,1.0
+case-039,single,single-profile factual,5,5,1974,2,1,2,1,0.66667,0.25,,0.41667,,4,False,False,0.6255,1.0,0.5,1.0
+case-040,single,single-profile factual,5,5,2490,2,1,2,1,1.0,0.27778,,0.72222,,4,False,False,0.7264,1.0,0.5,1.0
+case-041,single,single-profile factual,5,5,2385,1,1,1,1,0.56667,0.3125,,0.25417,,5,True,False,0.5078,1.0,1.0,1.0
+case-042,single,single-profile factual,5,5,2423,2,1,2,1,0.7,0.31667,,0.38333,,3,False,False,0.4481,1.0,1.0,1.0
+case-043,single,single-profile factual,5,5,1939,1,1,1,1,1.0,0.30882,,0.69118,,5,True,False,0.5849,0.0,0.0,0.0
+case-044,single,single-profile factual,5,5,1957,2,1,2,1,0.5,0.33333,,0.16667,,3,False,False,0.5348,1.0,1.0,1.0
+case-045,single,single-profile factual,5,5,2433,1,1,1,1,0.66667,0.36667,,0.3,,5,True,False,0.625,0.0,0.0,0.0
+case-046,multi,multi-profile,10,5,2433,2,2,3,2,0.75,0.25,0.18254,0.5,0.06746,3,False,False,0.375,1.0,1.0,1.0
+case-047,multi,multi-profile,10,5,2492,1,1,1,1,1.0,0.375,0.20168,0.625,0.17332,5,True,False,0.5964,1.0,1.0,1.0
+case-048,global,global retrieval,10,,,,,1,,,,,,,,,,,,,
+case-049,global,global retrieval,10,,,,,4,,,,,,,,,,,,,
+case-050,global,global retrieval,10,,,,,2,,,,,,,,,,,,,
+case-051,global,global retrieval,10,,,,,1,,,,,,,,,,,,,
+case-052,group,group / cross-tenant,10,5,2403,1,1,1,1,1.0,0.34286,0.18254,0.65714,0.16032,5,True,False,0.7621,0.0,0.0,1.0
+case-053,group,group / cross-tenant,10,5,1932,1,1,1,1,1.0,0.325,0.17361,0.675,0.15139,5,True,False,0.7621,1.0,1.0,1.0
+case-054,single,single-profile factual,5,5,1931,2,1,2,1,0.56667,0.33333,,0.23334,,4,False,True,0.1698,1.0,1.0,0.0
+case-055,multi,multi-profile,10,5,2436,2,1,2,1,0.83333,0.34091,0.1875,0.49242,0.15341,4,False,False,0.6657,1.0,1.0,1.0
+case-056,single,single-profile factual,5,5,1989,2,1,2,1,0.75,0.32143,,0.42857,,4,False,False,0.4367,1.0,1.0,1.0
+case-057,single,single-profile factual,5,5,1895,2,1,2,1,0.5,0.25,,0.25,,3,False,False,0.6159,1.0,1.0,1.0
+case-058,group,group / cross-tenant,10,5,2417,3,2,3,2,0.57692,0.325,0.20833,0.25192,0.11667,3,False,False,0.3863,1.0,1.0,0.5
+case-059,group,group / cross-tenant,10,5,1950,4,3,4,3,0.58333,0.25,0.16667,0.33333,0.08333,2,False,False,0.5183,1.0,0.5,1.0
+case-060,group,group / cross-tenant,10,5,1898,1,1,1,1,0.6,0.34091,0.2,0.25909,0.14091,5,True,True,0.617,1.0,1.0,1.0

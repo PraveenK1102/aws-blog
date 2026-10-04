@@ -1,0 +1,36 @@
+{
+  "experiment": "compound-router-v2-high-recall-holdout-v1",
+  "candidate": "frozen router_v2 (unmodified)",
+  "router_model": "openai/gpt-oss-20b",
+  "temperature": 0.0,
+  "router_prompt_sha": "763d12cd82245285",
+  "router_reason_codes": [
+    "multiple_independent_retrieval_needs",
+    "single_retrieval_need",
+    "single_entity_multi_attribute",
+    "single_event_multi_attribute",
+    "negative_or_scope_check"
+  ],
+  "holdout_sha256": "0957b7bf8db137bad6e35f1495f5953e636e87969b5173b0fd9101a1dfd233b8",
+  "acceptance_thresholds": {
+    "recall": 0.95,
+    "specificity": 0.8,
+    "precision": 0.8
+  },
+  "category_guards": {
+    "compound_without_and": 0.75,
+    "contrast_verification": 0.75
+  },
+  "concurrency": 1,
+  "timeout_s": 120,
+  "max_tokens": 1500,
+  "repo_head": "96db9a75e32acfa2ac7e46aec00689035b9bb86f",
+  "retrieval_performed": false,
+  "generation_performed": false,
+  "judging_performed": false,
+  "langgraph_used": false,
+  "verifier_used": false,
+  "v3_used": false,
+  "v4_used": false,
+  "fingerprint_hash": "ef077ea13547d7d3"
+}

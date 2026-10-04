@@ -1,0 +1,189 @@
+{
+  "experiment": "compound-router-v3",
+  "fingerprint_hash": "a270bd5888461d60",
+  "prompt_sha": "e148925f8098d9e8",
+  "model": "openai/gpt-oss-20b",
+  "temperature": 0.0,
+  "structured_output_version": "router-v3-retrieval-plan-1",
+  "provider": {
+    "groq_calls": 0,
+    "nvidia_120b_calls": 0,
+    "nvidia_20b_calls": 52
+  },
+  "development": {
+    "scored": 50,
+    "TP": 9,
+    "FP": 1,
+    "TN": 38,
+    "FN": 2,
+    "TP_cases": [
+      "case-007",
+      "case-008",
+      "case-009",
+      "case-018",
+      "case-020",
+      "case-022",
+      "case-023",
+      "case-046",
+      "case-047"
+    ],
+    "FP_cases": [
+      "case-003"
+    ],
+    "FN_cases": [
+      "case-030",
+      "case-041"
+    ],
+    "compound_precision": 0.9,
+    "compound_recall": 0.8182,
+    "compound_f1": 0.8572,
+    "simple_specificity": 0.9744,
+    "routing_accuracy": 0.94,
+    "false_positive_decomposition_rate": 0.0256,
+    "false_negative_compound_rate": 0.1818,
+    "parse_ok": 50,
+    "latency_ms": {
+      "mean": 7698.8,
+      "p50": 5178.2,
+      "p95": 20123.0,
+      "max": 23958.2
+    },
+    "tokens": {
+      "input_mean": 647.0,
+      "output_mean": 402.6,
+      "input_total": 32352,
+      "output_total": 20128
+    },
+    "reason_code_distribution": {
+      "multiple_independent_retrieval_targets": 10,
+      "single_entity_multi_attribute": 13,
+      "single_event_multi_consequence": 2,
+      "single_retrieval_target": 25
+    },
+    "retrieval_query_count_distribution": {
+      "1": 40,
+      "2": 10
+    },
+    "by_category": {
+      "R4": {
+        "n": 21,
+        "gt": "simple",
+        "correct": 21,
+        "wrong_ids": [],
+        "accuracy": 1.0,
+        "metric_name": "specificity"
+      },
+      "R5": {
+        "n": 1,
+        "gt": "simple",
+        "correct": 0,
+        "wrong_ids": [
+          "case-003"
+        ],
+        "accuracy": 0.0,
+        "metric_name": "specificity"
+      },
+      "R2": {
+        "n": 5,
+        "gt": "compound",
+        "correct": 5,
+        "wrong_ids": [],
+        "accuracy": 1.0,
+        "metric_name": "recall"
+      },
+      "R3": {
+        "n": 3,
+        "gt": "compound",
+        "correct": 2,
+        "wrong_ids": [
+          "case-030"
+        ],
+        "accuracy": 0.6667,
+        "metric_name": "recall"
+      },
+      "R1": {
+        "n": 3,
+        "gt": "compound",
+        "correct": 2,
+        "wrong_ids": [
+          "case-041"
+        ],
+        "accuracy": 0.6667,
+        "metric_name": "recall"
+      },
+      "R6": {
+        "n": 16,
+        "gt": "simple",
+        "correct": 16,
+        "wrong_ids": [],
+        "accuracy": 1.0,
+        "metric_name": "specificity"
+      },
+      "R7": {
+        "n": 1,
+        "gt": "simple",
+        "correct": 1,
+        "wrong_ids": [],
+        "accuracy": 1.0,
+        "metric_name": "specificity"
+      }
+    }
+  },
+  "v2_false_positive_outcomes": {
+    "case-002": {
+      "v2": "compound (FP)",
+      "v3": "simple (FIXED)",
+      "reason_code": "single_entity_multi_attribute",
+      "queries": 1
+    },
+    "case-003": {
+      "v2": "compound (FP)",
+      "v3": "compound (still FP)",
+      "reason_code": "multiple_independent_retrieval_targets",
+      "queries": 2
+    },
+    "case-004": {
+      "v2": "compound (FP)",
+      "v3": "simple (FIXED)",
+      "reason_code": "single_retrieval_target",
+      "queries": 1
+    },
+    "case-056": {
+      "v2": "compound (FP)",
+      "v3": "simple (FIXED)",
+      "reason_code": "single_retrieval_target",
+      "queries": 1
+    },
+    "case-059": {
+      "v2": "compound (FP)",
+      "v3": "simple (FIXED)",
+      "reason_code": "single_entity_multi_attribute",
+      "queries": 1
+    }
+  },
+  "development_gate": {
+    "passed": false,
+    "precision": 0.9,
+    "recall": 0.8182,
+    "specificity": 0.9744,
+    "accuracy": 0.94,
+    "f1": 0.8572,
+    "thresholds": {
+      "recall": 0.9,
+      "specificity": 0.9,
+      "precision": 0.8
+    },
+    "TP": 9,
+    "FP": 1,
+    "TN": 38,
+    "FN": 2,
+    "FP_cases": [
+      "case-003"
+    ],
+    "FN_cases": [
+      "case-030",
+      "case-041"
+    ],
+    "fingerprint_hash": "a270bd5888461d60"
+  }
+}

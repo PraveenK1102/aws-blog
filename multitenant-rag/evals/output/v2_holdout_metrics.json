@@ -1,0 +1,191 @@
+{
+  "experiment": "compound-router-v2-high-recall-holdout-v1",
+  "fingerprint_hash": "ef077ea13547d7d3",
+  "holdout_sha256": "0957b7bf8db137bad6e35f1495f5953e636e87969b5173b0fd9101a1dfd233b8",
+  "router_prompt_sha": "763d12cd82245285",
+  "scored": 40,
+  "TP": 20,
+  "FP": 1,
+  "TN": 19,
+  "FN": 0,
+  "compound_precision": 0.9524,
+  "compound_recall": 1.0,
+  "compound_f1": 0.9756,
+  "simple_specificity": 0.95,
+  "routing_accuracy": 0.975,
+  "false_positive_decomposition_rate": 0.05,
+  "false_negative_compound_rate": 0.0,
+  "parse_ok": 40,
+  "by_category": {
+    "simple_with_and": {
+      "n": 4,
+      "gt": "simple",
+      "correct": 3,
+      "wrong": [
+        "hold-001"
+      ],
+      "score": 0.75,
+      "metric": "specificity"
+    },
+    "single_entity_multi_attribute": {
+      "n": 4,
+      "gt": "simple",
+      "correct": 4,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "specificity"
+    },
+    "contrast_verification": {
+      "n": 3,
+      "gt": "simple",
+      "correct": 3,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "specificity"
+    },
+    "temporal_before_after": {
+      "n": 3,
+      "gt": "simple",
+      "correct": 3,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "specificity"
+    },
+    "negative_scope": {
+      "n": 2,
+      "gt": "simple",
+      "correct": 2,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "specificity"
+    },
+    "same_event_multi_consequence": {
+      "n": 2,
+      "gt": "simple",
+      "correct": 2,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "specificity"
+    },
+    "series_synthesis": {
+      "n": 2,
+      "gt": "simple",
+      "correct": 2,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "specificity"
+    },
+    "compound_without_and": {
+      "n": 4,
+      "gt": "compound",
+      "correct": 4,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "recall"
+    },
+    "unrelated_domain": {
+      "n": 4,
+      "gt": "compound",
+      "correct": 4,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "recall"
+    },
+    "different_entity": {
+      "n": 4,
+      "gt": "compound",
+      "correct": 4,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "recall"
+    },
+    "different_event": {
+      "n": 3,
+      "gt": "compound",
+      "correct": 3,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "recall"
+    },
+    "different_time": {
+      "n": 3,
+      "gt": "compound",
+      "correct": 3,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "recall"
+    },
+    "single_clause_compound": {
+      "n": 2,
+      "gt": "compound",
+      "correct": 2,
+      "wrong": [],
+      "score": 1.0,
+      "metric": "recall"
+    }
+  },
+  "false_positives": [
+    {
+      "id": "hold-001",
+      "question": "What does the Forty-Minute Rule require and which Quill Cell version introduced it?",
+      "category": "simple_with_and",
+      "reason_code": "multiple_independent_retrieval_needs",
+      "information_needs": [
+        "What does the Forty-Minute Rule require?",
+        "Which Quill Cell version introduced the Forty-Minute Rule?"
+      ]
+    }
+  ],
+  "false_negatives": [],
+  "latency_ms": {
+    "mean": 4217.4,
+    "p50": 3519.8,
+    "p95": 8520.7,
+    "max": 16996.9
+  },
+  "tokens": {
+    "input_mean": 517.8,
+    "output_mean": 255.3,
+    "input_total": 20712,
+    "output_total": 10213
+  },
+  "reason_code_distribution": {
+    "multiple_independent_retrieval_needs": 21,
+    "single_entity_multi_attribute": 9,
+    "single_event_multi_attribute": 1,
+    "single_retrieval_need": 9
+  },
+  "acceptance": {
+    "thresholds": {
+      "recall": 0.95,
+      "specificity": 0.8,
+      "precision": 0.8
+    },
+    "core_results": {
+      "recall": true,
+      "specificity": true,
+      "precision": true
+    },
+    "category_guards": {
+      "compound_without_and": {
+        "required": 0.75,
+        "actual": 1.0,
+        "pass": true
+      },
+      "contrast_verification": {
+        "required": 0.75,
+        "actual": 1.0,
+        "pass": true
+      }
+    },
+    "verdict": "PASS"
+  },
+  "provider": {
+    "nvidia_20b_requests": 40,
+    "nvidia_20b_successes": 40,
+    "nvidia_20b_timeouts": 0,
+    "nvidia_20b_429": 0,
+    "nvidia_120b_calls": 0,
+    "groq_calls": 0
+  }
+}

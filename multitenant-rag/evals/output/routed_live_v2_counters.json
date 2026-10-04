@@ -1,0 +1,14 @@
+{
+  "nvidia_decompose": 18,
+  "nvidia_final_gen": 15,
+  "nvidia_total": 36,
+  "titan_embed": 34,
+  "qdrant_logical_branches": 34,
+  "qdrant_dense_probe": 34,
+  "qdrant_hybrid_rrf": 34,
+  "qdrant_physical": 68,
+  "bm25_encode": 34,
+  "groq": 0,
+  "nvidia_120b": 0,
+  "router_v2": 0
+}

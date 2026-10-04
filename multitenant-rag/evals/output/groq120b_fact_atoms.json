@@ -1,0 +1,8 @@
+{
+  "atoms_total": 213,
+  "nvidia20b": 136,
+  "groq120b": 139,
+  "per_case_groq_higher": 5,
+  "per_case_nvidia_higher": 4,
+  "per_case_equal": 9
+}

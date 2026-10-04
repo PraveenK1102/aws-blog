@@ -1,0 +1,314 @@
+[
+  {
+    "case_id": "case-001",
+    "question": "What time does the Morrow Bell ring, and what was the original purpose of ringing it?",
+    "normalized_question": "What time does the Morrow Bell ring, and what was the original purpose of ringing it?",
+    "normalized_question_hash": "a1da14d9e0422f13"
+  },
+  {
+    "case_id": "case-002",
+    "question": "Does Pip-6 actually pollinate the flowers? What does it really do?",
+    "normalized_question": "Does Pip-6 actually pollinate the flowers? What does it really do?",
+    "normalized_question_hash": "649a6ebd9272811c"
+  },
+  {
+    "case_id": "case-003",
+    "question": "What are the current Quiet Bloom hours, and were they always the same?",
+    "normalized_question": "What are the current Quiet Bloom hours, and were they always the same?",
+    "normalized_question_hash": "3c9f16fd779b7c17"
+  },
+  {
+    "case_id": "case-004",
+    "question": "Why wasn't QL-2D approved for passenger service on the Lantern Loop? Was charging wait time the problem?",
+    "normalized_question": "Why wasn't QL-2D approved for passenger service on the Lantern Loop? Was charging wait time the problem?",
+    "normalized_question_hash": "01ba5033b88a37cc"
+  },
+  {
+    "case_id": "case-005",
+    "question": "Why was the Hollow Stair still considered unverified after Zone South was surveyed, and what evidence supported each candidate?",
+    "normalized_question": "Why was the Hollow Stair still considered unverified after Zone South was surveyed, and what evidence supported each candidate?",
+    "normalized_question_hash": "868f51c584b38f29"
+  },
+  {
+    "case_id": "case-006",
+    "question": "What is the current status and probable location of the Hollow Stair, and what new evidence caused the status to change?",
+    "normalized_question": "What is the current status and probable location of the Hollow Stair, and what new evidence caused the status to change?",
+    "normalized_question_hash": "c5f85fe56e1ba83a"
+  },
+  {
+    "case_id": "case-007",
+    "question": "What was found inside the T41 box, and what evidence originally connected T41 to Elian Voss before discovery?",
+    "normalized_question": "What was found inside the T41 box, and what evidence originally connected T41 to Elian Voss before discovery?",
+    "normalized_question_hash": "712ebb6460eff584"
+  },
+  {
+    "case_id": "case-008",
+    "question": "Compare QL-2C and QL-2D for Lantern Loop use. Why was QL-2C unsuitable, and why did QL-2D still fail passenger approval?",
+    "normalized_question": "Compare QL-2C and QL-2D for Lantern Loop use. Why was QL-2C unsuitable, and why did QL-2D still fail passenger approval?",
+    "normalized_question_hash": "9dbe4204e9283ede"
+  },
+  {
+    "case_id": "case-009",
+    "question": "What charging/stabilization rule applies to QL-2C and QL-2D respectively?",
+    "normalized_question": "What charging/stabilization rule applies to QL-2C and QL-2D respectively?",
+    "normalized_question_hash": "c9254aa92df6b5b2"
+  },
+  {
+    "case_id": "case-014",
+    "question": "What is the emergency shutdown procedure for the Silverpine reactor?",
+    "normalized_question": "What is the emergency shutdown procedure for the Silverpine reactor?",
+    "normalized_question_hash": "24c9b0189ec64f80"
+  },
+  {
+    "case_id": "case-015",
+    "question": "What caused the Ternlink outage at North Fen, and how many records were recovered?",
+    "normalized_question": "What caused the Ternlink outage at North Fen, and how many records were recovered?",
+    "normalized_question_hash": "1e23059a9273aded"
+  },
+  {
+    "case_id": "case-016",
+    "question": "What caused the Ternlink outage at North Fen, and how many records were recovered?",
+    "normalized_question": "What caused the Ternlink outage at North Fen, and how many records were recovered?",
+    "normalized_question_hash": "1e23059a9273aded"
+  },
+  {
+    "case_id": "case-017",
+    "question": "What was the highest Meral Index ever recorded, where and when?",
+    "normalized_question": "What was the highest Meral Index ever recorded, where and when?",
+    "normalized_question_hash": "73e945b6b5ce81d9"
+  },
+  {
+    "case_id": "case-018",
+    "question": "What is the highest Meral Index recorded in the network, and what temperature rule applies to cloud honey in Ember Tea?",
+    "normalized_question": "What is the highest Meral Index recorded in the network, and what temperature rule applies to cloud honey in Ember Tea?",
+    "normalized_question_hash": "b70f9cab56cdc24c"
+  },
+  {
+    "case_id": "case-019",
+    "question": "What is the highest Meral Index recorded in the Whisperglass network?",
+    "normalized_question": "What is the highest Meral Index recorded in the Whisperglass network?",
+    "normalized_question_hash": "cde1f746d27561f2"
+  },
+  {
+    "case_id": "case-020",
+    "question": "What evidence made Zone North probable, and what was later found inside T41?",
+    "normalized_question": "What evidence made Zone North probable, and what was later found inside T41?",
+    "normalized_question_hash": "b97868cedc351648"
+  },
+  {
+    "case_id": "case-021",
+    "question": "What was found inside the T41 box after it was opened?",
+    "normalized_question": "What was found inside the T41 box after it was opened?",
+    "normalized_question_hash": "7d36678932cabefd"
+  },
+  {
+    "case_id": "case-022",
+    "question": "What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",
+    "normalized_question": "What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",
+    "normalized_question_hash": "beb43143e30e81c3"
+  },
+  {
+    "case_id": "case-023",
+    "question": "What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",
+    "normalized_question": "What was the highest Meral Index, and why did Hollow Stair remain unverified after Zone South?",
+    "normalized_question_hash": "beb43143e30e81c3"
+  },
+  {
+    "case_id": "case-024",
+    "question": "Does the Forty-Minute Rule still apply to the newest Quill Cell? Explain which versions require 40 minutes and which do not.",
+    "normalized_question": "Does the Forty-Minute Rule still apply to the newest Quill Cell? Explain which versions require 40 minutes and which do not.",
+    "normalized_question_hash": "cf4d53a5c1a552e7"
+  },
+  {
+    "case_id": "case-025",
+    "question": "Which battery is currently used by the Lantern Loop fleet, and why isn't QL-2D used despite its energy advantage?",
+    "normalized_question": "Which battery is currently used by the Lantern Loop fleet, and why isn't QL-2D used despite its energy advantage?",
+    "normalized_question_hash": "7f2ce93d546dc3b4"
+  },
+  {
+    "case_id": "case-026",
+    "question": "Should an eastbound hiker still follow Foxstep at Red Compass Trail?",
+    "normalized_question": "Should an eastbound hiker still follow Foxstep at Red Compass Trail?",
+    "normalized_question_hash": "6ef31237d28a6523"
+  },
+  {
+    "case_id": "case-027",
+    "question": "Can the Seven-Breath Test be used for a three-liter kettle of Ember Tea?",
+    "normalized_question": "Can the Seven-Breath Test be used for a three-liter kettle of Ember Tea?",
+    "normalized_question_hash": "1ac21b7130d449a0"
+  },
+  {
+    "case_id": "case-028",
+    "question": "How much coffee is used in ET-R3?",
+    "normalized_question": "How much coffee is used in ET-R3?",
+    "normalized_question_hash": "15304334b367dd13"
+  },
+  {
+    "case_id": "case-029",
+    "question": "Are Hollow Steps and Hollow Stair now believed to be the same place?",
+    "normalized_question": "Are Hollow Steps and Hollow Stair now believed to be the same place?",
+    "normalized_question_hash": "730481ab8922380a"
+  },
+  {
+    "case_id": "case-030",
+    "question": "How many seeds per tray were used in MS-E1, MS-E2 and MS-E3?",
+    "normalized_question": "How many seeds per tray were used in MS-E1, MS-E2 and MS-E3?",
+    "normalized_question_hash": "bab5a2eec07dd9bd"
+  },
+  {
+    "case_id": "case-031",
+    "question": "Can MS-E3 tell us whether Velin-4 performs better than plain water?",
+    "normalized_question": "Can MS-E3 tell us whether Velin-4 performs better than plain water?",
+    "normalized_question_hash": "7ccea663565d94c0"
+  },
+  {
+    "case_id": "case-032",
+    "question": "Why did MS-E2 become the standard treatment instead of MS-E1?",
+    "normalized_question": "Why did MS-E2 become the standard treatment instead of MS-E1?",
+    "normalized_question_hash": "dd5c67b092fbcbda"
+  },
+  {
+    "case_id": "case-033",
+    "question": "Trace MH-4408 from rerouting through arrival. Which pier did it actually leave from, on what vessel, and where did it arrive?",
+    "normalized_question": "Trace MH-4408 from rerouting through arrival. Which pier did it actually leave from, on what vessel, and where did it arrive?",
+    "normalized_question_hash": "43ac437477c14aea"
+  },
+  {
+    "case_id": "case-034",
+    "question": "Was Pier Seven closed because a ship collided with it?",
+    "normalized_question": "Was Pier Seven closed because a ship collided with it?",
+    "normalized_question_hash": "ce030b6d6b462472"
+  },
+  {
+    "case_id": "case-035",
+    "question": "Is Harbor Shift Delta still active?",
+    "normalized_question": "Is Harbor Shift Delta still active?",
+    "normalized_question_hash": "e9d909410d060762"
+  },
+  {
+    "case_id": "case-036",
+    "question": "Did WG-03 stop measuring weather when Ternlink failed?",
+    "normalized_question": "Did WG-03 stop measuring weather when Ternlink failed?",
+    "normalized_question_hash": "adfaed52c7176c3d"
+  },
+  {
+    "case_id": "case-037",
+    "question": "What three conditions define a Rillback in the current Orrin Bluff rule?",
+    "normalized_question": "What three conditions define a Rillback in the current Orrin Bluff rule?",
+    "normalized_question_hash": "4ccbd221e0c94dd4"
+  },
+  {
+    "case_id": "case-038",
+    "question": "Can Orrin Bluff Rillback thresholds automatically be applied to every Whisperglass station?",
+    "normalized_question": "Can Orrin Bluff Rillback thresholds automatically be applied to every Whisperglass station?",
+    "normalized_question_hash": "400f0789e9f29730"
+  },
+  {
+    "case_id": "case-039",
+    "question": "Has the network ever recorded Meral 12?",
+    "normalized_question": "Has the network ever recorded Meral 12?",
+    "normalized_question_hash": "4461797f9d1a372f"
+  },
+  {
+    "case_id": "case-040",
+    "question": "Does the 16:20 Morrow Bell tell visitors Sable Library is closing?",
+    "normalized_question": "Does the 16:20 Morrow Bell tell visitors Sable Library is closing?",
+    "normalized_question_hash": "eba4e42c95913d09"
+  },
+  {
+    "case_id": "case-041",
+    "question": "Why is a blue ribbon appropriate at Sable Library but inappropriate in Copper Orchard rover zones?",
+    "normalized_question": "Why is a blue ribbon appropriate at Sable Library but inappropriate in Copper Orchard rover zones?",
+    "normalized_question_hash": "33ef9840fdcd60d9"
+  },
+  {
+    "case_id": "case-042",
+    "question": "How many flowers can Pip-6 pollinate per hour?",
+    "normalized_question": "How many flowers can Pip-6 pollinate per hour?",
+    "normalized_question_hash": "7e7fbd29f2e67247"
+  },
+  {
+    "case_id": "case-043",
+    "question": "What changed between Pip-6's first trial and later 91% performance?",
+    "normalized_question": "What changed between Pip-6's first trial and later 91% performance?",
+    "normalized_question_hash": "c5210d39bfd3bc31"
+  },
+  {
+    "case_id": "case-044",
+    "question": "Once BF-233 could be scanned, was it cleared for unrestricted handling?",
+    "normalized_question": "Once BF-233 could be scanned, was it cleared for unrestricted handling?",
+    "normalized_question_hash": "7bab9855d0ea0ffc"
+  },
+  {
+    "case_id": "case-045",
+    "question": "Did opening T41 change Hollow Stair from probable to confirmed?",
+    "normalized_question": "Did opening T41 change Hollow Stair from probable to confirmed?",
+    "normalized_question_hash": "95c461f492a262cf"
+  },
+  {
+    "case_id": "case-046",
+    "question": "What pressure threshold sends a Quill Cell to isolation, and how much korra peel is used in one ET-R3 flask?",
+    "normalized_question": "What pressure threshold sends a Quill Cell to isolation, and how much korra peel is used in one ET-R3 flask?",
+    "normalized_question_hash": "3216f60804d48b4f"
+  },
+  {
+    "case_id": "case-047",
+    "question": "What is the current Quiet Bloom window, and what does Pip-6 actually do during it?",
+    "normalized_question": "What is the current Quiet Bloom window, and what does Pip-6 actually do during it?",
+    "normalized_question_hash": "c7ec2412c2e9c498"
+  },
+  {
+    "case_id": "case-052",
+    "question": "How many ORIOLE-K crates reached Kestrel Station Two?",
+    "normalized_question": "How many ORIOLE-K crates reached Kestrel Station Two?",
+    "normalized_question_hash": "bde7bf4a2b165323"
+  },
+  {
+    "case_id": "case-053",
+    "question": "How many ORIOLE-K crates reached Kestrel Station Two?",
+    "normalized_question": "How many ORIOLE-K crates reached Kestrel Station Two?",
+    "normalized_question_hash": "bde7bf4a2b165323"
+  },
+  {
+    "case_id": "case-054",
+    "question": "What did the T41 box contain?",
+    "normalized_question": "What did the T41 box contain?",
+    "normalized_question_hash": "426c4b6194332bbc"
+  },
+  {
+    "case_id": "case-055",
+    "question": "What did the T41 box contain?",
+    "normalized_question": "What did the T41 box contain?",
+    "normalized_question_hash": "426c4b6194332bbc"
+  },
+  {
+    "case_id": "case-056",
+    "question": "If an old post says Quiet Bloom ends at 07:00, should I use 07:00 as current?",
+    "normalized_question": "If an old post says Quiet Bloom ends at 07:00, should I use 07:00 as current?",
+    "normalized_question_hash": "6524871e4350d312"
+  },
+  {
+    "case_id": "case-057",
+    "question": "Should Hollow Stair still be described as unverified?",
+    "normalized_question": "Should Hollow Stair still be described as unverified?",
+    "normalized_question_hash": "570d5a48c5e9e2c5"
+  },
+  {
+    "case_id": "case-058",
+    "question": "How did evidence evolve from the 1984/1991 records to final probable Zone North classification?",
+    "normalized_question": "How did evidence evolve from the 1984/1991 records to final probable Zone North classification?",
+    "normalized_question_hash": "224bb8fb95d25818"
+  },
+  {
+    "case_id": "case-059",
+    "question": "Summarize how MS-E1, MS-E2 and MS-E3 changed what the team was testing.",
+    "normalized_question": "Summarize how MS-E1, MS-E2 and MS-E3 changed what the team was testing.",
+    "normalized_question_hash": "6f07d110dd9debde"
+  },
+  {
+    "case_id": "case-060",
+    "question": "What were the final results of MS-E4?",
+    "normalized_question": "What were the final results of MS-E4?",
+    "normalized_question_hash": "c11daa0097ad3c15"
+  }
+]

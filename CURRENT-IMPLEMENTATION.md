@@ -50,6 +50,31 @@ CloudFront (EOV3277U5A8CF, d261g450savmee.cloudfront.net)
 - **Vector DB:** Qdrant Cloud (external). **Embeddings:** Titan Text V2 (dense) + fastembed BM25 (sparse). **LLM:** Groq `openai/gpt-oss-120b` (answers) + `openai/gpt-oss-20b` (small) — switched from Llama 3.x on 2026-08-22 (env-only) because the current Groq account lacks Llama models; see §15. **Auth:** custom JWT (bcrypt). **Cache:** Qdrant semantic cache. **Observability:** CloudWatch (deployed) + LangSmith (deployed; backend delivery pending an authed query).
 - History: EC2/ECS/ALB/RDS deleted 2026-07-25. Legacy `blog-backend/`, `blog-frontend-nextjs/` are dead (excluded from the zip).
 
+## 2b. Deployment forms of the ask backend (Lambda / local Docker / K8s-planned) — added 2026-09-06
+**One shared FastAPI application (`ask/app.py` + `ask/rag/` + `common/`), two thin deployment-specific Dockerfiles.** No fork of the app: the business logic, RAG graph, auth, ingestion trigger, Qdrant/Groq/Bedrock/DynamoDB/S3/SQS behavior are byte-identical across forms. The only per-form difference is how HTTP reaches uvicorn.
+
+| Form | Dockerfile | HTTP transport | Status | Notes |
+|---|---|---|---|---|
+| **Lambda (production)** | `ask/Dockerfile` | Lambda Web Adapter (`/opt/extensions/lambda-adapter`, `AWS_LWA_INVOKE_MODE=buffered`, `AWS_LWA_PORT=8080`) bridges API Gateway → uvicorn | ✅ **DEPLOYED** (image `d5af30e`, see §1) | **Unchanged this step — byte-identical. CI still builds this file verbatim.** |
+| **Local Docker (new)** | `ask/Dockerfile.local` | uvicorn serves HTTP directly on `:8080` (no LWA extension, no `AWS_LWA_*`) | ✅ **built + run + verified locally 2026-09-06**; NOT deployed anywhere | Same base image, requirements, BM25 pre-download, COPY layout, and `CMD ["uvicorn", ...]` as the Lambda image. Adapter omitted. |
+| **Kubernetes (local, kind)** | reuses `Dockerfile.local` image `multitenant-ask:local` | K8s **Service (ClusterIP)** → the same plain-HTTP container Pods | 🟢 **APPLIED + LOCALLY VERIFIED on kind cluster `mtr-local` (2026-09-06)** | `multitenant-rag/k8s/` (Deployment + Service + README). 2/2 Pods Running; Service selects both; `/health`→200 via port-forward; self-healing verified. **readiness + liveness probes (both GET /health) implemented + verified**; rolling update + rollback verified. No Ingress, no HPA, no EKS. Local only — $0, no AWS. |
+| **EKS (AWS)** | — | — | 🔴 **PLANNED — NOT IMPLEMENTED** | No cluster, no ALB, no AWS EKS resources exist. No Kubernetes production deployment or load testing. |
+
+**Why the local image can skip the adapter:** outside Lambda, the LWA extension in `/opt/extensions/` is never started (only Lambda's runtime init launches extensions), so in a plain `docker run` it is inert dead weight — `Dockerfile.local` just omits it and lets uvicorn own port 8080 directly. The Lambda image keeps it because API Gateway speaks the Lambda invoke protocol, not raw HTTP.
+
+**Local build (context = `multitenant-rag/lambdas`):**
+```
+docker build -f ask/Dockerfile.local -t multitenant-ask:local .
+```
+**Local run** (`/health` needs no AWS; the two vars below are the only import-time-required env — real queries additionally need Groq/Qdrant/Bedrock/DynamoDB creds + env, which local dev does not have):
+```
+docker run --rm -p 8080:8080 \
+  -e TENANTS_TABLE=multitenant-tenants \
+  -e USAGE_TABLE=multitenant-usage-logs \
+  multitenant-ask:local
+```
+Verified 2026-09-06 (colima/aarch64): container starts, `Application startup complete`, `GET /health` → `{"ok":true}` (200), protected routes (`/api/users`, `/api/search/global`) → 401 (real app loaded, not a stub). **No AWS resource was created, modified, or called during build/run.**
+
 ## 3. AWS Components
 | Service | Purpose | Resource | State |
 |---|---|---|---|
@@ -1119,6 +1144,53 @@ Details: **`RAG-STRESS-COHORT-A-GENERATION-REPORT.md`**.
   3. **Batch the embeddings** — `ingest_worker._embed_dense_batch` currently makes one `InvokeModel` call per chunk (~40/post); investigate batching to cut request volume.
 
 ## 15. Recent Changes
+
+### 2026-09-06 — Kubernetes health probes + rollout/rollback + debugging, locally verified (EKS track, Step 4)
+All on the local kind cluster `mtr-local`. **$0, no AWS, no EKS. Lambda/CI/RAG/auth logic untouched.**
+
+**Files changed:** `multitenant-rag/k8s/ask-deployment.yaml` — added `readinessProbe` and `livenessProbe` (both `httpGet /health :8080`; readiness `delay=3s period=5s timeout=2s failureThreshold=3`, liveness `delay=5s period=10s timeout=2s failureThreshold=3`). Documented caveat in-file: liveness must NOT depend on optional providers (Groq/Qdrant/Bedrock) or a provider outage would cause restart storms; `/health` is a local self-check only.
+
+**LOCALLY IMPLEMENTED AND VERIFIED:** Dockerized FastAPI; K8s Deployment; ReplicaSet behavior; 2 Pod replicas; ClusterIP Service; selector/labels; EndpointSlice behavior; Pod self-healing (Step 3); **readinessProbe**; **livenessProbe**; **readiness traffic-gating experiment**; **liveness restart experiment**; **Deployment rollout + rollback**; **basic kubectl debugging**.
+- Apply + rollout of probes: `deployment "ask" successfully rolled out`; both Pods `1/1 Ready`, 0 restarts; `describe` shows both probes; endpoints track the 2 ready Pods; `/health`→200 via port-forward.
+- **Readiness failure (reversible `kubectl patch` to a bad path — YAML NOT modified):** new surge Pod stayed `Running` but `0/1 NOT Ready`; `Readiness probe failed: statuscode 404`; the NotReady Pod IP was **absent** from Service endpoints (EndpointSlice `ready=false`); container was **not** restarted; rolling update did not shift traffic to it. Restored known-good from YAML.
+- **Liveness failure (reversible `kubectl patch` to a bad path):** `Liveness probe failed: 404` → `Container ask failed liveness probe, will be restarted`; kubelet restarted the container; restart count climbed (1→2→3). Restored known-good; verified 2/2 Ready, no continuing restart loop, `/health`→200.
+- **Rollout/rollback:** `kubectl set env DEMO_ROLLOUT=v1` (safe change) created a new revision (env confirmed on Pod); `kubectl rollout undo` reverted it (env absent on both Pods; Deployment spec back to only `TENANTS_TABLE`/`USAGE_TABLE`); re-applied committed YAML → `unchanged`. Experimental ReplicaSets all scaled to 0; good RS `ask-7d9597cb86` DESIRED=CURRENT=READY=2.
+- **Debugging suite exercised:** `get pods -o wide`, `describe pod`, `logs` (probe `GET /health 200` visible), `get events --sort-by=.lastTimestamp`, `get deployment/replicasets/svc/endpoints/endpointslice`, `rollout status`, `rollout history`.
+
+**NOT IMPLEMENTED:** EKS; AWS ALB; Ingress; AWS Load Balancer Controller; HPA; Karpenter; production Kubernetes; Kubernetes load testing. (Local kind Kubernetes is NOT EKS.)
+
+### 2026-09-06 — Kubernetes manifests APPLIED + verified on local kind cluster (EKS track, Step 3)
+**IMPLEMENTED AND LOCALLY VERIFIED** (kind cluster `mtr-local`, kubectl v1.37.0, kind v0.33.0, image loaded via `kind load docker-image`, colima/Docker 29.2.0):
+- Plain Docker FastAPI deployment (image `multitenant-ask:local`) running under Kubernetes.
+- **Kubernetes Deployment** `ask` — `2/2` replicas Running, ReplicaSet `ask-7bf4654878` DESIRED=CURRENT=READY=2, no `ImagePullBackOff`/`CrashLoopBackOff`, 0 restarts.
+- **2 replicas**, both scheduled on the single kind node `mtr-local-control-plane` (one-node cluster — not an HA test; co-location is expected).
+- **ClusterIP Service** `ask` (10.96.58.113, port 8080→targetPort 8080).
+- **selector/label association** — Service selector `app=ask` discovered both Pod IPs; EndpointSlice `ask-*` listed both `:8080` endpoints, ready=true.
+- **Service → FastAPI `/health` routing** — `kubectl port-forward svc/ask 8080:8080` then `curl /health` → **HTTP 200 `{"ok":true}`**; protected route `/api/users` → 401 (real app, port-forward stopped after).
+- **Deployment self-healing** — deleted one Pod (`…-h8jgn`); ReplicaSet immediately created a replacement (`…-2w5jv`), count returned to 2, and the Service endpoints auto-updated to the new Pod IP. (The Deployment/ReplicaSet controller maintains desired state; the Service does NOT recreate Pods — it only provides stable networking to matching Pods.)
+
+**IMPLEMENTED AS YAML BUT NOT APPLICATION-LEVEL HEALTH CHECKING:** no `readinessProbe`, no `livenessProbe`. `READY 1/1` here reflects Kubernetes' default container-running signal, **not** a custom FastAPI readiness check.
+
+**NOT IMPLEMENTED:** EKS; AWS ALB/Ingress; AWS Load Balancer Controller; HPA; Karpenter; production Kubernetes; Kubernetes load testing.
+
+- **AWS:** none created, modified, or called. **Cost:** **$0** (kind runs in local Docker/colima). **Lambda path untouched.** The kind cluster `mtr-local` is left running for the next local step (readiness/liveness probes).
+
+### 2026-09-06 — first Kubernetes manifests for the ask backend (EKS track, Step 2)
+**IMPLEMENTED (deployment forms of the ask backend):**
+- AWS Lambda production deployment (`ask/Dockerfile` + LWA) — DEPLOYED, unchanged.
+- Local Docker HTTP deployment (`ask/Dockerfile.local`) — built + verified locally (Step 1).
+- **Kubernetes Deployment + Service manifests** — `multitenant-rag/k8s/`: `ask-deployment.yaml` (Deployment, `replicas: 2`, image `multitenant-ask:local`, `imagePullPolicy: IfNotPresent`, `containerPort: 8080`, only `TENANTS_TABLE`+`USAGE_TABLE` env, modest CPU/mem requests+limits), `ask-service.yaml` (Service, `ClusterIP`, `port 8080 → targetPort 8080`, selector `app: ask`), `README.md`. **Statically validated** (PyYAML parse + 16 structural checks incl. Service-selector-matches-Pod-labels → ALL VALID).
+
+**NOT YET IMPLEMENTED:** EKS; Ingress/ALB; readiness/liveness probes; HPA; Karpenter; AWS Load Balancer Controller; Kubernetes production deployment; Kubernetes load testing. Manifests are **not applied to any cluster** — no local Kubernetes runtime (kubectl/kind/minikube/Docker-Desktop-k8s/colima-k8s) is installed, and none was installed this step (report-first rule).
+
+- **Lambda deployment path untouched** (`ask/Dockerfile`, CI, app/RAG/auth/ingestion logic all unchanged). **AWS:** none created, modified, or called. **Cost:** $0 (all local).
+
+### 2026-09-06 — ask backend runnable as a plain local Docker container (EKS track, Step 1)
+- Added `multitenant-rag/lambdas/ask/Dockerfile.local` — a thin non-Lambda deployment adapter: same base image, `requirements.txt`, BM25 pre-download, COPY layout, and `CMD ["uvicorn","app:app","--host","0.0.0.0","--port","8080"]` as `ask/Dockerfile`, but **without** the Lambda Web Adapter COPY and the `AWS_LWA_*` env, so uvicorn serves HTTP directly. **No application code was duplicated or changed.** See §2b.
+- **Lambda deployment path untouched:** `ask/Dockerfile` and the CI workflow are byte-identical (verified `git diff --stat` empty). Production image `d5af30e` unaffected.
+- **Local build/run verified** (colima/aarch64): `docker build -f ask/Dockerfile.local -t multitenant-ask:local .` then `docker run --rm -p 8080:8080 -e TENANTS_TABLE=… -e USAGE_TABLE=… multitenant-ask:local` → `Application startup complete`, `GET /health` → `{"ok":true}` (200), protected routes → 401. Test container stopped + removed after verification.
+- **Offline tests:** `pytest` over `ask/rag/` + `common/` → **215 passed** (201 without app-env, +14 mocked endpoint-integration with the two import-time env vars set). No live LLM/Qdrant/Bedrock calls.
+- **AWS:** none created, modified, or called. **Kubernetes/EKS:** still planned — no manifests, no cluster added this step.
 
 ### 2026-08-27 — RAG stress corpus Cohort A generated offline (not ingested)
 - Generated 450 posts / 1,821 facts for 25 Cohort-A users in 3 validated batches. Fully

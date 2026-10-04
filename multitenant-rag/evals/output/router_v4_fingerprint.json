@@ -1,0 +1,27 @@
+{
+  "experiment": "compound-router-v4",
+  "router_model": "openai/gpt-oss-20b",
+  "temperature": 0.0,
+  "structured_output_version": "router-v4-atomic-evidence-units-1",
+  "prompt_sha": "e0439db6159e5d5b",
+  "reason_codes": [
+    "multiple_evidence_neighborhoods",
+    "single_evidence_neighborhood",
+    "one_entity_multi_attribute",
+    "one_event_multi_consequence",
+    "verification_same_subject",
+    "temporal_same_attribute",
+    "synthesis_related_observations",
+    "scope_or_negative_check"
+  ],
+  "max_evidence_units": 3,
+  "concurrency": 1,
+  "timeout_s": 120,
+  "max_tokens": 1500,
+  "repo_head": "9033b3e97b52845c2b218c6fec53f4ff3e8ff972",
+  "retrieval_performed": false,
+  "generation_performed": false,
+  "judging_performed": false,
+  "langgraph_used": false,
+  "fingerprint_hash": "978d0ae1f8a89462"
+}

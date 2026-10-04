@@ -1,0 +1,153 @@
+{
+  "context_sha_matches": 18,
+  "cases": 18,
+  "reference_phrases": 19,
+  "nvidia20b_covered": 18,
+  "groq120b_covered": 18,
+  "sha_rows": [
+    {
+      "case_id": "case-002",
+      "context_sha256": "5cc13a51db22ab2cbbada60c90a4f4fdb0540e26d2eb42733abbc014727bc4aa",
+      "recorded_sha256": "5cc13a51db22ab2cbbada60c90a4f4fdb0540e26d2eb42733abbc014727bc4aa",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-003",
+      "context_sha256": "5bf0af7a08b52d218dbe67c56f82496a1ea3d8fcc3de7ea1c68537ce22ce0a6e",
+      "recorded_sha256": "5bf0af7a08b52d218dbe67c56f82496a1ea3d8fcc3de7ea1c68537ce22ce0a6e",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-004",
+      "context_sha256": "3407714b661f787f01760df24a062b80e7578d4aa433e56d6301d1392e18e549",
+      "recorded_sha256": "3407714b661f787f01760df24a062b80e7578d4aa433e56d6301d1392e18e549",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-005",
+      "context_sha256": "0cb19f3cc26ab79ec96b415219211c085a563fc7790bad127396d0f686847928",
+      "recorded_sha256": "0cb19f3cc26ab79ec96b415219211c085a563fc7790bad127396d0f686847928",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-007",
+      "context_sha256": "b8248a7ae2bb4eb6c4d71b3bc94b9a7f7fa2a5b0d40490f4bcc3fef0dc9826ba",
+      "recorded_sha256": "b8248a7ae2bb4eb6c4d71b3bc94b9a7f7fa2a5b0d40490f4bcc3fef0dc9826ba",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-008",
+      "context_sha256": "3872b82816950130cc4107c12e7c4a01fec720d99e60a91bf183029606a9ac1b",
+      "recorded_sha256": "3872b82816950130cc4107c12e7c4a01fec720d99e60a91bf183029606a9ac1b",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-009",
+      "context_sha256": "f6de49184f2ef3e9947d88f6727c4a657b8044bc3789252e10bb7ec4191d6e06",
+      "recorded_sha256": "f6de49184f2ef3e9947d88f6727c4a657b8044bc3789252e10bb7ec4191d6e06",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-018",
+      "context_sha256": "4a10e92c5ec426418315a90871e211cb8ca10e0918d6664f1f3c45333beae880",
+      "recorded_sha256": "4a10e92c5ec426418315a90871e211cb8ca10e0918d6664f1f3c45333beae880",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-020",
+      "context_sha256": "b5eae31c08aaa253180ff977821deccb8d18997dc884adf4b53067f0ec580bd0",
+      "recorded_sha256": "b5eae31c08aaa253180ff977821deccb8d18997dc884adf4b53067f0ec580bd0",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-022",
+      "context_sha256": "c372f0f59466f5eaa450a5278dacbf5124daa17f4f31bbd33e9a08b451e5a357",
+      "recorded_sha256": "c372f0f59466f5eaa450a5278dacbf5124daa17f4f31bbd33e9a08b451e5a357",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-023",
+      "context_sha256": "37005e1ec234c207896d0e8971dcf134ed50e91d85afbacb2903b8295f275afc",
+      "recorded_sha256": "37005e1ec234c207896d0e8971dcf134ed50e91d85afbacb2903b8295f275afc",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-025",
+      "context_sha256": "eee875be9afaee17020bc005291bd6e2ba53fb327c73fe9ec2b48c249ebf6d74",
+      "recorded_sha256": "eee875be9afaee17020bc005291bd6e2ba53fb327c73fe9ec2b48c249ebf6d74",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-030",
+      "context_sha256": "a4c13c0175029712395b8b16dc39c9f1c5273b358e94f18fee2d2f619801d13d",
+      "recorded_sha256": "a4c13c0175029712395b8b16dc39c9f1c5273b358e94f18fee2d2f619801d13d",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-041",
+      "context_sha256": "a52ba7f3c6c447d0c63d55e0542914c0b01b93a20096c3ecd2a7cc4cec0cf981",
+      "recorded_sha256": "a52ba7f3c6c447d0c63d55e0542914c0b01b93a20096c3ecd2a7cc4cec0cf981",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-046",
+      "context_sha256": "aef778202d7bb8115781c7c862e80a5b2902520437dfec43b436b3630b53a4f1",
+      "recorded_sha256": "aef778202d7bb8115781c7c862e80a5b2902520437dfec43b436b3630b53a4f1",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-047",
+      "context_sha256": "3e2d3d96b4ddfab09b7a458090bfaabc84164aebbb80bf17fdd07b5c58612d42",
+      "recorded_sha256": "3e2d3d96b4ddfab09b7a458090bfaabc84164aebbb80bf17fdd07b5c58612d42",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-056",
+      "context_sha256": "cfbd7133e0a211fe904be9e9b56401da515be1f92c3191d7038ccaf1fdbfc4d4",
+      "recorded_sha256": "cfbd7133e0a211fe904be9e9b56401da515be1f92c3191d7038ccaf1fdbfc4d4",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    },
+    {
+      "case_id": "case-059",
+      "context_sha256": "09bd6065d1be6b96abf961d67affac5d10710e2b22c792986f5b1041e277ee2e",
+      "recorded_sha256": "09bd6065d1be6b96abf961d67affac5d10710e2b22c792986f5b1041e277ee2e",
+      "match": true,
+      "context_count": 5,
+      "contexts_byte_identical_to_routed_artifact": true
+    }
+  ]
+}

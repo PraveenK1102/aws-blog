@@ -1,0 +1,10 @@
+{
+  "project": "multitenant-rag-dev-groq-observability-v1",
+  "runs": 221,
+  "roots": 76,
+  "phaseA_roots": 6,
+  "complete": 6,
+  "completeness_pct": 100.0,
+  "errors": 0,
+  "issues": []
+}
